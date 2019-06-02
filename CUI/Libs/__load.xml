@@ -1,0 +1,25 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="LibStub\Libstub.lua"/>
+	<Include file="CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
+	<Include file="AceAddon-3.0\AceAddon-3.0.xml"/>
+	<Include file="AceHook-3.0\AceHook-3.0.xml"/>
+	<Include file="AceDB-3.0\AceDB-3.0.xml"/>
+	<Include file="AceGUI-3.0\AceGUI-3.0.xml"/>
+	
+	<Script File="LibSharedMedia-3.0\LibSharedMedia-3.0.lua"/>
+	
+	<Include file="AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
+	<Include file="LibSmoothStatusBar-1.0\LibSmoothStatusBar-1.0.xml"/>
+	<Include file="LibKeyBound-1.0\lib.xml"/>
+	<Include file="LibSpellRange-1.0\lib.xml"/>
+	
+	
+	<Script File="LibDualSpec-1.0\LibDualSpec-1.0.lua"/>
+	<Script File="LibButtonGlow-1.0\LibButtonGlow-1.0.lua"/>
+	<Script File="LibActionButton-1.0\LibActionButton-1.0.lua"/>
+	
+	<Script File="HereBeDragons\HereBeDragons-2.0.lua"/>
+	<Script File="HereBeDragons\HereBeDragons-Pins-2.0.lua"/>
+	
+	<Script File="SimpleSticky.lua"/>
+</Ui>

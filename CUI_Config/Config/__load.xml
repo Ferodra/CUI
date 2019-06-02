@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Include file="Modules\__load.xml"/>
+	<Include file="Categories\__load.xml"/>
+	
+	<Script file="Categories_Sort.lua"/>
+	
+	<Include file="Versioning\__load.xml"/>
+</Ui>

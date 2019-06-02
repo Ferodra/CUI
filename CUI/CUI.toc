@@ -1,0 +1,10 @@
+## Interface: 80200
+## Title: |cff1784d1CUI|r |cFFFEB200Core|r
+## Author: Arenima@AlleriaEU
+## Notes: The Custom-User-Interface Core
+## Version: 0.8.5 Classic
+## SavedVariables: CUIDB
+## OptionalDeps: Ace3, SharedMedia, Masque
+## X-Embeds: Ace3
+
+Modules.xml

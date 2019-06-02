@@ -1,0 +1,26 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\FrameXML\UI.xsd">
+
+	<!-- RUNTIME LIBRARIES -->
+	<Include file="Libs\__load.xml"/>
+	
+	<!-- INIT -->
+	<Script File="Init.lua"/>
+	<!-- LOCALE -->
+	<Include file="Locales\__load.xml"/>
+	
+	<!-- TOOLS -->
+	<Include file="Tools\__load.xml"/>
+	<!-- DATA -->
+	<Include file="Data\__load.xml"/>
+	<!-- CONFIG -->
+	<Include file="Config\__load.xml"/>
+	
+	<!-- ART-LIB -->
+	<Script File="ArtLib.lua"/>
+	
+	<!-- MODULES -->
+	<Include file="Modules\__load.xml"/>
+	
+	<!-- TEST -->
+	<Include file="Dev\__load.xml"/>
+</Ui>

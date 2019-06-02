@@ -1,0 +1,11 @@
+## Interface: 80200
+## Title: |cff1784d1CUI|r |cFFFEB200Worldmap Markers|r
+## Author: Arenima@AlleriaEU
+## Notes: Additional Worldmap markers for older dungeon and raid entrances.
+## Version: 1.0 Release
+
+## Dependencies: CUI
+
+Libs\__load.xml
+Data\__load.xml
+WorldmapMarkers.lua

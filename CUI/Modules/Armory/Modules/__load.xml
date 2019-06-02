@@ -1,0 +1,5 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="Enchant.lua"/>
+	<Script File="Gems.lua"/>
+	<Script File="Itemlevel.lua"/>
+</Ui>

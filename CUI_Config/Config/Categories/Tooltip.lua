@@ -1,0 +1,113 @@
+local E, L = unpack(CUI) -- Engine
+local CO, CD, L, TT = E:LoadModules("Config", "Config_Dialog", "Locale", "Tooltip")
+
+local _
+
+CD.Options.args.tooltip = {
+	name = "Tooltip",
+	type = 'group',
+	order = 99999,
+	disabled = false,
+	args = {
+		headerFontType = {
+			name = "Header Font Type",
+			dialogControl = "LSM30_Font",
+			type = "select",
+			desc = L["FontType"],
+			order = 2,
+			values = CO.AceGUIWidgetLSMlists["font"],
+			get = function(info) return CO.db.profile.tooltip.header["fontType"] end,
+			set = function(info, value) CO.db.profile.tooltip.header["fontType"] = value; TT:UpdateFonts(); end,
+		},
+		bodyFontType = {
+			name = "Body Font Type",
+			dialogControl = "LSM30_Font",
+			type = "select",
+			desc = L["FontType"],
+			order = 3,
+			values = CO.AceGUIWidgetLSMlists["font"],
+			get = function(info) return CO.db.profile.tooltip.body["fontType"] end,
+			set = function(info, value) CO.db.profile.tooltip.body["fontType"] = value; TT:UpdateFonts(); end,
+		},
+		statusbarFontType = {
+			name = "Health Font Type",
+			dialogControl = "LSM30_Font",
+			type = "select",
+			desc = L["FontType"],
+			order = 4,
+			values = CO.AceGUIWidgetLSMlists["font"],
+			get = function(info) return CO.db.profile.tooltip.statusbar["fontType"] end,
+			set = function(info, value) CO.db.profile.tooltip.statusbar["fontType"] = value; TT:UpdateFonts(); end,
+		},
+		headerFontSize = {
+			order = 10,
+			type = 'range',
+			name = "Header Font height",
+			desc = "Font height of the first Tooltip line",
+			softMin = 3, softMax = 50, step = 1,
+			min = 3, max = 90,
+			get = function(info) return CO.db.profile.tooltip.header["fontSize"] end,
+			set = function(info, value) CO.db.profile.tooltip.header["fontSize"] = value; TT:UpdateFonts(); end,
+		},
+		bodyFontSize = {
+			order = 11,
+			type = 'range',
+			name = "Body Font height",
+			desc = "Font height of everything below the first Tooltip line",
+			softMin = 3, softMax = 50, step = 1,
+			min = 3, max = 90,
+			get = function(info) return CO.db.profile.tooltip.body["fontSize"] end,
+			set = function(info, value) CO.db.profile.tooltip.body["fontSize"] = value; TT:UpdateFonts(); end,
+		},
+		statusbarFontSize = {
+			order = 12,
+			type = 'range',
+			name = "Health Font height",
+			desc = "Font height of everything below the first Tooltip line",
+			softMin = 3, softMax = 50, step = 1,
+			min = 3, max = 90,
+			get = function(info) return CO.db.profile.tooltip.statusbar["fontSize"] end,
+			set = function(info, value) CO.db.profile.tooltip.statusbar["fontSize"] = value; TT:UpdateFonts(); end,
+		},
+		headerFontFlags = {
+			name = "Header Font Flags",
+			type = "select",
+			order = 13,
+			values = CD.FontFlags,
+			get = function(info) return CO.db.profile.tooltip.header["fontFlags"] end,
+			set = function(info, value) CO.db.profile.tooltip.header["fontFlags"] = value; TT:UpdateFonts(); end,
+		},
+		bodyFontFlags = {
+			name = "Body Font Flags",
+			type = "select",
+			order = 14,
+			values = CD.FontFlags,
+			get = function(info) return CO.db.profile.tooltip.body["fontFlags"] end,
+			set = function(info, value) CO.db.profile.tooltip.body["fontFlags"] = value; TT:UpdateFonts(); end,
+		},
+		statusbarFontFlags = {
+			name = "Health Font Flags",
+			type = "select",
+			order = 15,
+			values = CD.FontFlags,
+			get = function(info) return CO.db.profile.tooltip.statusbar["fontFlags"] end,
+			set = function(info, value) CO.db.profile.tooltip.statusbar["fontFlags"] = value; TT:UpdateFonts(); end,
+		},
+
+		bgHeader = {
+			order = 21,
+			type = "header",
+			name = L["Background"],
+		},
+		bgAlpha = {
+			order = 22,
+			type = 'range',
+			name = "Background Alpha",
+			desc = "Background Alpha",
+			min = 0, max = 1, step = 0.01,
+			get = function(info) return CO.db.profile.tooltip.background["alpha"] end,
+			set = function(info, value) CO.db.profile.tooltip.background["alpha"] = value; TT:UpdateFonts(); end,
+		},
+	},
+	
+}

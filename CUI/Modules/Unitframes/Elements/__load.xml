@@ -1,0 +1,24 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Include file="AuraTemplate.xml"/>
+	
+	<Script File="Auras.lua"/>
+	<Script File="UnitAuras.lua"/>
+	<Script File="Absorb.lua"/>
+	<Script File="Classpower.lua"/>
+	<Script File="Health.lua"/>
+	<Script File="Power.lua"/>
+	<Script File="Aurabars.lua"/>
+	<Script File="Castbar.lua"/>
+	<Script File="Threat.lua"/>
+	<Script File="Portrait.lua"/>
+	<Script File="HealPrediction.lua"/>
+	<Script File="Highlight.lua"/>
+	<Script File="LeaderIcon.lua"/>
+	<Script File="ResurrectIndicator.lua"/>
+	<Script File="Role.lua"/>
+	<Script File="RangeIndicator.lua"/>
+	<Script File="Readycheck.lua"/>
+	<Script File="SummonIcon.lua"/>
+	<Script File="TargetIcon.lua"/>
+	<Script File="TargetHighlight.lua"/>
+</Ui>

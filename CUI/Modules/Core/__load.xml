@@ -1,0 +1,14 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="AddOnCommunication.lua"/>
+	<Script File="CVars.lua"/>
+	<Script File="Callbacks.lua"/>
+	<Script File="Colors.lua"/>
+	<Script File="Cooldowns.lua"/>
+	<Script File="Core.lua"/>
+	<Script File="Fonts.lua"/>
+	<Script File="Movers.lua"/>
+	<Script File="Statusbars.lua"/>
+	<Script File="SlashCmd.lua"/>
+	
+	<Include file="Callbacks\__load.xml"/>
+</Ui>

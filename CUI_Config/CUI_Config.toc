@@ -1,0 +1,12 @@
+## Interface: 80200
+## Title: |cff1784d1CUI|r |cFFFEB200Config|r
+## Author: Arenima@AlleriaEU
+## Notes: Config module for the CUI-Core
+## Version: 0.8.5 Test
+## RequiredDeps: CUI
+## LoadOnDemand: 1
+
+Libs\__load.xml
+
+Config.lua
+Config\__load.xml

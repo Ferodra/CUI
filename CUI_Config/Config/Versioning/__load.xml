@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="Help.lua"/>
+	<Script File="Changelog.lua"/>
+	<Script File="Bugtracker.lua"/>
+	<Script File="Credits.lua"/>
+</Ui>

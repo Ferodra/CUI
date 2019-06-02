@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Include file="Bags.lua"/>
+	<Include file="TotemBar.lua"/>
+	<Include file="PlayTime.lua"/>
+	<Include file="MiscFeatures.lua"/>
+</Ui>

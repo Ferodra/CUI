@@ -1,0 +1,14 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="ClassColors.lua"/>
+	<Script File="ClassPowers.lua"/>
+	
+	<Script File="PowerColors.lua"/>
+	<Script File="PowerTypes.lua"/>
+	<Script File="PowerTypesDisplayType.lua"/>
+	
+	<Script File="ReactionColors.lua"/>
+	
+	<Script File="RangeSpells.lua"/>
+	
+	<Include file="Globals\__load.xml"/>
+</Ui>

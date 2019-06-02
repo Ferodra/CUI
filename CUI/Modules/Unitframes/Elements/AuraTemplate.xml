@@ -1,0 +1,130 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Button name='CUIAuraTemplate' inherits='SecureActionButtonTemplate' virtual='true' framelevel="4">
+		<Size x='32' y='32'/>
+		<Attributes>
+			<Attribute name='type' value='cancelaura'/>
+		</Attributes>
+		<Script File="Auras.lua"/>
+		<Scripts>
+			<OnLoad>
+				local E = unpack(CUI)
+				E:GetModule("Auras"):CreateIcon(self)
+				self:RegisterForClicks('RightButtonUp')
+			</OnLoad>
+			<OnEnter>
+				GameTooltip:SetOwner(self, 'ANCHOR_BOTTOMLEFT', -5, -5)
+				if(self:GetAttribute'index') then
+					GameTooltip:SetUnitAura(SecureButton_GetUnit(self:GetParent()), self:GetID(), self:GetParent():GetAttribute("filter"))
+				elseif(self:GetAttribute'target-slot') then
+					GameTooltip:SetInventoryItem('player', self:GetID())
+				end
+			</OnEnter>
+			<OnLeave function='GameTooltip_Hide'/>
+		</Scripts>
+		<Layers>
+			<Layer level="OVERLAY">
+				<Texture name="$parentBorder" file="Interface\Buttons\UI-Debuff-Overlays" parentKey="border">
+					<Size>
+						<AbsDimension x="33" y="32"/>
+					</Size>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<TexCoords left="0.296875" right="0.5703125" top="0" bottom="0.515625"/>
+				</Texture>	
+			</Layer>
+		</Layers>
+	</Button>
+
+	<Button name='CUIAuraTemplate16' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='16' y='16'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate18' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='18' y='18'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate20' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='20' y='20'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate22' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='22' y='22'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate24' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='24' y='24'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate26' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='26' y='26'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate28' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='28' y='28'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate30' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='30' y='30'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate32' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='32' y='32'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate34' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='34' y='34'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate36' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='36' y='36'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate38' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='38' y='38'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate40' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='40' y='40'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate42' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='42' y='42'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate44' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='44' y='44'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate46' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='46' y='46'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate48' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='48' y='48'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate50' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='50' y='50'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate52' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='52' y='52'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate54' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='54' y='54'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate56' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='56' y='56'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate58' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='58' y='58'/>
+	</Button>
+
+	<Button name='CUIAuraTemplate60' inherits='CUIAuraTemplate' virtual='true'>
+		<Size x='60' y='60'/>
+	</Button>
+</Ui>

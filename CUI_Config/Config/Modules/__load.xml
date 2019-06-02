@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="Data.lua"/>
+	
+	<Script File="FrameChooser.lua"/>
+	<Script File="Fonts.lua"/>
+	<Script File="Header.lua"/>
+	<Script File="MoveGrid.lua"/>
+	<Script File="Movers.lua"/>
+	<Script File="StaticPopups.lua"/>
+</Ui>

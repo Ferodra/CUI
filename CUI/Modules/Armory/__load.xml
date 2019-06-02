@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="Armory.lua"/>
+	<Script File="Inspect.lua"/>
+	
+	<Include file="Modules\__load.xml"/>
+</Ui>

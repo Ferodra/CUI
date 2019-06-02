@@ -1,0 +1,7 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="Bar_Azerite.lua"/>
+	<Script File="Bar_Experience.lua"/>
+	<Script File="Bar_Honor.lua"/>
+	<Script File="Bar_Reputation.lua"/>
+	<Script File="Layout.lua"/>
+</Ui>
