@@ -1,6 +1,9 @@
-local E = unpack(select(2, ...)) -- Engine, Locale
-local CO, L, B = E:LoadModules("Config", "Locale", "Bags")
+local E, L = unpack(select(2, ...)) -- Engine, Locale
+local CO, B = E:LoadModules("Config", "Bags")
 B.Autoload = true
+
+local ContainerIDToInventoryID = C_Container.ContainerIDToInventoryID or ContainerIDToInventoryID
+local GetContainerNumSlots = C_Container.GetContainerNumSlots or GetContainerNumSlots
 
 -----------------------------------------------------------------------------
 B.Bags = {}
@@ -64,7 +67,8 @@ function B:LoadMasque()
 	end
 end
 
-function B:LoadProfile()
+function B:LoadConfig()
+	self = B
 	self.db = CO.db.profile.bags
 	
 	if self.db.enable then		
@@ -74,13 +78,27 @@ function B:LoadProfile()
 		
 		if E:GetMover(BagHolder) then
 			local profileMoverData = CO.db.profile.movers["CUI_BagBarHolderMover"]
-			E:RepositionMover(E:GetMover(BagHolder), profileMoverData["point"], profileMoverData["relativePoint"], profileMoverData["xOffset"], profileMoverData["yOffset"])
+			E:RepositionMover(E:GetMover(BagHolder), profileMoverData.point, profileMoverData.relativePoint, profileMoverData.xOffset, profileMoverData.yOffset)
 			E:UpdateMoverDimensions(BagHolder)
 		end
 		
-		if MasqueGroup and self.db.useMasque then
+		if MasqueGroup and CO.db.char.bags.useMasque then
 			MasqueGroup:ReSkin()
+		else
+			for _, bag in pairs(self.Bags) do
+				bag.icon:RemoveMaskTexture(bag.CircleMask)
+				--bag.AnimIcon:RemoveMaskTexture(bag.CircleMask)
+				bag.AnimIcon:RemoveMaskTexture(bag.CircleMask)
+				bag:GetNormalTexture():RemoveMaskTexture(bag.CircleMask)
+			end
 		end
+		
+		--"bag-main", "bag-main", "bag-main-highlight"
+		--MainBag:GetNormalTexture():SetAtlas("bag-main")
+		MainBag.icon:SetAtlas("bag-main")
+		MainBag.icon:RemoveMaskTexture(MainBag.CircleMask)
+		MainBag.AnimIcon:RemoveMaskTexture(MainBag.CircleMask)
+		MainBag:GetNormalTexture():RemoveMaskTexture(MainBag.CircleMask)
 		
 		BagHolder:Show()
 	else
@@ -90,6 +108,7 @@ end
 
 function B:Construct()
 	BagHolder:SetSize(250, BagSize)
+	E:Remove(_G.BagsBar)
 	
 	MainBag:ClearAllPoints()
 	MainBag:SetPoint("TOPRIGHT", BagHolder, "TOPRIGHT")
@@ -100,6 +119,9 @@ function B:Construct()
 	
 	MainBag.IconBorder:Hide()
 	MainBag.IconBorder:SetAlpha(0)
+	
+	hooksecurefunc(_G.BagsBar, 'Layout', B.LoadConfig)
+	hooksecurefunc(_G.MainMenuBarBagManager, 'OnExpandBarChanged', B.LoadConfig)
 	
 	local CurrentBag
 	for i = 0, NUM_BAG_FRAMES - 1 do
@@ -119,11 +141,11 @@ function B:Construct()
 		end
 	end
 	
-	if CO.db.profile.bags.useMasque then
+	if CO.db.char.bags.useMasque then
 		self:LoadMasque()
 	end
 	
-	E:CreateMover(BagHolder, "Bag-Bar", nil, nil, nil, "Holds your bags!")
+	E:CreateMover(BagHolder, "Bag-Bar", nil, nil, nil, "Holds your bags!", "misc")
 	
 	self:RegisterEvent("BAG_UPDATE")
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -133,7 +155,7 @@ end
 function B:Init()
 	self:Construct()
 	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
 E:AddModule("Bags", B)

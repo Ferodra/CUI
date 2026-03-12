@@ -22,5 +22,7 @@ E.PowerTypesDisplayType = {
 	[16]	=	true, -- ARCANE_CHARGES
 	[17]	=	false, -- FURY
 	[18]	=	false, -- PAIN
+	[19]	=	true, -- ESSENCE
 	[30]	=	false, -- STAGGER
+	[33]	=	true, -- FROST MAGE ICICLES
 }

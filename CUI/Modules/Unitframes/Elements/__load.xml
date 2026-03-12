@@ -1,10 +1,12 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Include file="AuraTemplate.xml"/>
 	
+	<Script File="AlternatePower.lua"/>
 	<Script File="Auras.lua"/>
 	<Script File="UnitAuras.lua"/>
 	<Script File="Absorb.lua"/>
 	<Script File="Classpower.lua"/>
+	<Script File="CombatIndicator.lua"/>
 	<Script File="Health.lua"/>
 	<Script File="Power.lua"/>
 	<Script File="Aurabars.lua"/>
@@ -15,10 +17,12 @@
 	<Script File="Highlight.lua"/>
 	<Script File="LeaderIcon.lua"/>
 	<Script File="ResurrectIndicator.lua"/>
+	<Script File="RestingIndicator.lua"/>
 	<Script File="Role.lua"/>
 	<Script File="RangeIndicator.lua"/>
 	<Script File="Readycheck.lua"/>
 	<Script File="SummonIcon.lua"/>
+	<Script File="TargetSounds.lua"/>
 	<Script File="TargetIcon.lua"/>
 	<Script File="TargetHighlight.lua"/>
 </Ui>

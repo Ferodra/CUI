@@ -5,6 +5,15 @@
 	
 	<!-- INIT -->
 	<Script File="Init.lua"/>
+	<!-- API -->
+	<Script File="Modules\Core\API.lua"/>
+	<Script File="Modules\Core\Modules.lua"/>
+	
+	<!-- Load AceGUI after we initialized, as it depends on some of our API functions -->
+	<Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml"/>
+	<Include file="Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
+	<!--<Include file="Libs\LibSpellRange-1.0\LibSpellRange-1.0.lua"/>-->
+	
 	<!-- LOCALE -->
 	<Include file="Locales\__load.xml"/>
 	

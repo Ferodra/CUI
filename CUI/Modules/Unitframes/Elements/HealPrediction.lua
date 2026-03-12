@@ -6,69 +6,76 @@ local CO, UF = E:LoadModules("Config", "Unitframes")
 --------------------]]--
 
 local _
+local tinsert				= table.insert
+local UnitHealth			= UnitHealth
+local UnitHealthMax			= UnitHealthMax
+local UnitHealthMissing		= UnitHealthMissing
+local UnitGetIncomingHeals	= UnitGetIncomingHeals
+
 local Module = {}
 Module.Handles = {}
+Module.Dependencies = {'Health'}
+
+local BarTexture = [[Interface\AddOns\CUI\Textures\borders\WHITE8X8]]
 
 -----------------------------------------
 
-local function UpdateElement(self, event)
-	if self.Disabled then return end
+local function UpdateElement(self, event, unit)
+	if self.Disabled or unit ~= self.Owner.unit then return end
 	
-	self:SetMinMaxValues(0, (UnitHealthMax(self.Unit) - UnitHealth(self.Unit)))
-	self:SetValue(UnitGetIncomingHeals(self.Unit) or 0)
+	self:SetMinMaxValues(0, UnitHealthMissing(unit))
+	self:SetValue(UnitGetIncomingHeals(unit) or 0)
 end
 
 local function ForceUpdate(self)
-	UpdateElement(self, nil)
+	UpdateElement(self, nil, self.Owner.unit)
 end
 
 ----------
 
-local ProfileTarget
-function Module:LoadProfile()
+function Module:LoadConfig()
+	local Config, Element
+	
 	for _, self in pairs(Module.Handles) do
-		ProfileTarget = CO.db.profile.unitframe.units[self.ProfileUnit]
+		Config = CO.db.profile.unitframe.units[self.ConfigKey]
+		Element = self.HealPrediction
 		
-		if ProfileTarget.healPrediction then
-			if not ProfileTarget.healPrediction.enable then
-				self.Health.HealPrediction:UnregisterAllEvents()
-				
-				self.Health.HealPrediction:Hide()
-				self.Health.HealPrediction.Disabled = true;
+		if Config.healPrediction then
+			Element:UnregisterAllEvents()
+			
+			if not Config.healPrediction.enable then
+				Element:Hide()
+				Element.Disabled = true
 			else				
-				self.Health.HealPrediction:SetParent(self.Health)
+				Element:SetParent(self.Health)
+				self.Health:SetSubBar(Element, false, Config.health.barInverseFill, Config.health.barOrientation)
 				
-				self.Health:SetSubBar(self.Health.HealPrediction, false, ProfileTarget.health.barInverseFill, ProfileTarget.health.barOrientation)
-				
-				if not self.Health.HealPrediction:IsEventRegistered("UNIT_HEAL_PREDICTION") then
-					self.Health.HealPrediction:RegisterUnitEvent("UNIT_HEAL_PREDICTION", self.Unit)
-				end
-				if ProfileTarget.health.fastUpdate then
-					self.Health.HealPrediction:UnregisterEvent("UNIT_HEALTH")
-					self.Health.HealPrediction:RegisterUnitEvent("UNIT_HEALTH_FREQUENT", self.Unit)
-				else
-					self.Health.HealPrediction:UnregisterEvent("UNIT_HEALTH_FREQUENT")
-					self.Health.HealPrediction:RegisterUnitEvent("UNIT_HEALTH", self.Unit)
+				Element:RegisterUnitEvent("UNIT_HEAL_PREDICTION", Element.Owner.unit)
+				Element:RegisterUnitEvent("UNIT_HEALTH", Element.Owner.unit)
+				if not E.IsRetail and Config.health.fastUpdate then
+					Element:RegisterEvent("UNIT_HEALTH_FREQUENT")
 				end
 				
-				self.Health.HealPrediction:Show()
-				self.Health.HealPrediction.Disabled = false;
+				Element:Show()
+				Element.Disabled = false
 			end
 		end
 	end
 end
 
 function Module:Create(F)
-	F.Health.HealPrediction = UF:CreateUFBar()
-	F.Health.HealPrediction:SetStatusBarTexture([[Interface\Buttons\WHITE8X8]])
-	F.Health.HealPrediction:SetStatusBarColor(0.1, 0.6, 0.9, 0.5)
-	F.Health.HealPrediction:SetValue(0)
+	local Element = UF:CreateUFBar()
 	
-	F.Health.HealPrediction.Unit = F.Unit
-	F.Health.HealPrediction:SetScript("OnEvent", UpdateElement)
-	F.Health.HealPrediction.ForceUpdate = ForceUpdate
+	Element:SetStatusBarTexture(BarTexture)
+	Element:SetStatusBarColor(0.1, 0.6, 0.9, 0.5)
+	Element:SetValue(0)
 	
-	table.insert(Module.Handles, F)
+	Element.Owner = F
+	Element:SetScript("OnEvent", UpdateElement)
+	Element.ForceUpdate = ForceUpdate
+	
+	F.HealPrediction = Element
+	tinsert(Module.Handles, F)
 end
 
 ---------- Add Module

@@ -1,127 +1,83 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, UF = E:LoadModules("Config", "Unitframes")
 
-local SpellRange = LibStub("SpellRange-1.0")
+local RangeCheck = LibStub("LibRangeCheck-3.0")
 
 ----------------------------------------------
 local _
 local CreateFrame		= CreateFrame
+local IsSpellInRange	= C_Spell and C_Spell.IsSpellInRange or IsSpellInRange
 
-local Ticker = CreateFrame("Frame", nil)
+local Ticker = CreateFrame("Frame", "CUI_RangeIndicatorTick")
 Ticker.Frames = {}
 ----------------------------------------------
 
 Ticker.Elapsed = 0
 
+local function CheckRange(unit)
+	local minRange, maxRange = RangeCheck:GetRange(unit, true, true)
+	return (not minRange) or maxRange
+end
 
 local function FriendlyIsInRange(Unit)
-	
-	if UnitIsWarModePhased(Unit) then
+	-- When in other phase
+	if UnitIsPlayer(Unit) and UnitPhaseReason(Unit) then
 		return false
 	end
 	
 	local inRange, checkedRange = UnitInRange(Unit)
-	if checkedRange and not inRange then
-		return false
-	end
+	return inRange
+
 	
-	if E.RangeSpells[E.PlayerClass] then
-		if UnitIsDeadOrGhost(Unit) then
-			for _, spellID in pairs(E.RangeSpells[E.PlayerClass].resurrect) do
-				if SpellRange.IsSpellInRange(spellID, Unit) == 1 then
-					return true
-				end
-			end
-			
-			return false
-		end
-		
-		for a, spellID in pairs(E.RangeSpells[E.PlayerClass].friendly) do
-			if SpellRange.IsSpellInRange(spellID, Unit) == 1 then
-				return true
-			end
-		end
-	end
-	
-	if CheckInteractDistance(Unit, 1) then
-		return true
-	end
-	
-	return false
+	--return CheckRange(Unit)
 end
 
-local function EnemyIsInRange(Unit)
-	
-	if CheckInteractDistance(Unit, 2) then
-		return true
-	end
-	
-	if E.RangeSpells[E.PlayerClass] then
-		for _, spellID in pairs(E.RangeSpells[E.PlayerClass].enemy) do
-			if SpellRange.IsSpellInRange(spellID, Unit) == 1 then
-				return true
-			end
-		end
-	end
-	
-	return false
+local function EnemyIsInRange(Unit)	
+	return CheckRange(Unit)
 end
 
-local function PetIsInRange()
-	
-	if CheckInteractDistance("pet", 2) then
-		return true
-	end
-	
-	if E.RangeSpells[E.PlayerClass] then
-		for _, spellID in pairs(E.RangeSpells[E.PlayerClass].pet) do
-			if SpellRange.IsSpellInRange(spellID, "pet") == 1 then
-				return true
-			end
-		end
-		
-		for _, spellID in pairs(E.RangeSpells[E.PlayerClass].friendly) do
-			if SpellRange.IsSpellInRange(spellID, "pet") == 1 then
-				return true
-			end
-		end
-	end
-	
-	return false
+local function PetIsInRange(Unit)
+	return CheckRange(Unit)
 end
 
 -- Gets called OnUpdate by every Unitframe with some timer limit (Make that an option)
 local function UpdateRange(F)
 	F = F.Parent
+	if not F:IsVisible() then return end
+	
 	F.IsInRange = false
 	
-	if UnitInPhase(F.Unit) then
-		if not UnitCanAttack("player", F.Unit) then
-			if not UnitIsUnit("pet", F.Unit) then
-				F.IsInRange = UnitIsConnected(F.Unit) and FriendlyIsInRange(F.Unit)
-			else
-				F.IsInRange = PetIsInRange()
-			end
+	if not UnitCanAttack("player", F.unit) then
+		if not F.unit:find('pet') then
+			F.IsInRange = UnitIsConnected(F.unit) and FriendlyIsInRange(F.unit)
 		else
-			F.IsInRange = EnemyIsInRange(F.Unit)
+			F.IsInRange = PetIsInRange(F.unit)
 		end
+	else
+		F.IsInRange = EnemyIsInRange(F.unit)
 	end
+	--end
+	
+	F:SetAlphaFromBoolean(F.IsInRange, CO.db.profile.unitframe.units.all.outOfRangeAlpha, 1)
 	
 	-- For now, leave that disabled, since it seems to trigger some random issues with parties and raids
 	-- Prevent rapid unnecessary updates
 	--if F.LastRangeState ~= F.IsInRange then
-		if not F.IsInRange then
-			F:SetAlpha(CO.db.profile.unitframe.units.all.outOfRangeAlpha)
-		else
-			F:SetAlpha(1)
-		end
+	
+	--if not F.IsInRange then
+		--F:SetAlpha(CO.db.profile.unitframe.units.all.outOfRangeAlpha)
+		--E:UIFrameFadeOut(F, 0.2, F:GetAlpha(), CO.db.profile.unitframe.units.all.outOfRangeAlpha)
+	--else
+		--F:SetAlpha(1)
+		--E:UIFrameFadeIn(F, 0.2, F:GetAlpha(), 1)
+	--end
 		
 		--F.LastRangeState = F.IsInRange
 	--end
 end
 
 function UF:AddRangeIndicator(F)
-	if F.Unit == "player" then return end
+	if F.unit == "player" then return end
 	
 	for k,v in pairs(Ticker.Frames) do
 		if v == F then
@@ -138,7 +94,7 @@ function UF:AddRangeIndicator(F)
 end
 
 function UF:RemoveRangeIndicator(F)
-	if F.Unit == "player" then return end
+	if true or F.unit == "player" then return end
 	
 	if F.RangeIndicator and not F.RangeIndicator.Disabled then
 		for k,v in pairs(Ticker.Frames) do
@@ -154,6 +110,7 @@ end
 
 -----
 
+-- This is pretty CPU heavy, due to lots of checking and stuff. Maybe there's a more efficient way at some point
 Ticker:SetScript("OnUpdate", function(self, elapsed)
 	Ticker.Elapsed = Ticker.Elapsed + elapsed
 	

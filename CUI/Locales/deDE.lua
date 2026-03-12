@@ -1,5 +1,7 @@
-local E, L = unpack(select(2, ...)) -- Engine, Locale
-local L = E:LoadModules("Locale_deDE")
+local E = unpack(select(2, ...)) -- Engine, Locale
+
+local L = E.Libs.AceLocale:NewLocale('CUI', 'deDE')
+if not L then return end
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -14,6 +16,7 @@ L["party"] 			= "Gruppe"
 L["focus"] 			= "Fokus"
 L["focustarget"] 	= "Fokusziel"
 L["unit"] 			= "Einheit"
+L["Units"] 			= "Einheiten"
 
 ------- MOVER HANDLES -------
 -- Defines the frame names on mover handles (anchor mode)
@@ -40,6 +43,9 @@ L["debuffs"]			= "Debuffs"
 L["micromenu"]			= "Mikromenü"
 L["raidRoleFrame"]		= "Rollenübersicht"
 L["vehicleSeatFrame"]	= "Fahrzeug-Sitze"
+L["battlerezCharges"]	= "Battle Res"
+
+L["MoverPanel_Description"] = 'Um dieses Fenster zu bewegen, nutze die Knöpfe weiter unten, oder bewege deine Maus über dieses Popup oder Fenster und benutze die Pfeiltasten deiner Tastatur.'
 
 ------- MISC -------
 L["Misc"] 		= "Misc"
@@ -70,6 +76,16 @@ L["BOTTOMRIGHT"] 	= "Unten Rechts"
 
 L["of"]			= "von"
 
+L["BarFillInverse"]		= "Umgekehrte Füllrichtung"
+L["BarFillDirection"]	= "Füllrichtung"
+L["SmoothBar"]			= "Sanfte Leisten"
+
+L["CharacterSetting"]	= "[Charakterweit]"
+
+-- ABSORB
+L["UseStripes"]			= "Benutze Streifen"
+L["TextureSizeMultiplier"]= "Texturgrößen Multiplikator"
+
 -- POWERS
 L["Modifies the color of"] = "Ändert die Farbe der Ressource"
 L["MANA"]			= _G["MANA"]
@@ -89,6 +105,8 @@ L["ARCANE_CHARGES"]	= _G["ARCANE_CHARGES"]
 L["FURY"]			= _G["FURY"]
 L["PAIN"]			= _G["PAIN"]
 L["STAGGER"]		= _G["STAGGER"]
+L["MAGE_ICICLES"]	= "Eiszapfen"
+L["ALTERNATE_POWER"]= "Alternative Energie"
 L["RUNE_READY"]		= "Rune Bereit"
 L["RUNE_NOT_READY"]	= "Rune Abklingzeit"
 L["PowerHeader"]	= "Kraft/Ressourcen Farben"
@@ -146,10 +164,12 @@ L["Modifies layout bar color"] 	= "Ändert die Farbe einer Layout Leiste"
 L["XPBar"]				= "Erfahrungsleiste"
 L["XPBarNormal"] 		= "Erfahrungsleiste Normal"
 L["XPBarRested"] 		= "Erfahrungsleiste Erholt"
+L["ReputationBarOverlay"]= "Ruf Leiste Textur"
 L["AzeriteBarOverlay"] 	= "Azerit Leiste Textur"
 L["UseNormalClassColor"]= "Normal Klassenfarbe"
 L["UseNormalClassColorDesc"]= "Nutze deine Klassenfarbe für den Normalzustand"
-L["AzeriteBar"]			= "Azerit Leiste"												 
+L["ReputationBar"]		= "Ruf Leiste"
+L["AzeriteBar"]			= "Azerit Leiste"
 
 ------- STATS -------
 L["agility"] = "Beweglichkeit"
@@ -162,20 +182,23 @@ L["crit"] = "Kritischer Trefferwert"
 ------- CONFIG HEADERS -------
 
 -- Main
-L["Global"] = "Global"
+L["Global"] 	= "Global"
 L["Unitframes"] = "Einheitenfenster"
 L["Actionbars"] = "Aktionsleisten"
-L["Bags"] = "Taschen"
-L["Camera"] = "Kamera"
-L["System"] = "System"
-L["Colors"] = "Farben"
-L["Maps"] = "Karten"
+L["Bags"] 		= "Taschen"
+L["Camera"] 	= "Kamera"
+L["System"] 	= "System"
+L["Color"] 		= "Farbe"
+L["Colors"] 	= "Farben"
+L["Maps"] 		= "Karten"
 L["Infoframes"] = "Info Fenster"
-L["Tooltip"] = "Tooltip"
-L["Changelog"] = "Changelog"
+L["Tooltip"] 	= "Tooltip"
+L["Changelog"] 	= "Änderungsprotokoll"
 L["Bugtracker"] = "Bugtracker"
-L["Credits"] = "Credits"
-L["Help"] = "Hilfe"
+L["Credits"] 	= "Credits"
+L["Help"] 		= "Hilfe"
+L["NumberFormatting"] = "Zahlenformatierung"
+L["Filters"] 	= "Filter"
 
 -- Actionbars
 L["Actionbar"] = "Aktionsleiste"
@@ -203,19 +226,22 @@ L["Party"] = "Gruppe"
 L["Raid"] = "Schlachtzug"
 L["Raid40"] = "Schlachtzug 40"
 L["Boss"] = "Boss"
+L["Maintank"] = "Haupttank"
 
 -- Help
 L["HelpWelcome"] = "Willkommen zur CUI Optionen-Dokumentation!\nWie kann ich dir helfen?"
 
 ------- CONFIG BODY -------
 -- MISC
+L["New"] 				= "Neu"
 L["Enable"] 			= "Einschalten"
 L["Toggle"] 			= "Umschalten"
 L["Font"] 				= "Schrift"
 L["Scale"] 				= "Größe"
 L["Width"] 				= "Breite"
 L["Height"] 			= "Höhe"
-L["WidthFontDesc"]		= "Maximale Breite des Schrift-Containers. Genutzt für Horizontale Ausrichtung. Im Zweifel auf 0 belassen"
+L["WidthFontDesc"]		= "Maximale Breite des Schrift-Containers. Genutzt für Horizontale Ausrichtung. Im Zweifel auf 0 belassen. Kann mit der Höhen-Einstellung kombiniert werden, um die Menge des angezeigten Textes zu begrenzen."
+L["HeightFontDesc"]		= "Maximale Höhe des Schrift-Containers. Genutzt für Vertikale Ausrichtung. Im Zweifel auf 0 belassen. Kann mit der Breiten-Einstellung kombiniert werden, um die Menge des angezeigten Textes zu begrenzen."
 L["Visibility"]			= "Sichtbarkeit"
 L["DefVisibility"]		= "Standard Sichtbarkeit"
 L["DefVisibilityDesc"]	= "Falls du den Sichtbarkeits-String auf Standard zurücksetzen möchtest"
@@ -224,6 +250,7 @@ L["Positioning"]		= "Positionierung"
 L["XOffset"]			= "X Verschiebung"
 L["YOffset"]			= "Y Verschiebung"
 L["HAlignFontDesc"]		= "Setzt die Horizontale Wachtumsrichtung dieser Schrift. Links setzt das Wachstum nach Rechts. Rechts setzt es nach Links. Genau so wie in jedem Textverarbeitungsprogramm. Um die Schrift neu zu positionieren, nutze das Positions Dropdown. Diese Option wird von der Breite des Schrift-Containers beeinflusst"
+L["VAlignFontDesc"]		= "Setzt die Vertikale Wachtumsrichtung dieser Schrift. Oben setzt das Wachstum nach Unten. Unten setzt es nach Oben. Genau so wie in jedem Textverarbeitungsprogramm. Um die Schrift neu zu positionieren, nutze das Positions Dropdown. Diese Option wird von der Höhe des Schrift-Containers beeinflusst"
 L["FontStyle"]			= "Schrift Stil"
 L["FontHeight"]			= "Schriftgröße"
 L["FontType"]			= "Schriftart"
@@ -233,11 +260,18 @@ L["FontColor"]			= "Schriftfarbe"
 L["TextShadow"]			= "Schrift Schatten"
 L["TextShadowColor"]	= "Schrift Schattenfarbe"
 L["Style"]				= "Stil"
+L["Texture"]			= "Textur"
+L["OverrideTexture"]	= "Textur Überschreiben"
+L["BarTexture"]			= "Leistentextur"
+L["OverrideBarTexture"]	= "Leistentextur Überschreiben"
+L["BarStyle"]			= "Leistenstil"
 L["Styling"]			= "Styling"
 L["Size"]				= "Größe"
 L["Bars"]				= "Leisten"
 L["HorizontalAlign"]	= "Horizontale Ausrichtung"
 L["VerticalAlign"]		= "Vertikale Ausrichtung"
+L["ClassSpecific"]		= "Klassenspezifisch"
+L["RangeIndicator"]		= "Reichweiten-Indikator"
 L["BorderSize"]			= "Rahmenbreite"
 L["BorderColor"]		= "Rahmenfarbe"
 L["Fading"]				= "Verblassen"
@@ -254,7 +288,30 @@ L["UseClassColor"]		= "Nutze deine Klassenfarbe"
 L["UseClassColorDesc"]	= "Benutze deine Klassenfarbe statt einer spezifizierten"
 L["UseUnitClassColor"]	= "Nutze Einheiten Klassenfarbe"
 L["UseUnitClassColorDesc"]= "Benutze die Klassenfarbe der Einheit, statt einer spezifizierten"
+L["SortDirection"]		= "Sortierrichtung"
+L["SortMethod"]			= "Sortiermethode"
+L["GrowthDirection"]	= "Wachstumsrichtung"
 L["BlendMode"]			= "Mischmodus"
+L["EnableModule"]		= "Modul Einschalten"
+L["ApplyChanges"]		= "Änderungen Übernehmen"
+L["Ascending"]			= "Aufsteigend"
+L["Descending"]			= "Absteigend"
+L["Conditions"]			= "Konditionen"
+
+L["DOWN_RIGHT"]			= "Runter und dann Rechts"
+L["DOWN_LEFT"]			= "Runter und dann Links"
+L["RIGHT_DOWN"]			= "Rechts und dann Runter"
+L["RIGHT_UP"]			= "Rechts und dann Hoch"
+L["LEFT_DOWN"]			= "Links und dann Runter"
+L["LEFT_UP"]			= "Links und dann Hoch"
+L["UP_RIGHT"]			= "Hoch und dann Rechts"
+L["UP_LEFT"]			= "Hoch und dann Links"
+
+L["UnitConfig"]			= "Einheitenkonfiguration"
+L["GroupConfig"]		= "Gruppenkonfiguration"
+L["GroupsPerColumn"]	= "Gruppen pro Spalte"
+L["GroupsPerRow"]		= "Gruppen pro Reihe"
+L["GroupGap"]			= "Gruppenabstand"
 
 -- Statistics
 L["Statistics"]			= "Statistiken"
@@ -285,9 +342,12 @@ L["Reset Anchors"] 				= "Anker Zurücksetzen"
 L["Reset AnchorsDesc"] 			= "Setzt alle Anker auf ihre Standard Positionen zurück."
 
 -- Global
+L["CheckVersion"] 				= "Überprüfe Version"
+L["NumberFormat"] 				= "Zahlenformat"
 L["Nameplates"] 				= "Namensplaketten"
 L["Personal Nameplate"] 		= "Persönliche Namensplakette"
-L["Personal Nameplate Desc"]	= "Wenn eingeschaltet, wird im Kampf die Persönliche Namensplakette unter deinem Charakter angezeigt"
+L["Personal Nameplate Desc"]	= "Wenn eingeschaltet, wird im Kampf die Persönliche Namensplakette unter deinem Charakter angezeigt."
+L["ShowAllNameplatesDesc"]		= "Wenn ausgeschaltet, werden lediglich Namensplaketten von Einheiten, welche mit dir im Kampf sind, angezeigt."
 
 -- Media
 L["Media"]						= "Medien"
@@ -310,8 +370,8 @@ L["ShowGrid"] 			= "Zeige leere Tasten"
 L["ClickOnDown"]		= "Aktion bei Tastendruck"
 L["ABTooltip"]			= "Tooltip"
 L["AllWarning"]			= "ACHTUNG: Diese Einstellungen überschreiben die Schrift-Einstellungen von jeder einzelnen Aktionsleiste! Mit Vorsicht benutzen!\nFalls du irgend welche Probleme mit der Positionierung der Schriften hast, versuche die Position auf 'Unten Rechts' zu stellen"
-L["BarReservedWarning"]	= "ACHTUNG: Diese Leiste ist bereits für die verschiedenen Formen von Druiden reserviert!\nLeiste 8 für unsichtbare Schurken!\nFalls du irgend welche Aktionen von dieser Leiste entfernst, oder änderst, wird dies auch deine Hauptleiste (Leiste 1) beeinflussen!\nEs wird empfohlen, diese Leiste deaktiviert zu lassen, während zu einen Druiden oder Schurken spielst!"
-L["VisibilityDesc"]		= "Eine Verkettung aus Makro Regeln um zu bestimmen, ob diese Leiste angezeigt werden soll.\nEin paar mögliche Werte:"
+L["BarReservedWarning"]	= "ACHTUNG: Diese Leiste ist bereits für die verschiedenen Formen von Druiden reserviert!\nLeiste 8 für unsichtbare Schurken!\nFalls du irgend welche Aktionen von dieser Leiste entfernst, oder änderst, wird dies auch deine Hauptleiste (Leiste 1) beeinflussen!\nEs wird empfohlen, diese Leiste deaktiviert zu lassen, während du einen Druiden oder Schurken spielst!"
+L["VisibilityDesc"]		= "Eine Verkettung aus Makro Regeln um zu bestimmen, ob dieses Fenster angezeigt werden soll.\nEin paar mögliche Werte:"
 L["VisibilityDescSec"]	= "Mehr ist zu finden auf"
 L["ButtonConfig"]		= "Tasten"
 L["FlyoutDirection"]	= "Ausklapprichtung"
@@ -322,15 +382,18 @@ L["ButtonCount"]		= "Tasten"
 L["ButtonCountDesc"]	= "Die Anzahl der Tasten, welche diese Leiste beinhalten  soll"
 L["ButtonSize"]			= "Größe der Tasten"
 L["ButtonSizeDesc"]		= "Ein Multiplikator für die Größe der einzelnen Tasten"
+L["Gap"]				= "Abstand"
 L["ButtonGap"]			= "Abstand der Tasten"
 L["ButtonGapDesc"]		= "Der Abstand zwischen den einzelnen Tasten"
-L["InCombat"]			= "Im Kampf"
-L["InCombatBarFadeDesc"] = "Steuert, wie die Leiste im Kampf reagiert.\n\nBei 'Einblenden' wird der Inaktive Alpha außerhalb des Kampfes genutzt.\nBei 'Ausblenden' wird der Aktive Alpha außerhalb des Kampfes genutzt.\n\nUm nur den Mouseover zu nutzen, setze dies auf 'Nichts unternehmen'."
-L["FadeIn"]				= "Einblenden"
-L["FadeOut"]			= "Ausblenden"
+L["Custom"]				= "Benutzerdefiniert"
+L["Behaviour"]			= "Verhalten"
+L["InCombatBarFadeDesc"] = "Steuert, wie die Leiste in bestimmten Situationen reagiert.\n\nBei 'Im Kampf Einblenden' wird der Inaktive Alpha außerhalb des Kampfes genutzt.\nBei 'Im Kampf Ausblenden' wird der Aktive Alpha außerhalb des Kampfes genutzt.\n'Benutzerdefiniert' erlaubt dir, eigene Situationen festzulegen\n\nUm nur den Mouseover zu nutzen, setze dies auf 'Nichts unternehmen'."
+L["CombatFadeIn"]		= "Im Kampf Einblenden"
+L["CombatFadeOut"]		= "Im Kampf Ausblenden"
 L["DoNothing"]			= "Nichts unternehmen"
 L["Mouseover"]			= "Mouseover"
-L["MouseoverDesc"]		= "Beim einschalten dieser Option, wird die Aktionsleiste verblassen, außer die Maus wird darüber bewegt"
+L["MouseoverDesc"]		= "Beim einschalten dieser Option wird die Aktionsleiste immer in den aktiven Zustand versetzt, wenn die Maus darüber bewegt wird"
+L["ActionbarFadeConditionDesc"]	= "Diese Option erlaubt es dir, eigene Situationen und Reaktionen für diese Aktionsleiste über Makro Konditionen festzulegen.\n\nBeispiel:\n[combat] 1; 0\n\n Dabei stellt die 1 den aktiven Alpha dar und die 0 den inaktiven. Es sind auch komplexe Verkettungen dieser Konditionen möglich.\n\nMehr Beispiele und Erklärungen auf:"
 L["AlphaActive"]		= "Aktiver Alpha"
 L["AlphaActiveDesc"]	= "Der Alpha(Transparenz) Wert, welcher genutzt wird wenn die Maus über der Leiste ist"
 L["AlphaInactive"]		= "Inaktiver Alpha"
@@ -347,8 +410,10 @@ L["ButtonHTexture"]		= "Tasten Highlight Textur"
 L["PushedColor"]		= "Gedrückte Farbe"
 L["ButtonPTexture"]		= "Tasten Gedrückt Farbe"
 L["AdditionalAddOns"]	= "Zusätzliche AddOns"
-L["UseMasque"]			= "Nutze Masque"
-L["UseMasqueDesc"]		= "Wenn aktiv, wird das Aussehen der Knöpfe von Masque übernommen (sofern installiert und aktiviert)"
+L["UseMasque"]			= "[Charakterweit] Nutze Masque"
+L["UseMasqueDesc"]		= "Wenn aktiv, wird das Aussehen der Knöpfe von Masque übernommen (sofern installiert und aktiviert). Diese Einstellung wird nur im Charakterprofil gespeichert und lässt das aktuelle Profil unbeeinflusst."
+L["CVars"]				= "Console Variables (CVars)"
+L["CVarsDesc"]			= 'Diese Option kontrolliert den Status einer sogenannten "Console Variable". Dies wird jedoch nicht in CUI Profilen gespeichert, sondern auf den Blizzard Servern selbst. Trotzdem ist es eine Charakterweite Einstellung.'
 L["GlobalFunctions"]	= "Globale Funktionen"
 L["ClearAllSlots"]		= "Leere alle Aktionsslots"
 L["ClearAllSlotsDesc"]	= "Diese Aktion leert sprichwörtlich ALLE Leisten. Es wird kein einziger Zauber, kein einziges Makro, Reittier oder Haustier auf ihnen zurückbleiben. Nutze diese Aktion mit Vorsicht, da sie nicht rückgängig gemacht werden kann!"
@@ -375,6 +440,8 @@ L["MirrorTimer"]		= "Spiegelleiste"
 L["ClickThrough"]		= "Hindurchklicken"
 L["Sending Pulltimer to BigWigs and DBM Users"] = "Sende Pulltimer an BigWigs und DBM-Nutzer"
 L["Pull Time must be above 0 seconds!"]	= "Pull-Zeit muss über 0 Sekunden liegen!"
+L["BattlerezCharges"]	= "Battle Res"
+L["Charges"]			= "Aufladungen"
 
 -- Aura Bars
 L["Number of Bars"]		= "Anzahl der Leisten"
@@ -397,7 +464,8 @@ L["Presets"]		= "Vorlagen"
 L["PresetFullHD"]	= "1080p (Full HD)"
 L["Preset4K"]		= "4K (Ultra HD)"
 L["Actioncam"]		= "Actioncam"
-L["ActioncamDesc"]	= "Diese Einstellungen ermöglichen eine Basis Funktionalität der Actioncam. Falls du mehr Optionen haben möchtest, wird dazu geraten, Die unteren Optionen zu deaktivieren, beide Schieberegler auf 0 zu belassen und das AddOn 'DynamicCam' dafür zu nutzen!"
+L["ActioncamDesc"]	= "Diese Einstellungen ermöglichen eine Basis Funktionalität der Actioncam. Falls du mehr Optionen haben möchtest, wird dazu geraten, dieses Modul zu deaktivieren und das AddOn 'DynamicCam' dafür zu nutzen!"
+L["ActioncamDescWarning"]	= "ACHTUNG: Seit Patch 8.2 existiert ein Bug, welcher die Actioncam nach einem Reload oder Relog vollständig funktionsunfähig macht! Lediglich die Kopfverfolgung ist dann noch funktionsfähig! Dies ist KEIN AddOn Problem, sondern wird durch das Spiel selbst verursacht!"
 L["HideNotification"]		= "Benachrichtigung Verstecken"
 L["HideNotificationDesc"]	= "Wenn aktiv, wird die Actioncam Warnung beim Login versteckt"
 L["HeadTracking"]			= "Kopfverfolgung"
@@ -424,11 +492,13 @@ L["Health"]				= "Leben"
 L["Power"]				= "Kraft"
 L["Health Bar"]			= "Lebensleiste"
 L["Power Bar"]			= "Kraftleiste"
+L["Threat Bar"]			= "Bedrohungsleiste"
 L["Level"]				= "Level"
 L["Name"]				= "Name"
 L["Time"]				= "Zeit"
 L["Castbar"]			= "Zauberleiste"
 L["Combat Indicator"]	= "Kampf-Indikator"
+L["RestingIndicator"]	= "Ruhesymbol"
 L["Alternate Power"]	= "Klassenenergie"
 L["Absorption"]			= "Absorption"
 L["Res Indicator"]		= "Wiederbelebungssymbol"
@@ -445,28 +515,91 @@ L["Icon"]				= "Symbol"
 L["Auras"]				= "Auren"
 L["NotOnMaxlevel"]		= "Nicht bei Maximallevel"
 L["Color By Value"]		= "Nach Wert einfärben"
+L["DesaturateOtherDebuffs"] = "Fremde Debuffs Entsättigen"
+L["DesaturateOtherDebuffsDesc"] = "Wenn aktiv, werden fremde Debuffs auf feindlichen Zielen entsättigt, bzw. in schwarz/weiß dargestellt."
 
 -- Armory
-L["Armory Itemlevel"]				= "Zeige Gegenstandsstufe"
-L["Armory Itemlevel Desc"]			= "Wenn eingeschaltet, wird die Gegenstandsstufe deiner Ausrüstung für jedes angelegte Item angezeigt."
-L["Armory Class BG"]				= "Benutze Klassenhintergrund"
-L["Armory Class BG Desc"]			= "Wenn eingeschaltet, wird der Standard-Hintergrund des Charakterfensters durch den Klassenhintergrund der Anprobe überschrieben."
+L["ArmoryEnableDesc"]				= "Wenn eingeschaltet, fügt CUI zusätzliche Informationen neben jedem Ausrüstungsslot des Charakterfensters hinzu und kann den Hintergrund überschreiben."
+L["ArmoryItemlevel"]				= "Zeige Gegenstandsstufe"
+L["ArmoryItemlevelDesc"]			= "Wenn eingeschaltet, wird die Gegenstandsstufe für jedes angelegte Item angezeigt"
+L["ArmoryEnchant"]					= "Zeige Verzauberung"
+L["ArmoryEnchantDesc"]				= "Wenn eingeschaltet, wird die Verzauberung für jedes angelegte Item angezeigt. Falls eine wichtige Verzauberung fehlt, wird dies ebenfalls hervorgehoben"
+L["ArmoryGem"]						= "Zeige Edelsteine"
+L["ArmoryGemDesc"]					= "Wenn eingeschaltet, werden die Sockelplätze für jedes angelegte Item angezeigt. Falls ein Edelstein fehlt, wird ein leerer Sockel angezeigt"
+L["ArmoryOverrideBackground"]		= "Ersetze Hintergrund"
+L["ArmoryOverrideBackgroundDesc"]	= "Wenn eingeschaltet, wird der Standard-Hintergrund durch den spezifizierten ersetzt"
+L["CustomTexture"]					= "Eigene Textur"
+L["CustomTextureDesc"]				= "Erlaubt dir, eine komplett eigene Textur, welche die Standard-Anforderungen erfüllt (Auflösung von 16x16, 32x32,64x64 usw.) als Hintergrund zu nutzen"
+L["TexturePath"]					= "Textur Pfad"
+L["ArmoryBackgroundOfClass"]		= "Benutze Klassenhintergrund"
+L["ArmoryBackgroundOfClassDesc"]	= "Wenn eingeschaltet, wird der Standard-Hintergrund des Charakterfensters durch den Klassenhintergrund der Anprobe überschrieben"
+L["YourCurrentClass"]				= "Deine Klasse"
+L["Automatic"]						= "Automatisch"
+L["Equipped"]						= "Ausgerüstet"
+
+-- Bars
+L["Experience"]				= "Erfahrung"
+L["Azerite"]				= "Azerit"
+L["Honor"]					= "Ehre"
+L["Reputation"]				= "Ruf"
+
+-- Layout
+L["AdvancedOptions"]		= "Erweiterte Optionen"
+L["LayoutTextures"]			= "Texturen"
+L["LayoutFonts"]			= "Schriften"
+L["TopBar"]					= "Obere Leiste"
+L["BottomBar"]				= "Untere Leiste"
+L["BottomLeftCorner"]		= "Ecke Unten Links"
+L["BottomRightCorner"]		= "Ecke Unten Rechts"
+L["SystemUpdateFrequency"]	= "System Aktualisierungsrate"
+L["CoordinatesUpdateFrequency"]	= "Koordinaten Aktualisierungsrate"
+L["FPS"]					= "Framerate"
+L["Latency"]				= "Latenz"
+L["Zone"]					= "Zone"
+L["CoordinatesX"]			= "Koordinaten X"
+L["CoordinatesY"]			= "Koordinaten Y"
+
+-- Filters
+L['AddFilter']				= 'Filter Hinzufügen'
+L['DeleteFilter']			= 'Filter Löschen'
+L['Filter']					= 'Filter'
+L['FilterNewName']			= 'Neuer Name'
+L['FilterType']				= 'Filter Typ'
+L['FilterRename']			= 'Umbenennen'
+L['FilterAddAura']			= 'Füge Auren über einen Namen oder die Zauber-ID hinzu'
+L['Aura']					= 'Aura'
+L['Delete']					= 'Löschen'
+L['Options']				= 'Optionen'
+L['Cancel']					= 'Abbrechen'
 
 -- Notifications
 L["Reload"] 				= "Neu Laden"
 L["Later"] 					= "Später"
 L["Nofification_Reload"] 	= "Die vorgenommenen Änderungen erfordern ein Neuladen der Benutzeroberfläche, um vollständig wirksam zu werden!"
+L["Nofification_Charactersetting"] = "Die vorgenommene Einstellung betrifft nur diesen Charakter und wird nicht im Profil selbst gespeichert!\nDiese Änderung erfordert ein Neuladen der Benutzeroberläche, um vollständig wirksam zu werden."
+L["Nofification_Relog"] 	= "Die vorgenommene Einstellung erfordert einen Relog, um vollständig wirksam zu werden!"
+L['Nofification_FilterDelete'] = 'Möchten Sie diesen Filter Eintrag wirklich löschen?'
 L["NewVersion"]				= "Eine neue Version ist verfügbar! ['%s' vom %s, Revision: %s]"
 
+-- Descriptions
+L["GlobalAbsorb_Desc"]		= [[Diese Einstellungen erlauben es dir, das Absorptions-Modul für ALLE Einheitenfenster auf einmal einzustellen.
+Um eine Änderung vorzunehmen, muss eine Option mindestens einmal geändert worden sein, bevor die Änderung durch einen Klick auf den Button am Ende übernommen wird!]]
+L['FilterMainDesc']			= [[Hier kannst du Auren-Filter für verschiedene Module konfigurieren.
+Eine 'Whitelist' blockiert alle Auren, außer den angegebenen.
+Eine 'Blacklist' erlaubt alle Auren, außer den angegebenen.
+
+ANMERKUNG: Diese Filter sind GLOBAL, daher sind sie auf allen deinen Charakteren verfügbar!]]
+L["CharacterWideNote"]		= [[Diese Einstellungen erlauben es dir, charakterweite Optionen zentral zu steuern.
+Du kannst diese natürlich immernoch wie gehabt in den zugehörigen Modulen ein- und ausschalten. Diese Einstellungen dienen lediglich der Übersicht.]]
+
+-- Config Types
+L["ConfigType"]				= "Konfigurationsstil"
+L["ConfigTypeDesc"]			= "Bestimmt, welche Optionen zur Verfügung stehen, um eine angemessene Erfahrung für Einsteiger und Veteranen zu bieten."
+L["ConfigType-Recommended"]	= "Empfohlen"
+L["ConfigType-Simple"]		= "Einfach (WiP)"
+L["ConfigType-Advanced"]	= "Erweitert"
+
 -- Credits
-L["CREDITS_DEVELOPEDBY"]	= "Entwickelt von Arenima @ Alleria EU"
+L["CREDITS_DEVELOPEDBY"]	= "Entwickelt von Ferodra - Arenima @ Alleria EU"
 L["CREDITS_CUIDESC"]		= "CUI ist ein hoch modifizierbares Benutzerinterface, entwickelt um in jeder Hinsicht dir zu gehören. [Irgendwann in der Zukunft]"
-L["CREDITS_THANKSTO"]		= "Ein großes Dankeschön an:\n-Runorios @ Alleria EU\n-Telendriel/Myralin @ Alleria EU\n\nIhr seid spitze!"
-
-
-
-
-
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-E:AddModule("Locale_deDE", L)
+L["CREDITS_THANKSTO"]		= "Ein großes Dankeschön an:\n-Runorios @ Alleria EU\n-Telendriel/Myralin/Velanri @ Alleria EU\n\nIhr seid spitze!"

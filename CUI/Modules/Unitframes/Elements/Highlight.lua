@@ -6,6 +6,7 @@ local CO, UF = E:LoadModules("Config", "Unitframes")
 --------------------]]--
 
 local _
+local UnitIsUnit = UnitIsUnit
 local MouseoverUnit = "mouseover"
 local UpdateDelay = 0.1
 local Module = {}
@@ -39,18 +40,31 @@ end
 
 function Module:HighlightUnit(Unit)
 	for _, self in pairs(Module.Handles) do
-		if self:IsVisible() then
-			if UnitIsUnit(Unit, self.Unit) then
-				E:UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
-			else
-				E:UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
-			end
+		if self:IsVisible() then			
+			self.Highlight.Tex:SetAlphaFromBoolean(UnitIsUnit(Unit, self.unit), 1, 0)
+			self.Highlight.Tex:Show()
+			--if UnitIsUnit(Unit, self.unit) then
+				-- Thanks Blizzard for breaking such things. Really fun.
+				
+				
+				--if self.Highlight.Tex:GetAlpha() < 1 then
+					--E:UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
+					--UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
+				--end
+				--self.Highlight.Tex:SetAlpha(1)
+			--else
+				--if self.Highlight.Tex:GetAlpha() > 0 then
+					--E:UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
+					--UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
+				--end
+				--self.Highlight.Tex:SetAlpha(0)
+			--end
 		end
 	end
 end
 
 local ProfileTarget
-function Module:LoadProfile()
+function Module:LoadConfig(limit)
 	ProfileTarget = CO.db.profile.unitframe.units.all
 	
 	if ProfileTarget.highlight then
@@ -59,7 +73,11 @@ function Module:LoadProfile()
 			Module.EventHandler:SetScript("OnUpdate", nil)
 			
 			for _, self in pairs(Module.Handles) do
+				self = limit or self
+				
 				self.Highlight.Tex:Hide()
+				
+				if limit then break end
 			end
 			
 			Module.EventHandler.Disabled = true;
@@ -69,8 +87,11 @@ function Module:LoadProfile()
 			
 			Module.FadeTime = ProfileTarget.highlight.fadeTime
 			for _, self in pairs(Module.Handles) do
+				self = limit or self
+				
 				self.Highlight.Tex:SetColorTexture(unpack(ProfileTarget.highlight.color)) -- Make this an option
 				self.Highlight.Tex:SetBlendMode(ProfileTarget.highlight.blendMode)
+				if limit then break end
 			end
 			
 			Module.EventHandler.Disabled = false;

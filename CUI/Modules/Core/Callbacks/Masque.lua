@@ -1,5 +1,5 @@
-local E = unpack(select(2, ...)) -- Engine
-local L, B, AUR, UF = E:LoadModules('Locale', 'Bags', 'Auras', 'Unitframes')
+local E, L = unpack(select(2, ...)) -- Engine
+local B, AUR, UF = E:LoadModules('Bags', 'Auras', 'Unitframes')
 
 --[[----------------------------------------------------
 
@@ -11,13 +11,12 @@ local ModuleName = "Masque"
 
 local format	= string.format
 
--- Stop if this callback already has been loaded/registered
+-- Exit if this callback already has been loaded/registered
 if E.Callbacks[ModuleName] then return end
 
 --[[------------------------------
 	BODY
 --]]------------------------------
-	
 	local BagName = L['Bags']
 	local PlayerAurasNameBuffs, PlayerAurasNameDebuffs = format("%s %s", L["player"],  L["Buffs"]), format("%s %s", L["player"],  L["Debuffs"])
 	local UnitAurasNameBuffs, UnitAurasNameDebuffs = format("%s %s", L["unit"],  L["Buffs"]), format("%s %s", L["unit"],  L["Debuffs"])

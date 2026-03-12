@@ -5,9 +5,9 @@ local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, AL = E:LoadModules("Config", "ArtLib")
 
 local _
-local AddOnDirectory = [[Interface\AddOns\CUI\]]
-local FontDir = AddOnDirectory .. [[Fonts\]]
-local TextureDir = AddOnDirectory .. [[Textures\]]
+local AddOnDirectory = "Interface/AddOns/CUI/"
+local FontDir = AddOnDirectory .. "Fonts/"
+local TextureDir = AddOnDirectory .. "Textures/"
 ------------------------------------------------------------------------------------------
 -- DO NOT TOUCH CONTENTS ABOVE (unless you know what you're doing) !!
 ------------------------------------------------------------------------------------------
@@ -16,8 +16,8 @@ local TextureDir = AddOnDirectory .. [[Textures\]]
 
 --[[
 	-- General Lua-programming note:
-		- double [ stands for a concatenation of letters/symbols/names/ etc.
-		- It defines a so called "string" that will not be closed by symbols like " and also registers line breaks.
+		- A " stands for a concatenation of letters/symbols/names/ etc.
+		- It defines a so called "string".
 		- The .. operator is used for string concatenation. Using it like "Hello" .. "World" will result in "HelloWorld".
 		
 		- Below, you'll find the AL.Fonts and AL.StatusbarTextures tables.
@@ -50,7 +50,7 @@ local TextureDir = AddOnDirectory .. [[Textures\]]
 
 
 
--- Syntax: ["FontName"] = [[Path\To\Font]],
+-- Syntax: ["FontName"] = [[Path/To/Font]],
 -- Mind the , at the end of each line and make sure you closed all [ and " !!
 -- The key is the Font name listed in the dropdown menus and is being used as an identifier for the profile.
 -- So try to not change anything later on!
@@ -58,53 +58,54 @@ local TextureDir = AddOnDirectory .. [[Textures\]]
 -- FontDir represents the "Font" directory in the CUI root.
 AL.Fonts = {
 	-- DEFAULTS, DO NOT REMOVE
-	["EncodeSans Black"] 			= FontDir .. [[EncodeSans-Black.ttf]],
-	["EncodeSans Bold"] 			= FontDir .. [[EncodeSans-Bold.ttf]],
-	["EncodeSans ExtraBold"] 		= FontDir .. [[EncodeSans-ExtraBold.ttf]],
-	["EncodeSans ExtraLight"] 		= FontDir .. [[EncodeSans-ExtraLight.ttf]],
-	["EncodeSans Light"] 			= FontDir .. [[EncodeSans-Light.ttf]],
-	["EncodeSans Medium"] 			= FontDir .. [[EncodeSans-Medium.ttf]],
-	["EncodeSans Regular"] 			= FontDir .. [[EncodeSans-Regular.ttf]],
-	["EncodeSans SemiBold"] 		= FontDir .. [[EncodeSans-SemiBold.ttf]],
-	["EncodeSans Thin"] 			= FontDir .. [[EncodeSans-Thin.ttf]],
-	["Michroma"] 					= FontDir .. [[Michroma.ttf]],
-	["Julius Sans One"] 			= FontDir .. [[JuliusSansOne-Regular.ttf]],
-	["Walkway Oblique"] 			= FontDir .. [[Walkway_Oblique.ttf]],
-	["Walkway Oblique UltraBold"] 	= FontDir .. [[Walkway_Oblique_UltraBold.ttf]],
-	["Walkway Black"] 				= FontDir .. [[Walkway_Black.ttf]],
-	["Walkway Oblique Black"] 		= FontDir .. [[Walkway_Oblique_Black.ttf]],
-	["Raleway Bold Italic"] 		= FontDir .. [[Raleway-BoldItalic.ttf]],
-	["Raleway ExtraLight"] 			= FontDir .. [[Raleway-ExtraLight.ttf]],
-	["Raleway"] 					= FontDir .. [[Raleway-Regular.ttf]],
-	["Raleway SemiBold"] 			= FontDir .. [[Raleway-SemiBold.ttf]],
-	["Raleway SemiBold Italic"] 	= FontDir .. [[Raleway-SemiBoldItalic.ttf]],
-	["Raleway Thin Italic"] 		= FontDir .. [[Raleway-ThinItalic.ttf]],
-	["Raleway Thin"] 				= FontDir .. [[Raleway-Thin.ttf]],
-	["Open Sans"] 					= FontDir .. [[OpenSans-Regular.ttf]],
-	["PT Sans Narrow"] 				= FontDir .. [[PT_Sans_Narrow.ttf]],
-	["PT Sans Narrow Regular"]		= FontDir .. [[PT_Sans_Narrow_Regular.ttf]],
+	["EncodeSans Black"] 			= "EncodeSans-Black.ttf",
+	["EncodeSans Bold"] 			= "EncodeSans-Bold.ttf",
+	["EncodeSans ExtraBold"] 		= "EncodeSans-ExtraBold.ttf",
+	["EncodeSans ExtraLight"] 		= "EncodeSans-ExtraLight.ttf",
+	["EncodeSans Light"] 			= "EncodeSans-Light.ttf",
+	["EncodeSans Medium"] 			= "EncodeSans-Medium.ttf",
+	["EncodeSans Regular"] 			= "EncodeSans-Regular.ttf",
+	["EncodeSans SemiBold"] 		= "EncodeSans-SemiBold.ttf",
+	["EncodeSans Thin"] 			= "EncodeSans-Thin.ttf",
+	["Michroma"] 					= "Michroma.ttf",
+	["Julius Sans One"] 			= "JuliusSansOne-Regular.ttf",
+	["Walkway Oblique"] 			= "Walkway_Oblique.ttf",
+	["Walkway Oblique UltraBold"] 	= "Walkway_Oblique_UltraBold.ttf",
+	["Walkway Black"] 				= "Walkway_Black.ttf",
+	["Walkway Oblique Black"] 		= "Walkway_Oblique_Black.ttf",
+	["Raleway Bold Italic"] 		= "Raleway-BoldItalic.ttf",
+	["Raleway ExtraLight"] 			= "Raleway-ExtraLight.ttf",
+	["Raleway"] 					= "Raleway-Regular.ttf",
+	["Raleway SemiBold"] 			= "Raleway-SemiBold.ttf",
+	["Raleway SemiBold Italic"] 	= "Raleway-SemiBoldItalic.ttf",
+	["Raleway Thin Italic"] 		= "Raleway-ThinItalic.ttf",
+	["Raleway Thin"] 				= "Raleway-Thin.ttf",
+	["Open Sans"] 					= "OpenSans-Regular.ttf",
+	["PT Sans Narrow"] 				= "PT_Sans_Narrow.ttf",
+	["PT Sans Narrow Regular"]		= "PT_Sans_Narrow_Regular.ttf",
 	
 	-- vvvv Add yours here vvvv
 	
 }
 
--- Syntax: ["TextureName"] = [[Path\\To\\Texture]],
+-- Syntax: ["TextureName"] = [[Path//To//Texture]],
 -- Mind the , at the end of each line and make sure you closed all [ and " !!
 -- The key is the Texture name listed in the dropdown menus and is being used as an identifier for the profile.
 -- So try to not change anything later on!
--- Example: ["CUI Modern"] = TextureDir .. [[statusbar\modern]],
--- TextureDir represents the "Textures\" directory in the CUI root.
+-- Example: ["CUI Modern"] = TextureDir .. [[statusbar/modern]],
+-- TextureDir represents the "Textures/" directory in the CUI root.
 AL.StatusbarTextures = {
 	-- DEFAULTS, DO NOT REMOVE
-	["CUI Modern"] 					= TextureDir .. [[statusbar\modern]],
-	["CUI Modern 2"] 				= TextureDir .. [[statusbar\modern2]],
-	["CUI Modern 3"] 				= TextureDir .. [[statusbar\modern3]],
-	["CUI Simple Light"] 			= TextureDir .. [[statusbar\simple]],
-	["CUI Simple Medium"] 			= TextureDir .. [[statusbar\simpleMedium]],
-	["CUI Simple Darker"] 			= TextureDir .. [[statusbar\simpleDarker]],
-	["CUI Simple Darkest"] 			= TextureDir .. [[statusbar\simpleDarkest]],
-	["CUI Absorb Stripes"] 			= TextureDir .. [[statusbar\absorbOverlay]],
-	["CUI XPBar"] 					= TextureDir .. [[layout\modern\XPBar]],
+	["CUI Modern"] 					= "statusbar/modern",
+	["CUI Modern 2"] 				= "statusbar/modern2",
+	["CUI Modern 3"] 				= "statusbar/modern3",
+	["CUI V2"] 						= "statusbar/Statusbar-V2",
+	["CUI Simple Light"] 			= "statusbar/simple",
+	["CUI Simple Medium"] 			= "statusbar/simpleMedium",
+	["CUI Simple Darker"] 			= "statusbar/simpleDarker",
+	["CUI Simple Darkest"] 			= "statusbar/simpleDarkest",
+	["CUI Absorb Stripes"] 			= "statusbar/absorbOverlay",
+	["CUI XPBar"] 					= "layout/modern/XPBar",
 	
 	-- vvvv Add yours here vvvv
 	
@@ -120,7 +121,19 @@ AL.StatusbarTextures = {
 -- DO NOT TOUCH CONTENTS BELOW (unless you know what you're doing) !!
 ------------------------------------------------------------------------------------------
 
+do
+	for k,v in pairs(AL.Fonts) do
+		AL.Fonts[k] = FontDir .. v
+	end
+	
+	for k,v in pairs(AL.StatusbarTextures) do
+		AL.StatusbarTextures[k] = TextureDir .. v
+	end
+end
+
 local function SetFont(Object, Font, Size, Flags)
+	if not Object then return end
+	
 	local _, OverrideSize, OverrideFlags = Object:GetFont()
 	if not Size then Size = OverrideSize end
 	if not Flags then Flags = OverrideFlags end
@@ -128,28 +141,42 @@ local function SetFont(Object, Font, Size, Flags)
 	Object:SetFont(Font, Size, Flags)
 end
 
+function AL:DBConversion()
+	if CO.db.profile.global then
+		for k,v in pairs(CO.db.profile.global) do
+			CO.db.profile.media[k] = v
+		end
+		
+		CO.db.profile.global = nil
+	end
+end
+
 function AL:UpdateFonts()
-
-	local Global = CO.db.profile.global
-
+	
+	self:DBConversion()
+	
+	local Media = CO.db.profile.media
+	local Defaults = E.ConfigDefaults.profile.media
+	-- At this point, AceDB did not really load the defaults yet, so we have to be aware of that
+	
 	-- Overrides the 3D world fonts
 	-- Unfortunately, we have to live with the resulting taint.
-	if Global.overrideWorldNameFont then
-		_G.UNIT_NAME_FONT		= E.Media:Fetch("font", Global.worldNameFont)
+	if Media.overrideWorldNameFont then
+		_G.UNIT_NAME_FONT		= E.Media:Fetch("font", Media.worldNameFont or Defaults.worldNameFont)
 	end
-	if Global.overrideWorldDamageFont then
-		_G.DAMAGE_TEXT_FONT		= E.Media:Fetch("font", Global.worldDamageFont)
+	if Media.overrideWorldDamageFont then
+		_G.DAMAGE_TEXT_FONT		= E.Media:Fetch("font", Media.worldDamageFont or Defaults.worldDamageFont)
 	end
-	if Global.overrideWorldDefaultFont then
-		_G.STANDARD_TEXT_FONT	= E.Media:Fetch("font", Global.worldDefaultFont)
+	if Media.overrideWorldDefaultFont then
+		_G.STANDARD_TEXT_FONT	= E.Media:Fetch("font", Media.worldDefaultFont or Defaults.worldDefaultFont)
 	end
 	
-	if not Global.overrideGeneralFont then return end
+	if not Media.overrideGeneralFont then return end
 	
-	local NORMAL			= E.Media:Fetch("font", Global.generalFont)
-	local NORMALSIZE		= Global.generalFontSize or 12
+	local NORMAL			= E.Media:Fetch("font", Media.generalFont or Defaults.generalFont)
+	local NORMALSIZE		= Media.generalFontSize or Defaults.generalFontSize or 12
 	
-	-- Modify Game Fonts found in Interface\FrameXML\Fonts.xml and Interface\SharedXML\SharedFonts.xml
+	-- Modify Game Fonts found in Interface/FrameXML/Fonts.xml and Interface/SharedXML/SharedFonts.xml
 	
 	SetFont(_G.AchievementFont_Small, 					NORMAL, NORMALSIZE)
 	SetFont(_G.ChatBubbleFont, 							NORMAL, NORMALSIZE)
@@ -272,10 +299,10 @@ end
 
 function AL:Init()
 	-- Add fonts and textures to AceWidget Dropdowns
-	for k, v in pairs(AL.Fonts) do
+	for k, v in pairs(self.Fonts) do
 		E.Media:Register("font", k, v)
 	end
-	for k, v in pairs(AL.StatusbarTextures) do
+	for k, v in pairs(self.StatusbarTextures) do
 		E.Media:Register("statusbar", k, v)
 	end
 	

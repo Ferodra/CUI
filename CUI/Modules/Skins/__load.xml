@@ -1,3 +1,12 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!--<Script File="Blizzard_ChallengesUI.lua"/>-->
+	<Script File="Blizzard_AuctionHouseUI.lua"/>
+	<Script File="Blizzard_ChatBubbles.lua"/>
+	<Script File="Blizzard_CollectionsFrame.lua"/>
+	<Script File="Blizzard_LFGDungeonReadyDialog.lua"/>
 	<Script File="Blizzard_Mirrortimers.lua"/>
+	<Script File="Blizzard_MoneyFrame.lua"/>
+	<Script File="Blizzard_NewPlayerExperience.lua"/>
+	<Script File="Blizzard_QueueStatusFrame.lua"/>
+	<Script File="Blizzard_TalkingHeadUI.lua"/>
 </Ui>

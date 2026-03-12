@@ -1,10 +1,24 @@
-## Interface: 80200
+## Interface: 120000
 ## Title: |cff1784d1CUI|r |cFFFEB200Core|r
 ## Author: Arenima@AlleriaEU
 ## Notes: The Custom-User-Interface Core
-## Version: 0.8.5 Classic
-## SavedVariables: CUIDB
-## OptionalDeps: Ace3, SharedMedia, Masque
+## Version: 0.9.2.1 Release
+## SavedVariables: CUIDB, CUIITEMDB
+## OptionalDeps: Ace3, SharedMedia, Masque, BigWigs, HealBot
 ## X-Embeds: Ace3
+## X-Revision: 90211
+## X-Timestamp: 1610971000
+## Category-enUS: UI Overhaul
+## Category-deDE: UI-Überholung
+## Category-esES: Renovación de la UI
+## Category-esMX: Renovación de la UI
+## Category-itIT: Revisione dell'UI
+## Category-frFR: Révision de l'UI
+## Category-ptBR: Renovação da UI
+## Category-ruRU: Переработка интерфейса
+## Category-koKR: UI 개편
+## Category-zhCN: UI重构
+## Category-zhTW: UI重構
+## IconTexture: Interface\AddOns\CUI\Textures\CUILogo
 
 Modules.xml

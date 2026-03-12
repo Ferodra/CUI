@@ -1,6 +1,6 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, TB = E:LoadModules("Config", "Bar_Totem")
-TB.Autoload = true
+local CO, Module = E:LoadModules("Config", "Bar_Totem")
+Module.Autoload = true
 
 local _G			= _G
 local pairs			= pairs
@@ -8,15 +8,24 @@ local CreateFrame	= CreateFrame
 local GetTotemInfo 	= GetTotemInfo
 local MAX_TOTEMS	= MAX_TOTEMS
 
-TB.E				= CreateFrame("Frame") -- TB Event
+Module.E			= CreateFrame("Frame", "CUI_TotemBarFrame") -- Module Event
 local ButtonSize	= 40
 
-function TB:LoadProfile()
+local function UpdateButtonBorder()
+	local Color = E:GetAuraColor(nil, "player", nil, nil, nil, Module.db.borderColor)
+	for _, Button in pairs(Module.Bar.Buttons) do
+		E:SkinButtonIcon(Button.Overlay, Color)
+	end
+end
+
+function Module:LoadConfig()
+	if true then return end
 	self.db = CO.db.profile.actionbar.totembar
 	
 	if not self.db.enable then self.Bar:Hide() else
 		
 		local totalWidth, totalHeight = E:SortFrames(self.Bar.Buttons, self.Bar, ButtonSize, ButtonSize, self.db.buttonSizeMultiplier, self.db.buttonsPerRow, false, false, self.db.buttonGap, self.db.buttonGap, true)
+		UpdateButtonBorder()
 		
 		self.Bar:SetSize(totalWidth, totalHeight)
 		E:UpdateMoverDimensions(self.Bar)
@@ -25,12 +34,23 @@ function TB:LoadProfile()
 	end
 end
 
-local TotemExists, CDStart, CDDuration, Icon
-function TB:__Update()
-	
+local Slot, Priorities, TotemExists, CDStart, CDDuration, Icon
+function Module:__Update()
 	for _, v in pairs(self.Bar.Buttons) do
-		TotemExists, _, CDStart, CDDuration, Icon = GetTotemInfo(v.slot)
+		print("Update cd:", v.Icon.Cooldown)
 		
+		
+		Priorities = STANDARD_TOTEM_PRIORITIES;
+		if (class == "SHAMAN") then
+			priorities = SHAMAN_TOTEM_PRIORITIES;
+		end	
+		
+		Slot = Priorities[v.slot]
+		print(Slot)
+		if not Slot or not v.Icon.Cooldown then return end
+		TotemExists, _, CDStart, CDDuration, Icon = GetTotemInfo(Slot)
+		
+		print("Totem exists?", TotemExists, Icon)
 		if TotemExists then
 			-- How to get rid of that nameless border?
 
@@ -40,13 +60,13 @@ function TB:__Update()
 			
 			 -- Second: Show Icon and Cooldown again!
 			v.Icon:Show()
-			v.Cooldown:Show()
+			v.Icon.Cooldown:Show()
 			
 			v.FontHolder.CDDuration = CDDuration
 			v.FontHolder.CDStart = CDStart
 			
 			if ((CDStart + CDDuration) - GetTime()) > 0 then
-				v.FontHolder:SetScript("OnUpdate", TB.SetCooldown)
+				v.FontHolder:SetScript("OnUpdate", Module.SetCooldown)
 				v.FontHolder.Duration:Show()
 			else
 				v.FontHolder:SetScript("OnUpdate", nil)
@@ -56,12 +76,20 @@ function TB:__Update()
 	end
 end
 
-function TB:SetCooldown()	
+function Module:SetCooldown()
 	self.Remaining = (self.CDStart + self.CDDuration) - GetTime()
-	self.Duration:SetText(E:FormatTime(self.Remaining) or "")
+	
+	self.Duration:SetText(self.Remaining > 0 and E:FormatTime(self.Remaining) or "")
 end
 
-function TB:__Construct()
+function Module:Layout()
+	local Bar = Module.BlizzBar
+	Bar:SetParent(Module.Bar)
+	Bar:ClearAllPoints()
+	Bar:SetPoint("CENTER", Module.Bar, "CENTER")
+end
+
+function Module:__Construct()
 	self.Bar = CreateFrame("Frame", "CUI_TotemBar", E.Parent)
 	self.Bar:SetSize(ButtonSize * MAX_TOTEMS, ButtonSize) -- Make this controllable via config somehow. Maybe smart-sizing
 	
@@ -70,9 +98,72 @@ function TB:__Construct()
 	self.HiddenParent = CreateFrame("Frame")
 	self.HiddenParent:Hide()
 	
+	local Bar = _G["TotemFrame"]
+	self.BlizzBar = Bar
+	hooksecurefunc(Bar, 'Layout', Module.Layout)
 	
-	local CurrentButton, CurrentIcon, CurrentIconTexture, CurrentIconCooldown, CurrentIconDuration
-	for i = 1, MAX_TOTEMS do
+	self:Layout()
+	
+	
+	
+	
+	
+	-- local haveTotem, name, startTime, duration, icon;
+	-- local slot, button;
+	-- local CurrentButton, CurrentIcon, CurrentIconTexture, CurrentIconCooldown, CurrentIconDuration
+	-- Bar.totemPool:ReleaseAll(); 
+	-- for i=1, MAX_TOTEMS do
+		-- haveTotem, name, startTime, duration, icon = GetTotemInfo(i);
+		-- button = Bar.totemPool:Acquire();
+		
+		-- CurrentIcon 		= button.Icon;
+		-- CurrentIconTexture 	= button.Icon.Texture;
+		-- CurrentIconDuration = button.Duration;
+		-- CurrentIconCooldown = button.Icon.Cooldown;
+		-- print(CurrentIconCooldown)
+		-- print("----")
+		
+		-- CurrentIconDuration:SetParent(self.HiddenParent)
+		-- CurrentIconDuration:Hide()
+		
+		-- button:SetSize(ButtonSize, ButtonSize)
+		-- button:SetParent(self.Bar)
+		
+		-- button:ClearAllPoints()
+		-- button:SetPoint("CENTER", self.Bar, "CENTER")
+		
+		
+		-- button.Overlay = CreateFrame("Frame", nil, CurrentIcon)
+		-- button.Overlay:SetAllPoints(CurrentIcon)
+		-- button.Overlay:SetFrameLevel(button:GetFrameLevel()+99)
+		-- button.Overlay.Tex = CurrentIconTexture
+		
+		-- button.FontHolder = CreateFrame("Frame", nil, button.Overlay)
+		-- button.FontHolder:SetAllPoints(button.Overlay)
+		
+		-- button.FontHolder.Duration = button.FontHolder:CreateFontString(nil)
+		-- E:InitializeFontFrame(button.FontHolder.Duration, "OVERLAY", "FRIZQT__.TTF", 12, {1,1,1}, 0.9, {0,0}, "", 0, 0, button.FontHolder, "CENTER", {1,1})
+		-- button.FontHolder.Duration:SetParent(button.FontHolder)
+		
+		-- E:RegisterAutoFont(button.FontHolder.Duration, "db.profile.actionbar.totembar.duration")
+		
+		-- self.Bar.Buttons[i] = button
+	-- end
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	--[[for i = 1, MAX_TOTEMS do
 		CurrentButton = _G["TotemFrameTotem" .. i]
 		
 		if CurrentButton then
@@ -86,9 +177,14 @@ function TB:__Construct()
 			
 			CurrentButton.Cooldown = CurrentIconCooldown
 			
-			CurrentButton.FontHolder = CreateFrame("Frame", nil, CurrentIconCooldown)
-			CurrentButton.FontHolder:SetAllPoints(CurrentIconCooldown)
+			-- Parent the overlay frame to the icon, as the button itself somehow doesn't work
+			CurrentButton.Overlay = CreateFrame("Frame", nil, CurrentIcon)
+			CurrentButton.Overlay:SetAllPoints(CurrentIcon)
+			CurrentButton.Overlay:SetFrameLevel(CurrentButton:GetFrameLevel()+99)
+			CurrentButton.Overlay.Tex = CurrentIconTexture
 			
+			CurrentButton.FontHolder = CreateFrame("Frame", nil, CurrentButton.Overlay)
+			CurrentButton.FontHolder:SetAllPoints(CurrentButton.Overlay)
 			
 			-- Getting rid of the default font object, since it's causing trouble with our system
 			CurrentIconDuration:SetParent(self.HiddenParent)
@@ -98,7 +194,7 @@ function TB:__Construct()
 			E:InitializeFontFrame(CurrentButton.FontHolder.Duration, "OVERLAY", "FRIZQT__.TTF", 12, {1,1,1}, 0.9, {0,0}, "", 0, 0, CurrentButton.FontHolder, "CENTER", {1,1})
 			CurrentButton.FontHolder.Duration:SetParent(CurrentButton.FontHolder)
 			
-			E:RegisterPathFont(CurrentButton.FontHolder.Duration, "db.profile.actionbar.totembar.duration")
+			E:RegisterAutoFont(CurrentButton.FontHolder.Duration, "db.profile.actionbar.totembar.duration")
 			
 			CurrentButton:SetSize(ButtonSize, ButtonSize)
 			CurrentButton:SetParent(self.Bar)
@@ -106,26 +202,29 @@ function TB:__Construct()
 			CurrentIcon:ClearAllPoints()
 			CurrentIcon:SetAllPoints(CurrentButton)
 			CurrentButton.Tex = CurrentIconTexture
-			E:SkinButtonIcon(CurrentButton, E:GetUnitClassColor("player"))
 			
 			self.Bar.Buttons[i] = CurrentButton -- Cache button for easier access
 		end
-	end
+	end]]--
 	
-	E:CreateMover(self.Bar, "Totem-Bar", nil, nil, nil, "This Frame holds icons like Efflorescence, Consecration, Totems and some more.")
+	E:CreateMover(self.Bar, "Totem-Bar", nil, nil, nil, "This Frame holds icons like Efflorescence, Consecration, Totems and some more.", "misc")
 	
-	self.E:SetScript("OnEvent", function() self:__Update() end)
-	self.E:RegisterEvent("PLAYER_ENTERING_WORLD")
-	self.E:RegisterEvent("PLAYER_TOTEM_UPDATE")
-	self:__Update() -- Initial Update
+	--self.E:SetScript("OnEvent", function() self:__Update() end)
+	self.E:RegisterEvent("PLAYER_TOTEM_UPDATE");
+	self.E:RegisterEvent("PLAYER_ENTERING_WORLD");
+	self.E:RegisterEvent("UPDATE_SHAPESHIFT_FORM");
+	self.E:RegisterEvent("PLAYER_TALENT_UPDATE");	
+	self.E:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED"); 
+	
+	--self:__Update() -- Initial Update
 end
 
-function TB:Init()
-	-- self.db = CO.db.profile.totemBar
+function Module:Init()
+	self.db = CO.db.profile.totemBar
 	
 	self:__Construct()
 	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-E:AddModule("Bar_Totem", TB)
+E:AddModule("Bar_Totem", Module)

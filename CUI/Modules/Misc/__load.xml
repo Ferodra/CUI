@@ -1,6 +1,8 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Include file="Bags.lua"/>
+	<Include file="Disenchanting.lua"/>
+	<Include file="ItemDB.lua"/>
+	<Include file="RaidControl.lua"/>
 	<Include file="TotemBar.lua"/>
-	<Include file="PlayTime.lua"/>
 	<Include file="MiscFeatures.lua"/>
 </Ui>

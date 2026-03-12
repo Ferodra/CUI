@@ -1,3 +1,5 @@
+local E, L = unpack(CUI) -- Engine
+
 --- = Background =
 -- Blizzard's IsSpellInRange API has always been very limited - you either must have the name of the spell, or its spell book ID. Checking directly by spellID is simply not possible.
 -- Now, in Mists of Pandaria, Blizzard changed the way that many talents and specialization spells work - instead of giving you a new spell when leaned, they replace existing spells. These replacement spells do not work with Blizzard's IsSpellInRange function whatsoever; this limitation is what prompted the creation of this lib.
@@ -10,7 +12,7 @@
 -- @name LibSpellRange-1.0.lua
 
 local major = "SpellRange-1.0"
-local minor = 13
+local minor = 15
 
 assert(LibStub, format("%s requires LibStub.", major))
 
@@ -27,7 +29,7 @@ local GetNumSpellTabs = _G.GetNumSpellTabs
 local GetSpellBookItemInfo = _G.GetSpellBookItemInfo
 local GetSpellBookItemName = _G.GetSpellBookItemName
 local GetSpellLink = _G.GetSpellLink
-local GetSpellInfo = _G.GetSpellInfo
+local GetSpellInfo = E.GetSpellInfo
 
 local IsSpellInRange = _G.IsSpellInRange
 local SpellHasRange = _G.SpellHasRange
@@ -76,12 +78,13 @@ local spellsByID_pet = Lib.spellsByID_pet
 
 -- Updates spellsByName and spellsByID
 local function UpdateBook(bookType)
-	local _, _, offs, numspells = GetSpellTabInfo(3)
-	local max = offs -- The offset of the next tab is the max ID of the previous tab.
-	if numspells == 0 then
-		-- New characters pre level 10 only have 2 tabs.
-		local _, _, offs, numspells = GetSpellTabInfo(2)
-		max = offs + numspells 
+	local max = 0
+	-- dump C_TooltipInfo.GetSpellBookItem(1,0)[1].["lines"][1].["leftText"]
+	for i = 1, GetNumSpellTabs() do
+		local _, _, offs, numspells, _, specId = GetSpellTabInfo(i)
+		if specId == 0 then
+			max = offs + numspells
+		end
 	end
 
 	local spellsByName = Lib["spellsByName_" .. bookType]
@@ -132,7 +135,7 @@ end
 
 -- Handles updating spellsByName and spellsByID
 if not Lib.updaterFrame then
-	Lib.updaterFrame = CreateFrame("Frame")
+	Lib.updaterFrame = CreateFrame("Frame", "LIB_SpellRange")
 end
 Lib.updaterFrame:UnregisterAllEvents()
 Lib.updaterFrame:RegisterEvent("SPELLS_CHANGED")

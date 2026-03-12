@@ -1,59 +1,55 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, UF = E:LoadModules("Config", "Unitframes")
+local CO, UF = E:LoadModules('Config', 'Unitframes')
 
 --[[--------------------
 	Unitframe Extension	
 --------------------]]--
 
 local _
+local tinsert = table.insert
 local Module = {}
+Module.IncludeUnits = {'player', 'party', 'raid', 'raid40', 'arena'}
 UF.ReadyCheckStates = {
-	["ready"] = [[Interface\AddOns\CUI\Textures\icons\Readycheck_Ready]],
-	["notready"] = [[Interface\AddOns\CUI\Textures\icons\Readycheck_NotReady]],
-	["waiting"] = [[Interface\AddOns\CUI\Textures\icons\Readycheck_Waiting]],
+	['ready'] = [[Interface\AddOns\CUI\Textures\icons\Readycheck_Ready]],
+	['notready'] = [[Interface\AddOns\CUI\Textures\icons\Readycheck_NotReady]],
+	['waiting'] = [[Interface\AddOns\CUI\Textures\icons\Readycheck_Waiting]],
 }
 
 -----------------------------------------
 
-local EventHandler = CreateFrame("Frame")
-local Events = {"READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED"}
+local EventHandler = CreateFrame('Frame')
+local Events = {'READY_CHECK', 'READY_CHECK_CONFIRM', 'READY_CHECK_FINISHED'}
+
+local function UpdateTexture(self, type)
+	if not (type == 'waiting' or type == 'ready' or type == 'notready') then return end
+	
+	self.T:SetTexture(UF.ReadyCheckStates[type])
+	self.T:SetVertexColor(unpack(CO.db.profile.colors.readycheck[type]))
+end
 
 local function UpdateElement(self, event)
 	if self.Disabled then return end
 	
-	self.Unit 		= self:GetParent().Unit
-	self.IsReady 	= GetReadyCheckStatus(self.Unit)
+	local Status 	= GetReadyCheckStatus(self.Owner.unit)
 	
-	if event == "READY_CHECK_FINISHED" then
+	if event == 'READY_CHECK_FINISHED' then
 		-- Timeout
-		if self.Status == "waiting" then
-			self.T:SetTexture(UF.ReadyCheckStates["notready"])
+		if self.Status == 'waiting' then
+			UpdateTexture(self, 'notready')
 		end
 		
 		self.Animation:Play()
 	end
 	
-	if UnitExists(self.Unit) and self.IsReady then
-		
-		self.CurrentIconColor = CO.db.profile.colors.readycheck[self.IsReady]
-		
-		if self.IsReady == "ready" then
-			self.T:SetTexture(UF.ReadyCheckStates["ready"])
-		elseif self.IsReady == "notready" then
-			self.T:SetTexture(UF.ReadyCheckStates["notready"])
+	if UnitExists(self.Owner.unit) and Status then
+		if Status == 'ready' or Status == 'notready' then
+			UpdateTexture(self, Status)
 		else
-			self.T:SetTexture(UF.ReadyCheckStates["waiting"])
-		end
-		
-		if self.CurrentIconColor then
-			-- Set user defined color for icons
-			self.T:SetVertexColor(self.CurrentIconColor[1], self.CurrentIconColor[2], self.CurrentIconColor[3])
-		else
-			E:print("Warning: No icon color for ready state " .. self.IsReady .. " found. Please tell the developer!")
+			UpdateTexture(self, 'waiting')
 		end
 		
 		self:Show()
-		self.Status = self.IsReady
+		self.Status = Status
 		
 		return;
 	end
@@ -65,7 +61,7 @@ do
 		EventHandler:RegisterEvent(v)
 	end
 	EventHandler.Handles = {}
-	EventHandler:SetScript("OnEvent", function(self, event, ...)
+	EventHandler:SetScript('OnEvent', function(self, event, ...)
 		for _, F in pairs(self.Handles) do
 			UpdateElement(F.ReadyCheckIndicator, event)
 		end
@@ -74,32 +70,42 @@ end
 
 local function Animation_OnFinished(self)
 	self:GetParent():Hide();
+	self:GetParent().T:SetTexture(nil)
 end
 
 ----------
 
-local ProfileTarget
-function Module:LoadProfile()
+function Module:LoadConfig(limit)
+	local ProfileTarget, Element
+	
 	for _, self in pairs(EventHandler.Handles) do
-		ProfileTarget = CO.db.profile.unitframe.units[self.ProfileUnit]
+		self = limit or self
+		
+		ProfileTarget = CO.db.profile.unitframe.units[self.ConfigKey]
 		
 		if ProfileTarget.readyCheckIndicator then
-			if not ProfileTarget.readyCheckIndicator.enable then self.ReadyCheckIndicator:Hide(); self.ReadyCheckIndicator.T:SetTexture(nil) self.ReadyCheckIndicator.Disabled = true; else
-				self.ReadyCheckIndicator:ClearAllPoints()
-				self.ReadyCheckIndicator:SetPoint("CENTER", self.Overlay, ProfileTarget.readyCheckIndicator.position, ProfileTarget.readyCheckIndicator.offsetX, ProfileTarget.readyCheckIndicator.offsetY)
-				self.ReadyCheckIndicator:SetSize(ProfileTarget.readyCheckIndicator.size, ProfileTarget.readyCheckIndicator.size)
+			
+			Element = self.ReadyCheckIndicator
+			
+			if not ProfileTarget.readyCheckIndicator.enable then Element:Hide(); Element.T:SetTexture(nil) Element.Disabled = true; else
+				Element:ClearAllPoints()
+				Element:SetPoint('CENTER', self.Overlay, ProfileTarget.readyCheckIndicator.position, ProfileTarget.readyCheckIndicator.offsetX, ProfileTarget.readyCheckIndicator.offsetY)
+				Element:SetSize(ProfileTarget.readyCheckIndicator.size, ProfileTarget.readyCheckIndicator.size)
 				
-				self.ReadyCheckIndicator:Show()
-				self.ReadyCheckIndicator.Disabled = false
+				Element:Show()
+				Element.Disabled = false
 			end
 		end
+		
+		if limit then break end
 	end
 end
 
 function Module:Create(F)
-	F.ReadyCheckIndicator = E:CreateTextureFrame({"CENTER", F, "TOP", 0, 0}, F, 20, 20, "ARTWORK")
-			
-	local AnimationGroup = F.ReadyCheckIndicator:CreateAnimationGroup()
+	local Element = E:CreateTextureFrame({'CENTER', F, 'TOP', 0, 0}, F, 20, 20, 'ARTWORK')
+	Element:SetFrameLevel(F.Overlay:GetFrameLevel() + 25)
+	
+	local AnimationGroup = Element:CreateAnimationGroup()
 	AnimationGroup:SetScript('OnFinished', Animation_OnFinished)
 
 	local Animation = AnimationGroup:CreateAnimation('Alpha')
@@ -107,12 +113,16 @@ function Module:Create(F)
 	Animation:SetToAlpha(0)
 	Animation:SetStartDelay(8)
 	Animation:SetDuration(2)
-		F.ReadyCheckIndicator.Animation = AnimationGroup
+		Element.Animation = AnimationGroup
 	
-	F.ReadyCheckIndicator.ForceUpdate = UpdateElement
+	Element:Hide()
 	
-	table.insert(EventHandler.Handles, F)
+	F.ReadyCheckIndicator = Element
+	Element.Owner = F
+	Element.ForceUpdate = UpdateElement
+	
+	tinsert(EventHandler.Handles, F)
 end
 
 ---------- Add Module
-UF.Modules["ReadyCheckIndicator"] = Module
+UF:RegisterModule('ReadyCheckIndicator', Module)

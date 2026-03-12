@@ -9,8 +9,10 @@ local _
 local pairs			= pairs
 local tinsert		= table.insert
 local Module = {}
+Module.IncludeUnits = {'player', 'target', 'party', 'raid', 'raid40'}
 
-local GetUnitSummonStatus		= C_IncomingSummon.IncomingSummonStatus
+local IncomingSummonStatus		= C_IncomingSummon.IncomingSummonStatus
+local HasIncomingSummon			= C_IncomingSummon.HasIncomingSummon
 
 local SUMMON_STATUS_NONE = Enum.SummonStatus.None or 0
 local SUMMON_STATUS_PENDING = Enum.SummonStatus.Pending or 1
@@ -22,19 +24,17 @@ local SUMMON_STATUS_DECLINED = Enum.SummonStatus.Declined or 3
 local EventHandler = CreateFrame("Frame")
 local Events = {"INCOMING_SUMMON_CHANGED"}
 
-local function UpdateElement(self, event, unit)
+local function UpdateElement(self, unit)
 	if self.Disabled then return end
-		self.Unit = self:GetParent().Unit
-		if unit and self.Unit ~= unit then return end
 	
-	self.SummonStatus 	= GetUnitSummonStatus(self.Unit)
-	
-	if(self.SummonStatus ~= SUMMON_STATUS_NONE) then
-		if(self.SummonStatus == SUMMON_STATUS_PENDING) then
+	if HasIncomingSummon(self.Owner.unit) then
+		local SummonStatus = IncomingSummonStatus(self.Owner.unit)
+		
+		if(SummonStatus == SUMMON_STATUS_PENDING) then
 			self.T:SetAtlas('Raid-Icon-SummonPending')
-		elseif(self.SummonStatus == SUMMON_STATUS_ACCEPTED) then
+		elseif(SummonStatus == SUMMON_STATUS_ACCEPTED) then
 			self.T:SetAtlas('Raid-Icon-SummonAccepted')
-		elseif(self.SummonStatus == SUMMON_STATUS_DECLINED) then
+		elseif(SummonStatus == SUMMON_STATUS_DECLINED) then
 			self.T:SetAtlas('Raid-Icon-SummonDeclined')
 		end
 
@@ -50,9 +50,11 @@ do
 		EventHandler:RegisterEvent(v)
 	end
 	EventHandler.Handles = {}
-	EventHandler:SetScript("OnEvent", function(self, event, ...)
+	EventHandler:SetScript("OnEvent", function(self, event, unit)
 		for _, F in pairs(self.Handles) do
-			UpdateElement(F.SummonIndicator, event, ...)
+			if F.unit == unit then
+				UpdateElement(F.SummonIndicator, unit)
+			end
 		end
 	end)
 end
@@ -60,11 +62,11 @@ end
 ----------
 
 -- Gets called automatically when the unitframes first are initialized and on config update
-function Module:LoadProfile()
+function Module:LoadConfig()
 	local Config
 	
 	for _, self in pairs(EventHandler.Handles) do
-		Config = CO.db.profile.unitframe.units[self.ProfileUnit]
+		Config = CO.db.profile.unitframe.units[self.ConfigKey]
 		
 		if Config.summonIndicator then
 			if not Config.summonIndicator.enable then self.SummonIndicator:Hide(); self.SummonIndicator.T:SetTexture(nil) self.SummonIndicator.Disabled = true; else
@@ -80,10 +82,12 @@ function Module:LoadProfile()
 end
 
 function Module:Create(F)
-	F.SummonIndicator = E:CreateTextureFrame(nil, F, 20, 20, "ARTWORK")
+	local Element = E:CreateTextureFrame(nil, F, 20, 20, "ARTWORK")
+	Element:SetFrameLevel(10)
+	Element.ForceUpdate = UpdateElement
+	Element.Owner = F
 	
-	F.SummonIndicator.ForceUpdate = UpdateElement
-	
+	F.SummonIndicator = Element
 	tinsert(EventHandler.Handles, F)
 end
 

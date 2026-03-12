@@ -1,5 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO,L,UF,TT = E:LoadModules("Config", "Locale", "Unitframes", "Tooltip")
+local CO, UF, TT = E:LoadModules("Config", "Unitframes", "Tooltip")
 
 --[[-------------------------------------------------------------------------
 
@@ -40,8 +40,6 @@ local GetSpecializationInfoForClassID 	= GetSpecializationInfoForClassID
 local UnregisterStateDriver 			= UnregisterStateDriver
 local RegisterStateDriver 				= RegisterStateDriver
 local InCombatLockdown 					= InCombatLockdown
-local UIFrameFadeOut 					= UIFrameFadeOut
-local UIFrameFadeIn 					= UIFrameFadeIn
 local DEAD 								= DEAD
 local FRIENDS_LIST_OFFLINE 				= FRIENDS_LIST_OFFLINE
 -----------------------------------------------------------------------------
@@ -49,6 +47,8 @@ local FRIENDS_LIST_OFFLINE 				= FRIENDS_LIST_OFFLINE
 UF.Modules = {}
 
 UF.UNITFRAMES_RANGE_UPDATE 					= 0.5 -- Range update frequency in seconds
+local UseNewGroupSystem = true
+UF.UseNewGroupSystem = UseNewGroupSystem
 
 
 -- Affected = Source
@@ -56,11 +56,15 @@ local Targets = {
 	targettarget = {"target"},
 	focustarget = {"focus"},
 }
-local PeriodicUnitUpdate = CreateFrame("Frame")
+local PeriodicUnitUpdate = CreateFrame("Frame", "CUI_PeriodicUnitframeUpdater")
 
 UF.HolderVisibilityOverride = false
 
-UF.ToCreate = {["arena"] = 5,["party"] = 5,["boss"] = 5,["raid"] = 20,["raid40"] = 40}
+UF.ToCreate = {["arena"] = 5,["party"] = 5,["boss"] = 5,["raid"] = 20,["raid40"] = 40, ["maintank"] = 5}
+
+function UF:UnitExists(unit)
+	return unit and (UnitExists(unit) or ShowBossFrameWhenUninteractable(unit))
+end
 
 function UF:GetUnitSpecs(Unit)
 	local classID, specID, name, description, iconID, role, isRecommended, isAllowed
@@ -90,17 +94,22 @@ end
 
 function UF:SetHoverScript(Frame, State)
 	-- For blizz functionality (Blizz does not use unit with an capital U)
-	Frame.unit = Frame.Unit
 	Frame.hideStatusOnTooltip = nil
 	
 	if State == true then
 		Frame:SetScript('OnEnter', UnitFrame_OnEnter)
 		Frame:SetScript('OnLeave', UnitFrame_OnLeave)
-		Frame:EnableMouse(true)
+		
+		if not InCombatLockdown() or not Frame:IsProtected() then
+			Frame:EnableMouse(true)
+		end
 	else
 		Frame:SetScript('OnEnter', nil)
 		Frame:SetScript('OnLeave', nil)
-		Frame:EnableMouse(false)
+		
+		if not InCombatLockdown() or not Frame:IsProtected() then
+			Frame:EnableMouse(false)
+		end
 	end
 end
 
@@ -111,10 +120,19 @@ end
 	----------------------------------------------------------
 	-- Profile handler
 	----------------------------------------------------------
-	local function ApplyFontsProfile(self, ProfileTarget)
+	function UF:ApplyFontStrings(self)
+		for k,v in pairs(self.Fonts) do
+			if v.Format then
+				E:RegisterTagFont(v, v.Format, self.unit)
+			end
+		end
+	end
+	local function ApplyFontConfig(self, Config)
+		Config = Config or UF.db.units[self.ConfigKey]
+		
 		local CurrentFont, CurrentFontProfile
 		for k,v in pairs(self.Fonts) do
-			CurrentFontProfile = ProfileTarget.fonts[E:stringToLower(k)]
+			CurrentFontProfile = Config.fonts[E:stringToLower(k)]
 			if CurrentFontProfile then
 				v.Enable = CurrentFontProfile.enable
 				
@@ -126,19 +144,24 @@ end
 					-- Font Shadow
 						if CurrentFontProfile.fontShadowColor then
 							v:SetShadowColor(CurrentFontProfile.fontShadowColor[1], CurrentFontProfile.fontShadowColor[2], CurrentFontProfile.fontShadowColor[3], CurrentFontProfile.fontShadowColor[4] or 1)
-							v:SetShadowOffset(CurrentFontProfile.xFontShadowOffset, CurrentFontProfile.yFontShadowOffset)
+							v:SetShadowOffset(CurrentFontProfile.xFontShadowOffset or 1, CurrentFontProfile.yFontShadowOffset or 1)
 						end
 					-- Alignment
 						if CurrentFontProfile.horizontalAlign then
 							v:SetJustifyH(CurrentFontProfile.horizontalAlign)
 						end
+						if CurrentFontProfile.verticalAlign then
+							v:SetJustifyV(CurrentFontProfile.verticalAlign)
+						end
 					-- Repositioning
 						v:ClearAllPoints()
 						v:SetPoint(CurrentFontProfile.position)
-						E:MoveFrame(v, CurrentFontProfile.xOffset, CurrentFontProfile.yOffset)
+						--E:MoveFrame(v, CurrentFontProfile.xOffset, CurrentFontProfile.yOffset)
+						-- This sometimes just.. errors out on profile change. So let's wrap this in a pcall
+						pcall(E.MoveFrame, v, CurrentFontProfile.xOffset, CurrentFontProfile.yOffset)
 					
 					-- Level hide
-						if CurrentFontProfile.doNotShowOnMaxLevel then
+						if CurrentFontProfile.doNotShowOnMaxLevel ~= nil then
 							v.ShowAtMax = CurrentFontProfile.doNotShowOnMaxLevel
 						end
 					-- Font Color
@@ -148,6 +171,9 @@ end
 					-- Width
 						if CurrentFontProfile.width then
 							v:SetWidth(CurrentFontProfile.width)
+						end
+						if CurrentFontProfile.height then
+							v:SetHeight(CurrentFontProfile.height)
 						end
 						
 					
@@ -162,93 +188,68 @@ end
 					-- Text Format
 						if CurrentFontProfile.textFormat then
 							v.Format = CurrentFontProfile.textFormat
-							--E:RegisterString(v.Format)
-							
-							E:RegisterTagFont(v, v.Format, self.Unit)
 						end
 				end
 			end
 		end
-	
+		
+		UF:ApplyFontStrings(self)
 		self:UpdateFonts()
 	end
 	
-	local ProfileTarget
-	local function ApplyUFProfile(self, limit)
-		ProfileTarget = UF.db.units[self.ProfileUnit]
+	local function ApplyUFConfig(self, limit, arg2)
+		-- Needed when tthis is called through PerformForUnits
+		if arg2 then limit = arg2 end
+		
+		if not self then return end
+		local Config = UF.db.units[self.ConfigKey]
 		
 		limit = limit or "all"
-		
 		if limit == "fonts" or limit == "all" then
-			ApplyFontsProfile(self, ProfileTarget)
-			
+			ApplyFontConfig(self, Config)
 			-- Limit update to this module
 			if limit == "fonts" then return end
 		end
-
-		-- Absorb
-			if self.Health.Absorb then
-				if ProfileTarget.health.enableAbsorb then
-					-- As absorb is basically a statusbar, we can actually handle it like the healthbar					
-					self.Health:SetSubBar(self.Health.Absorb, true, not ProfileTarget.health.barInverseFill, ProfileTarget.health.barOrientation)
-					
-					-- Let user toggle between stripes or full cover
-					if ProfileTarget.health.absorbUseStripes then
-						self.Health.Absorb.Border.Background:SetTexture(E.Media:Fetch("statusbar", "CUI Absorb Stripes"), "REPEAT", "REPEAT")
-					else
-						self.Health.Absorb.Border.Background:SetTexture([[Interface\Buttons\WHITE8X8]])
-					end
-					self.Health.Absorb.Border:SetBackdropBorderColor(ProfileTarget.health.absorbBorderColor[1], ProfileTarget.health.absorbBorderColor[2], ProfileTarget.health.absorbBorderColor[3], ProfileTarget.health.absorbBorderColor[4])
-					self.Health.Absorb.Border.Background:SetVertexColor(ProfileTarget.health.absorbTextureColor[1], ProfileTarget.health.absorbTextureColor[2], ProfileTarget.health.absorbTextureColor[3], ProfileTarget.health.absorbTextureColor[4])
-					
-					self.Health.Absorb.TextureSizeMultiplier = ProfileTarget.health.absorbTextureSizeMultiplier or 7
-					
-					UF:InitAbsorbEvents(self.Health.Absorb)
-					self.Health.Absorb:Update()
-				else
-					UF:RemoveAbsorbEvents(self.Health.Absorb)
-					self.Health.Absorb:Hide()
-				end
+		
+		if not Config.enable then
+			-- @TODO: If is NOT clustered
+			if not UF.ToCreate[self.ConfigKey] then
+				self.ForceMoverEnabled = false
+			end
+		
+			if not InCombatLockdown() then
+				UnregisterUnitWatch(self)
+				self:Hide()
 			end
 			
-			if self.Unit == "player" or self.Unit == "target" then
-				ProfileTarget.power.fastUpdate = true
+			return
+		else
+			if not UF.ToCreate[self.ConfigKey] then
+				self.ForceMoverEnabled = nil
+			end
+			
+			-- All we had to do to fully fix grouped toggles was to check for forceShow here...
+			if not InCombatLockdown() and not self.isForcedShown then
+				RegisterUnitWatch(self)
+			end
+		end
+			
+			if self.unit == "player" or self.unit == "target" then
+				Config.power.fastUpdate = true
 			end
 		
 		-- Player specific
-			if self.ProfileUnit == "player" then
-				E:GetModule("Alternate_Power"):LoadProfile()
-				
-				-- Combat indicator
-				if self.CombatIndicator then
-					self.CombatIndicator.enableGlow = ProfileTarget.combatIndicator.enableGlow
-					self.CombatIndicator.enableIcon = ProfileTarget.combatIndicator.enableIcon
-					
-					if not self.CombatIndicator.enableGlow then self.CombatIndicator.Border:Hide(); end
-					if not self.CombatIndicator.enableIcon then self.CombatIndicator.Icon:Hide(); end
-					
-					self.CombatIndicator.glowFadeIn = ProfileTarget.combatIndicator.glowFadeIn
-					self.CombatIndicator.glowFadeOut = ProfileTarget.combatIndicator.glowFadeOut
-					self.CombatIndicator.iconFadeIn = ProfileTarget.combatIndicator.iconFadeIn
-					self.CombatIndicator.iconFadeOut = ProfileTarget.combatIndicator.iconFadeOut
-					
-					self.CombatIndicator.Icon:ClearAllPoints()
-					self.CombatIndicator.Icon:SetPoint("CENTER", self.CombatIndicator, ProfileTarget.combatIndicator.iconPosition, ProfileTarget.combatIndicator.iconOffsetX, ProfileTarget.combatIndicator.iconOffsetY)
-					self.CombatIndicator.Icon:SetSize(ProfileTarget.combatIndicator.iconSize, ProfileTarget.combatIndicator.iconSize)
-										
-					self.CombatIndicator.Border:SetBackdropBorderColor(ProfileTarget.combatIndicator.glowColor[1],ProfileTarget.combatIndicator.glowColor[2],ProfileTarget.combatIndicator.glowColor[3],ProfileTarget.combatIndicator.glowColor[4])
-					self.CombatIndicator.Border:SetSize(self.CombatIndicator:GetWidth() + (ProfileTarget.combatIndicator.glowSize * 2), self.CombatIndicator:GetHeight() + (ProfileTarget.combatIndicator.glowSize * 2))
-					self.CombatIndicator.Border.SetBorderSize(ProfileTarget.combatIndicator.glowSize)
-				end
+			if self.ConfigKey == "player" then
+				E:LoadModule("Classpower"):LoadConfig()
 			end
 		
 		-- Override range update frequency
 			self.RangeUpdateFrequency = 0.25
 			
-			self.enableRangeIndicator = ProfileTarget.rangeIndicator
+			self.enableRangeIndicator = Config.rangeIndicator
 			
 		-- Override range indicator
-			if not ProfileTarget.rangeIndicator then
+			if not Config.rangeIndicator then
 				UF:RemoveRangeIndicator(self)
 			else
 				UF:AddRangeIndicator(self)
@@ -257,50 +258,117 @@ end
 		-- Update Mover
 			E:UpdateMoverDimensions(self)
 	end
+	UF.ApplyUFConfig = ApplyUFConfig
 
-	function UF:LoadProfile(limit)
+	-- Loads config for all existing unitframes, except when limit is specified
+	-- 
+	function UF:LoadConfig(limit, onlyInitialize)
+		if not CO.db.char.unitframe.enable then return end
+	
+		local WriteLoaded
+		if limit and type(limit) == 'table' and not limit.LoadedConfigs then
+			limit.LoadedConfigs = {}
+			WriteLoaded = true
+		end
+		
 		-- Load individual unitframe settings
-		for _, Module in pairs(self.Modules) do
-			if Module.LoadProfile then
-				Module:LoadProfile()
+		if not limit then
+			for ModuleName, Module in pairs(self.Modules) do
+				if ModuleName ~= "Auras" and Module.LoadConfig and (((limit and onlyInitialize and not limit.LoadedConfigs[ModuleName]) or not onlyInitialize) or limit) then
+					Module:LoadConfig()
+					
+					if type(limit) == 'table' then
+						limit.LoadedConfigs[ModuleName] = true
+					end
+				end
+			end
+		elseif type(limit) == 'table' then
+			for ModuleName, Module in pairs(self:GetRegisteredModulesForUnitframe(limit)) do
+				if self.Modules[ModuleName] then
+					self.Modules[ModuleName]:LoadConfig(limit)
+				end
 			end
 		end
-		for _, frame in pairs(UF.Frames) do
-			frame.Update(limit)
+		for _, frames in pairs(UF.Frames) do
+			for _, frame in pairs(frames) do
+				if frame.UpdateConfig then
+					-- Somehow, this passes frames that are nil??
+					frame:UpdateConfig(limit)
+				end
+			end
 		end
+		
+		if (limit and (onlyInitialize and not limit.LoadedConfigs['Auras']) or not onlyInitialize) or not limit then
+			self.Modules['Auras']:LoadConfig(limit)
+		end
+		
+		PeriodicUnitUpdate.UpdateFrequency = self.db.periodicUnitUpdateFrequency
 	end
 
+	function UF:HasFrameKeyHeader(Key)
+		if self.RegisteredHeaderClusters[Key] then
+			return true
+		end
+	end
 	function UF:GetUFMover(type)
-		if type == "raid" or type == "raid40" or type == "party" or type == "boss" or type == "arena" then
+		if type == "raid" or type == "raid40" or type == "party" or type == "boss" or type == "arena" or type == "maintank" then
 			return E:GetMover(self:GetHolder(type))
 		else
-			return E:GetMover(self.Frames[type])
+			if self.Frames[type] then
+				return E:GetMover(self.Frames[type][1])
+			else
+				return false
+			end
+		end
+	end
+	
+	function UF:IsUnitGrouped(Unit)
+		if not Unit then return end
+		
+		for Compare, _ in pairs(UF.ToCreate) do
+			if Unit:find(Compare) then
+				return true
+			end
 		end
 	end
 	
 	function UF:GetUnitframe(Unit)
-		return self.Frames[Unit]
+		if self.Frames[Unit] then
+			return self.Frames[Unit][Index or 1]
+		end
+		
+		-- Scan frame metatable for this unit
+		for ConfigKey, Frames in pairs(self.Frames) do
+			for Index, Frame in pairs(Frames) do
+				if (ConfigKey .. Index) == Unit then
+					return Frame
+				end
+			end
+		end
 	end
 	
 	-- To iterate a function over every unitframe of a specified unit type
-	function UF:PerformForUnits(Unit, Function)
-		if self.ToCreate[Unit] then
-			for i = 1, self.ToCreate[Unit] do
-				Function(Unit .. i)
+	function UF:PerformForUnits(Unit, Function, ...)
+		if self.Frames[Unit] then
+			local NumFrames = #self.Frames[Unit]
+			for Index, Frame in pairs(self.Frames[Unit]) do
+				Function(Unit .. (NumFrames > 1 and Index or ""), Frame, ...)
 			end
 		else
-			Function(Unit)
+			Function(Unit, self:GetUnitframe(Unit), ...)
 		end
 	end
 	
-	function UF:LoadProfileForUnits(Unit, Limit)
-		if self.ToCreate[Unit] then
-			for i = 1, self.ToCreate[Unit] do
-				UF.Frames[Unit .. i].Update(Limit)
-			end
-		else
-			UF.Frames[Unit].Update(Limit)
+	local function LoadConfigForSingle(Unit, ...)
+		local Frame = UF:GetUnitframe(Unit)
+		if not Frame then return end
+		
+		if Frame.UpdateConfig then
+			Frame.UpdateConfig(...)
 		end
+	end
+	function UF:LoadProfileForUnits(Unit, Limit)
+		self:PerformForUnits(Unit, LoadConfigForSingle, Limit)
 	end
 	
 	----------------------------------------------------------
@@ -308,12 +376,12 @@ end
 	----------------------------------------------------------
 		
 		local function NameFont_PostUpdate(self)
-			self:SetTextColor(unpack(E:GetUnitReactionColor(self.Unit, false)))
+			self:SetTextColor(unpack(E:GetUnitReactionColor(self.Owner.unit, false)))
 		end
 		
 		local function HealthFont_PostUpdate(self)
-			if not UnitIsDeadOrGhost(self.Unit) then
-				if not UnitIsConnected(self.Unit) then
+			if not UnitIsDeadOrGhost(self.Owner.unit) then
+				if not UnitIsConnected(self.Owner.unit) then
 					self:SetText(FRIENDS_LIST_OFFLINE)
 				end
 			else
@@ -323,24 +391,27 @@ end
 		
 		local function PowerFont_OnEvent(self, event, unit)
 			if not event or (event and event == "UNIT_DISPLAYPOWER") then
-				(self.Parent or self):SetTextColor(unpack(E:GetUnitPowerColor((self.Parent or self).Unit or unit)))
+				--print(unit, self.Owner.unit, unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
+				self:SetTextColor(unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
 			end
 		end
 		
 		local function PowerFont_PostUpdate(self)
-			if not (UnitPowerMax(self.Unit) > 0) then
-				self:SetText("")
-			end
+			--if not (UnitPowerMax(self.Owner.unit) > 0) then
+			--	self:SetText("")
+			--end
+			
+			self:SetTextColor(unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
 		end
 		
 		local function LevelFont_PostUpdate(self)
-			self.Level = UnitLevel(self.Unit)
+			self.Level = UnitLevel(self.Owner.unit)
 			
 			if self.ShowAtMax == true and self.Level == E.UNIT_MAXLEVEL then
 				self:SetText(E.STR.EMPTY)
 			else
 				if self.Level <= -1 then
-					--self:SetText(E:ParseString(self.Format or "[level]", self.Unit))
+					--self:SetText(E:ParseString(self.Format or "[level]", self.unit))
 					self:SetText(E.STR.Boss)
 				end
 			end
@@ -348,31 +419,46 @@ end
 
 		local function Fonts_Update(F)
 			-- Fix for Bug that appeared first on 8.2 PTR
-			if UnitName(F.Unit) then
-				for k,v in pairs(F.Fonts) do
-					if v.ForceUpdate then
-						v:ForceUpdate()
-					elseif v.Update then
-						v:Update()
-					end
-					if v.OnEvent then
-						v:OnEvent()
-					end
+			if not UF:UnitExists(F.unit) then return end
+			
+			for k,v in pairs(F.Fonts) do
+				if v.ForceUpdate then
+					v:ForceUpdate()
 				end
 			end
 		end
+		
+		local PostUpdate = {
+			["Name"] = NameFont_PostUpdate,
+			["Health"] = HealthFont_PostUpdate,
+			["Power"] = PowerFont_PostUpdate,
+			["Level"] = LevelFont_PostUpdate,
+		}
 
 		-- This gets called by the OnEvent handler, which basically fires whenever a frame shows up and is missing data.
 		-- The OnUpdate handler handles the periodic update calls for units we do not receive any events for. (targettarget, focustarget etc.)
 		-- Every other update is performed by the individual modules
 		local function UF_Update(self, event, unit, ...)
-			-- Instead of "UnitExists". Bug#1: No Chambers displayed at Mother (Uldir)
-			if not UnitName(self.Unit) then return end
+			--print("Updating for ", self.unit, self:GetName())
+			-- Instead of "UnitExists". Bugfix for "No Chambers displayed at Mother (Uldir)"
+			if not UF:UnitExists(self.unit) then return end
 				
 				-- Base modules that definetely exist
-				self.Health:ForceUpdate()
-				self.Health.HealPrediction:ForceUpdate()
-				self.Power:ForceUpdate()
+				if self.Health then
+					self.Health:ForceUpdate()
+					if self.Health.Absorb then
+						self.Health.Absorb:ForceUpdate()
+					end
+				end
+				if self.HealPrediction then
+					self.HealPrediction:ForceUpdate()
+				end
+				if self.Power then
+					self.Power:ForceUpdate()
+				end
+				if self.AltPower then
+					self.AltPower:ForceUpdate()
+				end
 				Fonts_Update(self)
 				
 				-- Modules we dont want to include in the OnUpdate ticks, as the internal events work just fine for them
@@ -406,12 +492,12 @@ end
 					if self.SummonIndicator then
 						self.SummonIndicator:ForceUpdate()
 					end
+					if self.Threat then
+						self.Threat:ForceUpdate()
+					end
 				end
 				
-				-- @TODO: Pack into UF module
-					self.Health.Absorb:Update()
-				
-				if UnitIsConnected(self.Unit) then
+				if UnitIsConnected(self.unit) then
 					UF:AddRangeIndicator(self)
 				else
 					UF:RemoveRangeIndicator(self)
@@ -421,19 +507,140 @@ end
 		end
 
 		function UF:UpdateAllUF()
-			for k, frame in pairs(self.Frames) do
-				frame:ForceUpdate()
+			for k, frames in pairs(self.Frames) do
+				for _, frame in pairs(frames) do
+					-- Header Unitframes don't have this
+					if frame.ForceUpdate then
+						frame:ForceUpdate()
+					end
+				end
 			end
 			
-			E:GetModule("Alternate_Power"):LoadProfile()
+			UF.Modules['AltPower']:LoadConfig()
+			E:LoadModule("Classpower"):LoadConfig()
 		end
 		
 		function UF:UpdateGroup(group)
 			for k, frame in pairs(self.Frames) do
-				if frame.ProfileUnit == group then
+				if frame.ConfigKey == group then
 					frame:ForceUpdate()
 				end
 			end
+		end
+		
+		-- Initializes unit events and generally sets everything up
+		function UF:InitializeUnitEvents(F)
+			if F.Eventless then return end
+			
+			local Unit = F.unit
+			local RawUnit, UnitNum = F.RawUnit, F.UnitNum
+			
+			-- When the unit turns hostile/friendly or whatever
+				F:RegisterUnitEvent("UNIT_FACTION", Unit)
+				F:RegisterUnitEvent("UNIT_FLAGS", Unit)
+				
+			-- Events that handle situations in which we have to update the unitframe
+				if Unit == "target" or Unit == "targettarget" then
+					F:RegisterEvent("PLAYER_TARGET_CHANGED")
+				elseif Unit == "focus" or Unit == "focustarget" then
+					F:RegisterEvent("PLAYER_FOCUS_CHANGED")
+				elseif RawUnit == "party" or RawUnit == "raid" then
+					F:RegisterEvent("GROUP_ROSTER_UPDATE")
+					F:RegisterEvent("UPDATE_INSTANCE_INFO")
+				elseif RawUnit == "boss" then
+					F:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+				end
+			
+				if Unit ~= "player" then
+					F:RegisterUnitEvent("UNIT_CONNECTION", Unit)
+					F:RegisterUnitEvent("UNIT_PET", Unit)
+				end
+				
+				if not Unit:match('%w+target') then
+					F:RegisterUnitEvent('UNIT_ENTERED_VEHICLE', Unit)
+					F:RegisterUnitEvent('UNIT_EXITED_VEHICLE', Unit)
+					
+					if Unit ~= "player" and Unit ~= "pet" then
+						F:RegisterUnitEvent('UNIT_PET', Unit)
+					end
+					
+					F:RegisterUnitEvent("UNIT_NAME_UPDATE", Unit) -- Probably the only reliable way to update when every dataset is ready
+					
+					F.UnitButton:SetAttribute('toggleForVehicle', true) -- Doesn't work for some reason?
+					F.UnitButton:HookScript("OnAttributeChanged", function(self, attrName, value)		
+						if attrName == 'unit' then
+							--print("Attr changed:", self:GetName(), attrName, value)
+							UpdateUnit(self.Owner, value)
+							self.Owner:ForceUpdate()
+						end
+					end)
+				end
+				
+			-- We previously scanned for every unit target call
+			-- But with this method, we have total control over what happens
+				if Targets[Unit] then
+					for _, source in pairs(Targets[Unit]) do
+						if source then
+							F:RegisterUnitEvent("UNIT_TARGET", source)
+						end
+					end
+				end
+		end
+		
+		-- We need to use this to update modules reliant on unit events whenever the active unit changes
+		function UF:UpdateModuleUnits(Unitframe)
+			for ModuleName, Module in pairs(self:GetRegisteredModulesForUnitframe(Unitframe)) do
+				if Module.UpdateUnit then
+					Module:UpdateUnit()
+				end
+			end
+		end
+		
+		local function UpdateUnit(self)
+			local realUnit, modUnit = SecureButton_GetUnit(self.UnitButton), SecureButton_GetModifiedUnit(self.UnitButton)
+			
+			--print("Pre", modUnit, realUnit)
+			
+			if(realUnit == 'playerpet') then
+				realUnit = 'pet'
+			elseif(realUnit == 'playertarget') then
+				realUnit = 'target'
+			end
+
+			if(modUnit == 'pet' and realUnit ~= 'pet') then
+				modUnit = 'vehicle'
+			end
+			
+			--print("Post", modUnit, realUnit)
+			
+			--print("ModUnit for Frame", self:GetName(), ": ", modUnit, " Unit:", unit)
+			
+			if(not UF:UnitExists(modUnit)) then return end
+			
+			
+			
+			self.UnitButton.unit 	= modUnit
+			self.UnitButton.unit 	= modUnit
+			self.unit				= modUnit
+			
+			--print("New unit for", self:GetName(), "is", modUnit)
+			
+			--if self.Castbar then
+				--if unit == 'player' then
+					--UF.Modules.Castbar:UpdateBarUnit(self.Castbar, modUnit)
+				--end
+			--end
+			
+			-- Update Fonts
+			for _, font in pairs(self.Fonts) do
+				if font.UpdateUnit then
+					font:UpdateUnit(modUnit)
+				end
+			end
+			
+			UF:UpdateModuleUnits(self)
+			
+			return true
 		end
 
 	----------------------------------------------------------
@@ -441,18 +648,59 @@ end
 	----------------------------------------------------------
 		
 		local function UnitFrame_ForceUpdate(self)
+			UpdateUnit(self)
 			UF_Update(self, "ForceUpdate")
 		end
 		
-		local function UnitFrame_OnEvent(self, event, ...)
-			UF_Update(self, event, ...)
+		local function UnitFrame_OnPetStateChanged(self, unit)
+			unit = unit or self.unit
+			
+			local petUnit
+			if(unit == 'target') then
+				return
+			elseif(unit == 'player') then
+				petUnit = 'pet'
+			else
+				-- Convert raid26 -> raidpet26
+				petUnit = unit:gsub('^(%a+)(%d+)', '%1pet%2')
+			end
+
+			if(self.unit ~= petUnit) then return end
+			
+			if UpdateUnit(self) then
+				return true
+			end
+		end
+		
+		local function UnitFrame_OnEvent(self, event, unit, ...)
+			-- We cannot check the event unit like this, as UnitIsUnit returns false for (player, vehicle) when exiting a vehicle (obviously)
+			--if unit and not UnitIsUnit(unit, self.unit) then return end
+			if (event == 'UNIT_ENTERED_VEHICLE' or event == 'UNIT_EXITED_VEHICLE') then
+				--print(event, unit, self.unit, unit and unit ~= self.unit, self:GetName())
+			end
+			
+			-- This prevents us from changing back to the original unit when coming from vehicle(s)
+			--if unit and unit ~= self.unit then return end
+			
+			if event == 'UNIT_PET' then
+				if not UnitFrame_OnPetStateChanged(self, unit) then
+					return
+				end
+			end
+			
+			if (event == 'UNIT_ENTERED_VEHICLE' or event == 'UNIT_EXITED_VEHICLE') then
+				UpdateUnit(self)
+			end
+			
+			--print("Firing update for", self:GetName(), "Unit: ", unit)
+			UF_Update(self, event, unit, ...)
 		end
 		
 		local function UnitFrame_OnShow(self)
 			if self.RangeIndicator and self.enableRangeIndicator then
 				UF:AddRangeIndicator(self)
 			end
-			UF_Update(self)
+			UnitFrame_ForceUpdate(self)
 		end
 		local function UnitFrame_OnHide(self)
 			if self.RangeIndicator then
@@ -463,313 +711,401 @@ end
 	----------------------------------------------------------
 	-- Methods to create UF modules
 	----------------------------------------------------------
-		function UF:CreateUFBar(F, Name)
-			local B = CreateFrame("Statusbar", Name or nil)
+		function UF:CreateUFBar(F, Name, HasBorder)
+			local B
+			if not HasBorder then
+				B = CreateFrame("Statusbar", Name or nil)
+			else
+				B = E:CreateBackdropFrame("Statusbar", Name or nil)
+			end
 			if F then
 				B:SetAllPoints(F)
-				B:SetParent(F)
+			else
+				B:SetSize(150, 15)
 			end
+			
+			B:SetParent(F or E.Parent)
 
 			B:SetMinMaxValues(0, 100)
-			B:SetValue(100)
+			B:SetValue(50)
 			B:SetStatusBarTexture(E.Media:Fetch("statusbar", self.db.units.all.barTexture))
 
 			E:RegisterStatusBar(B)
 
 			return B
 		end
-
-		function UF:CreateFonts(F)
-
-			local Fonts, FontName
-			Fonts = {"Health", "Power", "Level", "Name", "Index"}
-
-			for k,v in pairs(Fonts) do
-				-- We have to define this here, since Lua only uses table referencing
-				local Font = {}
-				FontName = format("%s%sFont", F.Unit, v)
-
-				--Font = E:NewFont(FontName, "OVERLAY", F.Overlay)
-				Font = F.Overlay:CreateFontString(nil)
-					E:InitializeFontFrame(Font, "OVERLAY", "FRIZQT__.TTF", 17, {0.933, 0.886, 0.125}, 0.9, {0,0}, "", 0, 0, F.Overlay, "CENTER", {1,1})
-					Font.Unit = F.Unit
-				Font.E = CreateFrame("Frame")
-				Font.E.Parent = Font
-
-				F.Fonts[v] = Font
-
-				if v == "Health" then
-					E:RegisterTagFontPostUpdate(Font, HealthFont_PostUpdate)
-				end
-				if v == "Power" then
-					--Font.E:RegisterUnitEvent("UNIT_POWER_UPDATE", F.Unit)
-					--Font.E:RegisterUnitEvent("UNIT_POWER_FREQUENT", F.Unit)
-					Font.E:RegisterUnitEvent("UNIT_DISPLAYPOWER", F.Unit)
-					
-					Font.OnEvent = PowerFont_OnEvent
-					E:RegisterTagFontPostUpdate(Font, PowerFont_PostUpdate)
-				end
-				if v == "Level" then
-					E:RegisterTagFontPostUpdate(Font, LevelFont_PostUpdate)
-				end
-				if v == "Name" then
-					E:RegisterTagFontPostUpdate(Font, NameFont_PostUpdate)
-				end
-				if v == "Index" then
-					Font.Parent = CreateFrame("Frame", nil)
-					Font.Parent:SetAllPoints(F)
-					Font.Parent:SetFrameLevel(999)
-					
-					Font:SetText(select(2, E:ExtractDigits(F.Unit)))
-					Font:SetPoint("CENTER", Font.Parent, "CENTER")
-					Font:SetParent(Font.Parent)
-					Font.Update = function() end
-
-					Font:Hide()
-				end
-
-				Font.E:SetScript("OnEvent", Font.OnEvent)
-				if Font.OnEvent then Font:OnEvent() end
+		
+		local function Font_OnEvent(self, event, ...)
+			if self.Parent.OnEvent then
+				self.Parent:OnEvent(event, ...)
 			end
 		end
-
-		function UF:CreateTargetIcon(F)
-			--local I = CreateFrame("Frame", nil)
-			return E:CreateTextureFrame(nil, F, 8, 8, "OVERLAY")
+		
+		function UF:CreateOverlayFrames(Unitframe, OverlayName, TextOverlayName)
+			Unitframe.Overlay = CreateFrame("Frame", OverlayName or "CUI_UnitOverlay", Unitframe)
+			Unitframe.Overlay:SetFrameLevel(Unitframe.Overlay:GetFrameLevel() + 1)
+			Unitframe.Overlay:SetAllPoints(Unitframe)
+			
+			Unitframe.TextOverlay = CreateFrame("Frame", TextOverlayName or "CUI_UnitTextOverlay", Unitframe.Overlay)
+			Unitframe.TextOverlay:SetFrameLevel(Unitframe.TextOverlay:GetFrameLevel() + 1)
+			Unitframe.TextOverlay:SetAllPoints(Unitframe.Overlay)
 		end
 		
-		function UF:CreateCombatIndicator(F)
-			local CI = CreateFrame("Frame", nil)
-				CI:SetParent(F)
-				CI:SetAllPoints(F)
+		local FontsToCreate = {"Health", "Power", "Level", "Name"}
+		function UF:CreateFonts(Unitframe)			
+			if not Unitframe.Fonts then Unitframe.Fonts = {} end
 			
-			CI.Border = E:CreateBorder(CI, [[Interface\AddOns\CUI\Textures\borders\glow]], 7)
-				CI.Border:SetBackdropBorderColor(0.9, 0, 0, 0.9)
-				CI.Border:SetFrameLevel(1)
-				CI.Border:ClearAllPoints()
-				CI.Border:SetPoint("CENTER", CI, "CENTER")
+			for k,v in pairs(FontsToCreate) do
+				-- We have to declare this variable here, since Lua only uses table referencing
+				local Font = E:NewFontObject(format("%s%sFont", Unitframe:GetName(), v), "OVERLAY", Unitframe.TextOverlay, 10)
+				Font.Owner = Unitframe
+
+				Unitframe.Fonts[v] = Font
 				
-			CI.Icon = CreateFrame("Frame", nil)
-				CI.Icon:SetPoint("CENTER", CI, "CENTER", 0,20)
-				CI.Icon:SetParent(CI)
-				CI.Icon:SetSize(32,32)
-
-				CI.Icon.T = CI.Icon:CreateTexture(nil, "OVERLAY")
-				CI.Icon.T:SetAllPoints(CI.Icon)
-				CI.Icon.T:SetTexture([[Interface\AddOns\CUI\Textures\icons\Combat]])
+				E:RegisterTagFontPostUpdate(Font, PostUpdate[v])
+			end
 			
-			CI.Icon:Hide()
-			CI.Border:Hide()
-			
-			CI:RegisterEvent("PLAYER_REGEN_ENABLED")
-			CI:RegisterEvent("PLAYER_REGEN_DISABLED")
-			CI:SetScript("OnEvent", function(self, event)
-				if event == "PLAYER_REGEN_ENABLED" then
-					if self.enableGlow then UIFrameFadeOut(self.Border, self.glowFadeOut, 1, 0) end
-					if self.enableIcon then UIFrameFadeOut(self.Icon, self.iconFadeOut, 1, 0) end		
-				else
-					if self.enableGlow then UIFrameFadeIn(self.Border, self.glowFadeIn, 0, 1) end
-					if self.enableIcon then UIFrameFadeIn(self.Icon, self.iconFadeIn, 0, 1) end	
-				end
-			end)
-			
-			return CI
+			Unitframe.UpdateFontConfig 	= ApplyFontConfig
+			Unitframe.UpdateFonts		= Fonts_Update
 		end
 		
-		function UF:RegisterModule(Name, Module)
+		function UF:UpdateRangeIndicatorState(Unitframe)
+			if UnitIsConnected(Unitframe.unit) then
+				self:AddRangeIndicator(Unitframe)
+			else
+				self:RemoveRangeIndicator(Unitframe)
+				Unitframe:SetAlpha(0.5)
+				self:UpdateBarColor(Unitframe.Health, nil, 0.5, 0.5, 0.5)
+			end
+		end
+		
+		function UF:LoadAllUnitframeModules(Unitframe)
+			if not Unitframe.Health then return end
+			
+			-- Update existing modules with ForceUpdate method
+			for _, module in pairs(self:GetRegisteredModulesForUnitframe(Unitframe)) do
+				if module.ForceUpdate then
+					module:ForceUpdate()
+				end
+			end
+			
+			self:UpdateRangeIndicatorState(Unitframe)
+			self:ApplyFontStrings(Unitframe)
+			Unitframe:UpdateFonts()
+		end
+		
+		function UF:HasUnitframeModule(Unitframe, ModuleName)
+			if not Unitframe.LoadedModules then Unitframe.LoadedModules = {} return false end
+			return E:TableContainsValue(Unitframe.LoadedModules, ModuleName)
+		end
+		
+		function UF:RegisterModule(Name, Module, PreventAddingToUnitframe)
+			-- assert((Module.IncludeUnits and type(Module.IncludeUnits) ~= 'table') or (Module.ExcludeUnits and type(Module.ExcludeUnits) ~= 'table')),
+				-- format("Module '%s': 'IncludeUnits' or 'ExcludeUnits' of the wrong data type. It MUST be a table!", Name)
+			-- )
+			-- assert(Module.IncludeUnits and Module.ExcludeUnits,
+				-- format("Module '%s': Has a List of compatible units AND an exclusion list. Only one of them is allowed!", Name)
+			-- )
+			
+			if (Module.IncludeUnits and type(Module.IncludeUnits) ~= 'table') or (Module.ExcludeUnits and type(Module.ExcludeUnits) ~= 'table') then
+				error(("Module %s has a variable 'IncludeUnits' or 'ExcludeUnits' of the wrong data type. It MUST be a table!"):format(Name))
+				return
+			end
+			if (Module.IncludeUnits and Module.ExcludeUnits) then
+				error(("Module %s has a List of compatible units AND an exclusion list. Only one of them is allowed!"):format(Name))
+				return
+			end
+			
+			-- Only for edge cases, but why not
+			Module.PreventAddingToUnitframe = PreventAddingToUnitframe
+			Module.Name = Name
+			
 			self.Modules[Name] = Module
 			Module.db = self.db
 		end
 		
-		function UF:AddModule(Object, Module)
-			if not self.Modules[Module] then error(("Module %s does not exist!"):format(Module)); return; end
-			self.Modules[Module]:Create(Object)
+		function UF:IsKeyEligibleForModule(ConfigKey, ModuleName)
+			local Module = self.Modules[ModuleName]
+			
+			assert(Module, format("Module '%s' does not exist!", ModuleName))
+			assert(not Module.PreventAddingToUnitframe, format("Module '%s' cannot be added to unitframes!", ModuleName))
+			
+			local IsAllowed = false
+			
+			-------------------------
+			
+			-- Only allow specific units to own this module
+			-- tables 'IncludeUnits' and 'ExcludeUnits' consist of config key values like 'player' or 'raid40' without any individual suffix
+			-- If not specified every unit is allowed
+			
+			if Module.IncludeUnits then
+				if E:TableContainsValue(Module.IncludeUnits, ConfigKey) then
+					IsAllowed = true
+				end
+			elseif Module.ExcludeUnits then
+				if not E:TableContainsValue(Module.ExcludeUnits, ConfigKey) then
+					IsAllowed = true
+				end
+			end
+			if not Module.IncludeUnits and not Module.ExcludeUnits then
+				IsAllowed = true
+			end
+			
+			
+			return IsAllowed
+		end
+		
+		function UF:AddModule(Object, ModuleName)
+			local Module = self.Modules[ModuleName]
+			
+			assert(Module, format("Module '%s' does not exist!", ModuleName))
+			assert(not Module.PreventAddingToUnitframe, format("Module '%s' cannot be added to unitframes!", ModuleName))
+			
+			if not Object.LoadedModules then Object.LoadedModules = {} end
+			
+			local IsAllowed = self:IsKeyEligibleForModule(Object.ConfigKey, ModuleName)
+			
+			-------------------------
+			
+			-- Check if this module requires any dependencies
+			
+			if Module.Dependencies then
+				for _, Dependency in pairs(Module.Dependencies) do
+					if not self:HasUnitframeModule(Object, Dependency) then
+						error(("ERROR: Unitframe Module '%s' could not have been added to %s, as it's missing the dependency module '%s'!"):format(ModuleName, Object.unit, Dependency))
+						IsAllowed = false
+					end
+				end
+			end
+			
+			-------------------------
+			
+			if IsAllowed then
+				Module:Create(Object)
+				tinsert(Object.LoadedModules, ModuleName)
+			end
+		end
+		
+		function UF:GetRegisteredModulesForUnitframe(Object)
+			local Ret = {}
+			
+			if Object.LoadedModules then
+				for _, ModuleName in pairs(Object.LoadedModules) do
+					if Object[ModuleName] then
+						Ret[ModuleName] = Object[ModuleName]
+					end
+				end
+			end
+			
+			return Ret
+		end
+		
+		-- Return the actual DB key for the specified unit
+		function UF:GetConfigKey(Unit, RawUnit, Index)
+			RawUnit = RawUnit or E:ExtractDigits(Unit)
+
+			-- Add Unitframe to register
+			if Index then
+				return RawUnit .. Index
+			else
+				return RawUnit
+			end
+		end
+		
+		-- Returns the unitframe module attachment frame/module and checks if there are any issues
+		function UF:GetModuleAttachmentFrame(Module)
+			assert(Module.Owner, format("Module '%s' has no specified element owner (.Owner)!", Module:GetName()))
+			
+			local OtherModule
+			if Module.AttachTo then
+				-- Attached module exists within the unitframe
+				OtherModule = Module.Owner[Module.AttachTo]
+				if OtherModule then
+					if not OtherModule.AttachTo or (OtherModule.AttachTo and OtherModule.AttachTo ~= Module.AttachTo) then
+						return OtherModule
+					elseif OtherModule.AttachTo and OtherModule.AttachTo ~= Module.AttachTo then
+						E:print("The attachment point of " .. Module:GetName() .. " is creating a parenting loop with " .. OtherModule:GetName() .. "!")
+					end
+				end
+			end
+			
+			return Module.Owner
+		end
+		
+		function UF:RegisterUpdateFunction(Frame)
+			Frame.UpdateConfig = ApplyUFConfig
+		end
+		
+		function UF:RegisterForClique(Frame)
+			if not Frame.RegisterForClicks then return end
+			if not _G.ClickCastFrames then
+				_G.ClickCastFrames = ClickCastFrames or {}
+			end
+			
+			ClickCastFrames[Frame] = true
+		end
+		
+		UF.ModulesAddOrder = {
+			[1] = 'Health',
+			[2] = 'HealthAbsorb',
+			[3] = 'HealPrediction',
+			[4] = 'Power',
+			[5] = 'Portrait',
+			[6] = 'Auras',
+			[7] = 'RoleIndicator',
+			[8] = 'Highlight',
+			[9] = 'TargetHighlight',
+			[10] = 'ResurrectIndicator',
+			[11] = 'LeaderIcon',
+			[12] = 'TargetIcon',
+			[13] = 'Threat',
+			[14] = 'SummonIndicator',
+			[15] = 'ReadyCheckIndicator',
+			[16] = 'AltPower',
+			[17] = 'RestingIndicator',
+			[18] = 'CombatIndicator',
+			[19] = 'Castbar'
+		}
+		
+		function UF:AddModulesToUnitframe(Unitframe)
+			-- Add modules
+			for _, Name in ipairs(self.ModulesAddOrder) do
+				self:AddModule(Unitframe, Name)
+			end
 		end
 
 	----------------------------------------------------------
 	-- Method to create a UnitFrame
 	----------------------------------------------------------
 	UF.Frames = {}
-	function UF:CreateUF(Unit, Index, Header, UnitButton)
+	-- @PARAM
+	--	Unit: The actual unit of the unitframe. This will also be used as the config key
+	function UF:Create(Unit)
 		local RawUnit, UnitNum = E:ExtractDigits(Unit)
-		local Config = self.db.units[RawUnit]
 		local FrameName = format("CUI_%s", Unit)
-		local OverlayFrameName
-		local F = CreateFrame("Frame", FrameName, UnitButton or E.Parent)
+		local F = CreateFrame("Frame", FrameName, E.Parent)
 		F.Fonts = {}
+		
+		-- The table key we use to work with this frame's configs
+		
+			F.ConfigKey = self:GetConfigKey(nil, RawUnit)
 
-		-- Add Unitframe to register
-		if Index then
-			self.Frames[RawUnit .. Index .. UnitNum] = F
-				F.ProfileUnit = RawUnit .. Index
-				OverlayFrameName = RawUnit .. Index .. "_" .. UnitNum
-		else
-			self.Frames[Unit] = F
-			F.ProfileUnit = RawUnit
-			OverlayFrameName = Unit
-		end
-	
-		if not Header then
-		-- UF Overlay to interact with, since the highlight does not work on the Base frame
-			F.Overlay = CreateFrame("Button", format("CUI_UF_%s", E:firstToUpper(OverlayFrameName)), F, "SecureUnitButtonTemplate")
-			F.Overlay:SetAllPoints(F)
-			F.Overlay:SetParent(F)
-			F.Overlay:EnableMouse(true)
-			F:SetIgnoreParentAlpha(true)
-		else
-			if not UnitButton then
-				F.Overlay = CreateFrame("Frame", format("CUI_UF_%s", E:firstToUpper(OverlayFrameName)), Header)
-				F.Overlay:SetAllPoints(Header)
-				F.Overlay:SetParent(Header)
-			else
-				F.Overlay = UnitButton
+		-- Add Unitframe to registered pool
+		
+			if not self.Frames[F.ConfigKey] then
+				self.Frames[F.ConfigKey] = {}
 			end
-		end
+			tinsert(self.Frames[F.ConfigKey], F)		
 		
-		-- For 'unittarget' units, we have to use an onupdate handler, since we don't get any events for them
-		if Unit:match('%w+target') then
-			F.Eventless = true
-			tinsert(PeriodicUnitUpdate, F)
-		end
+		-- Overlay we add stuff like fonts to, so they're showing up above the bars
+			
+			self:CreateOverlayFrames(F)
+	
+		-- Unit button to interact with, since this requires a secure frame. 
 		
-		F.Overlay:SetFrameLevel(10)
+			F.UnitButton = CreateFrame("Button", format("CUI_UF_%s", E:firstToUpper(Unit)), F.Overlay, "SecureUnitButtonTemplate")
+			F.UnitButton:SetAllPoints(F.Overlay)
+			F.UnitButton:EnableMouse(true)
+			F:SetIgnoreParentAlpha(true)
+			
+		-- Auto-hide in petbattles. This only parents the base frame to a secure state handlers.
+		
+			E:HandleFrameInPetBattles(F)
+		
+		-- For '*target' units, we have to use an onupdate handler, since we don't get any events for them
+			if Unit:match('%w+target') then
+				F.Eventless = true
+				tinsert(PeriodicUnitUpdate, F)
+			end
+			
+		-- Make sure frames are properly ordered
+		
+			F.UnitButton:SetFrameLevel(10)
+			F.Overlay:SetFrameLevel(10)
 
 		-- Set unit
-			F.Unit = Unit
-			F.RawUnit = RawUnit
-			F.Overlay.Unit = Unit
-			F.BackupUnit = Unit -- In case the dummy mode is enabled, we have to use this one
+			F.unit 				= Unit
+			F.unit 				= Unit
+			F.RawUnit 			= RawUnit
+			F.UnitNum 			= tonumber(UnitNum)
+			F.UnitButton.unit 	= Unit
+			F.UnitButton.Owner 	= F
+			F.Overlay.unit 		= Unit
+			F.BackupUnit 		= Unit -- In case the dummy mode is enabled, we have to use this one
 
 		-- Add UF Modules
 			
-			self:AddModule(F, "BarHealth")			-- F.Health
-			self:AddModule(F, "HealPrediction")		-- F.Health.HealPrediction
-			self:AddModule(F, "BarPower")			-- F.Power
-			self:AddModule(F, "Portrait")			-- F.Portrait
-			self:AddModule(F, "Auras")				-- F.Auras
-			self:AddModule(F, "RoleIndicator")		-- F.Role
-			self:AddModule(F, "Highlight")			-- F.Highlight
-			self:AddModule(F, "TargetHighlight")	-- F.TargetHighlight
-			self:AddModule(F, "ResurrectIndicator")	-- F.ResurrectIndicator
-			self:AddModule(F, "LeaderIcon")			-- F.LeaderIcon
-			self:AddModule(F, "TargetIcon")			-- F.TargetIcon
-			
-			self:AddHealthAbsorb(F.Health)
-			
-			if Unit == "player" then
-				F.CombatIndicator = self:CreateCombatIndicator(F.Overlay)
-			end
-			if RawUnit == "arena" or RawUnit == "party" or RawUnit == "raid" or RawUnit == "player" or RawUnit == "target" then
-				if RawUnit ~= "target" then
-					-- F.ReadyCheckIndicator
-					self:AddModule(F, "ReadyCheckIndicator")
-					F.ReadyCheckIndicator:SetFrameLevel(10)
-				end
-				if RawUnit ~= "arena" then
-					-- F.SummonIndicator
-					self:AddModule(F, "SummonIndicator")
-					F.SummonIndicator:SetFrameLevel(10)
-				end
-			end
+			self:AddModulesToUnitframe(F)
 			
 		-- Add UF Fonts
+		
 			self:CreateFonts(F)
 
 		-- Set Required attributes
+		
 			F:SetAttribute("unit", Unit)
-			if not Header then
-				F.Overlay:SetAttribute("unit", Unit)
-			end
+			F.UnitButton:SetAttribute("unit", Unit)
 
 		-- Set hover script
-			self:SetHoverScript(F.Overlay, true)
+		
+			self:SetHoverScript(F.UnitButton, true)
 
 		-- Set interaction attributes
-			if not Header or UnitButton then
-				F.Overlay:RegisterForClicks("AnyUp")
+		
+			F.UnitButton:RegisterForClicks("AnyUp")
+			F.UnitButton:SetAttribute("type1", "target")
+			F.UnitButton:SetAttribute("*type2", "togglemenu")
+			
+			-- Ability to shift-click a unitframe to set it as focus
+			F.UnitButton:SetAttribute("shift-type1", "focus")
+			
+			-- Shift-clicking the focus unitframe removes focus
+			if Unit == "focus" then
+				F.UnitButton:SetAttribute("shift-type1", "macro")
+				F.UnitButton:SetAttribute("macrotext", "/focus none")
 			end
-			if not Header then
-				F.Overlay:SetAttribute("type1", "target")
-				F.Overlay:SetAttribute("*type2", "togglemenu")
-				F.Overlay:SetAttribute("shift-type1", "focus")
-					if Unit == "focus" then F.Overlay:SetAttribute("shift-type1", "macro"); F.Overlay:SetAttribute("macrotext", "/focus none"); end
-			end
 
-			-- Register Frame to the engine so it will take care of its visibility
-				RegisterUnitWatch(F)
+		-- Register Frame to the engine so it will take care of its visibility
+			
+			RegisterUnitWatch(F)
 
-			-- Register a bunch of events to handle target changing etc.
-			-- Since we register just the neccessary event(s) to each frame, we do not have to care
-			-- about which event fired in the OnEvent handler.
-			-- Wohoo!
+		-- Register necessary events
 
-					-- When the unit turns hostile/friendly or whatever
-					F:RegisterUnitEvent("UNIT_FACTION", Unit)
-				
-				-- Events that handle situations in which we have to update the unitframe
-				if Unit == "target" or Unit == "targettarget" then
-					F:RegisterEvent("PLAYER_TARGET_CHANGED")
-				elseif Unit == "focus" or Unit == "focustarget" then
-					F:RegisterEvent("PLAYER_FOCUS_CHANGED")
-				elseif Unit == "pet" then
-					F:RegisterEvent("UNIT_PET")
-				elseif RawUnit == "party" or RawUnit == "raid" then
-					F:RegisterEvent("GROUP_ROSTER_UPDATE")
-					F:RegisterEvent("UPDATE_INSTANCE_INFO")
-				elseif RawUnit == "boss" then
-					F:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
-				end
-				if Unit ~= "player" then
-					F:RegisterUnitEvent("UNIT_CONNECTION", Unit)
-					F:RegisterUnitEvent("UNIT_NAME_UPDATE", Unit) -- Probably the only reliable way to update when every dataset is ready
-				else
-					--RegisterAttributeDriver(F, "unit", "[vehicleui] vehicle; player")
-					--F:SetScript("OnAttributeChanged", function(self)
-					--	self.Unit = self:GetAttribute("unit")
-					--	UF_Update(self)
-					--end)
-				end
-				
-				-- We previously scanned for every unit target call
-				-- But with this method, we have total control over what happens
-				if Targets[Unit] then
-					for _, source in pairs(Targets[Unit]) do
-						if source then
-							F:RegisterUnitEvent("UNIT_TARGET", source)
-						end
-					end
-				end
-			-- When a frame event fires, update modules
-				F:SetScript("OnEvent", UnitFrame_OnEvent)
-				-- To make the update instantaneous when the frame shows up
-					F:SetScript("OnShow", UnitFrame_OnShow)
-					F:SetScript("OnHide", UnitFrame_OnHide)
+			self:InitializeUnitEvents(F)
+			
+		-- Event Handlers
+		
+			F:SetScript("OnEvent", UnitFrame_OnEvent)
+			
+			-- To make the update instantaneous when the frame shows up
+			F:SetScript("OnShow", UnitFrame_OnShow)
+			F:SetScript("OnHide", UnitFrame_OnHide)
 
 		-- Initial Update
+		
 			UnitFrame_ForceUpdate(F)
+			
 		-- Setup profile methods
+		
 			F.ForceUpdate = UnitFrame_ForceUpdate
-			F.UpdateFonts = Fonts_Update
-			F.Update = function(limit) ApplyUFProfile(F, limit) end
+			UF:RegisterUpdateFunction(F)
+			UF:RegisterForClique(F.UnitButton)
 
 		-- Prevent creation of movers for clustered unitframes
 		-- We'll do it for those when the holder is being created
-		if not Header then
+		
 			if RawUnit ~= "arena" and RawUnit ~= "party" and RawUnit ~= "boss" and RawUnit ~= "raid" then
-				E:CreateMover(F, L[Unit .. "Frame"], nil, nil, nil, format("The %s Unitframe", E:firstToUpper(RawUnit)))
+				E:CreateMover(F, L[Unit .. "Frame"], nil, nil, nil, format("The %s Unitframe", E:firstToUpper(RawUnit)), "unitframes", nil, format("unitframe.%s", F.ConfigKey))
+				E:HandleFrameInPetBattles(E:GetMover(F))
 			end
-		end
 
 		return F
 	end
 
 	UF.Holders = {}
 	UF.Holders.SortMethod = {
-		["arena"] 	= {"TOPLEFT", 0, 15, "+", "-"},
-		["party"] 	= {"TOPLEFT", 0, 15, "+", "-"},
-		["raid"] 	= {"TOPRIGHT", 2, 2, "-", "-"},
-		["raid40"] 	= {"TOPRIGHT", 2, 2, "-", "-"},
 		["boss"] 	= {"TOPLEFT", 0, 15, "+", "-"},
+		["arena"] 	= {"TOPLEFT", 0, 15, "+", "-"},
 	}
 
 	function UF:CreateUFHolder(Type, SX, SY)
@@ -782,8 +1118,10 @@ end
 		self.Holders[Type] = Holder
 
 		E:SetVisibilityHandler(Holder)
+		E:HandleFrameInPetBattles(Holder)
 
-		E:CreateMover(Holder, L[format("%sFrame", Type)], nil, nil, nil, format("The %s Unitframe Cluster", E:firstToUpper(Type)))
+		E:CreateMover(Holder, L[format("%sFrame", Type)], nil, nil, nil, format("The %s Unitframe Cluster", E:firstToUpper(Type)), "unitframes")
+		E:HandleFrameInPetBattles(E:GetMover(Holder))
 
 		return Holder
 	end
@@ -791,19 +1129,37 @@ end
 	function UF:GetHolder(Unit)
 		return self.Holders[Unit]
 	end
-
-	function UF:OverrideHolderVisibility(state)
+	
+	function UF:IsHolderVisible(Holder)
+		return SecureCmdOptionParse(Holder.visibilityCondition) == "1"
+	end
+	
+	-- @ ForceNormalize: (bool)	- Wether or not to force normal visiblity on force unshow, no matter what the dummy mode is currently set to
+	function UF:OverrideSingleHolderVisibility(Holder, state, forceNormalize)
+		
+		local Holder = type(Holder) == 'string' and self:GetHolder(Holder) or Holder
+		
+		--if state == true and Holder.ForceMoverEnabled ~= false then
+		if state == true then
+			UnregisterStateDriver(Holder, "visible")
+			RegisterStateDriver(Holder, "visible", "1")
+			Holder.ForceShow = true
+		else
+			Holder.ForceShow = nil
+			self:LoadHolderConfig(Holder.Type, forceNormalize)
+		end
+	end
+	function UF:OverrideHolderVisibility(state, limit)
 		self.HolderVisibilityOverride = state
 		
 		for k,v in pairs(self.Holders) do
-			if k ~= "SortMethod" then
-				if state == true then
-					UnregisterStateDriver(self:GetHolder(k), "visible")
-					RegisterStateDriver(self:GetHolder(k), "visible", "1")
-				else
-					self:LoadHolderConfig(k)
-				end
+			if limit then v = limit; k = 'Force' end
+			
+			if k ~= "SortMethod" and not v.HasHeader then
+				self:OverrideSingleHolderVisibility(v, state)
 			end
+			
+			if limit then break end
 		end
 	end
 	
@@ -819,8 +1175,7 @@ end
 		return self.db.clusters[Name]
 	end
 
-	function UF:LoadHolderConfig(Unit)
-		local startSortFrom = ""
+	function UF:LoadHolderConfig(Unit, ForceNormalizeVisibility)
 		local Holder = self:GetHolder(Unit)
 		
 		if not Holder then return end
@@ -828,21 +1183,35 @@ end
 		local HolderSortMethod = self.Holders.SortMethod[Unit]
 		local Config = self.db.units[Unit]
 		
-		local ClusterConfig = UF:GetClusterConfig(Config.UFInfo.cluster.clusterName)
+		if not Config.enable then
+			-- Straight up disables the mover
+			Holder.ForceMoverEnabled = false
+			UnregisterStateDriver(Holder, "visible")
+			RegisterStateDriver(Holder, "visible", "0")
 			
+			return
+		else
+			Holder.ForceMoverEnabled = nil
+		end
+		
+		local ClusterConfig = Config.UFInfo.cluster
+		
+		-- Check if the user currently wants the holders to stay visible
+		Holder.visibilityCondition = ClusterConfig.visibilityCondition
+		if (self.HolderVisibilityOverride == false or ForceNormalizeVisibility) and not Holder.ForceShow then
+			UnregisterStateDriver(Holder, "visible")
+			RegisterStateDriver(Holder, "visible", ClusterConfig.visibilityCondition)
+		end
+		
+		if Unit ~= "boss" and Unit ~= "arena" then return end
+		
 		-- Override sort config
 		HolderSortMethod[1] = ClusterConfig.perRow
 		HolderSortMethod[2] = not ClusterConfig.inverseStartX
 		HolderSortMethod[3] = not ClusterConfig.inverseStartY
 		HolderSortMethod[4] = ClusterConfig.gapX
 		HolderSortMethod[5] = ClusterConfig.gapY
-
-		-- Check if the user currently wants the holders to stay visible
-		if self.HolderVisibilityOverride == false then
-			UnregisterStateDriver(Holder, "visible")
-			RegisterStateDriver(Holder, "visible", ClusterConfig.visibilityCondition)
-		end
-
+		
 		-- Apply changes
 		self:SortUFHolderContents(Holder)
 	end
@@ -875,83 +1244,243 @@ end
 		end
 	end
 	
-	-- @TODO: A new sort method to easily define new positions
-	function UF:SortRaidHolder()
-		
-		local Map = {}
-		
-		-- Write required data to holder frames
-		for k, v in pairs(UF.Holders["raid40"]) do
-			if type(v) == "table" then
-				if UnitExists(v.Unit) then
-					v.SortValue_Class = select(3, UnitClass(v.Unit))
-				end
+	local function SortByGroup(a, b)
+		if ( IsInRaid() ) then			
+			if ( not a or not b ) then
+				return false
 			end
+			
+			-- local subgroup1 = a.SortValue_Subgroup
+			-- local subgroup2 = b.SortValue_Subgroup
+			
+			-- if ( subgroup1 and subgroup2 and subgroup1 ~= subgroup2 ) then
+				-- return subgroup1 < subgroup2;
+			-- end
+			
+			if (a.SortValue_Subgroup < b.SortValue_Subgroup) then
+			   return true
+			elseif (a.SortValue_Subgroup > b.SortValue_Subgroup) then
+				return false
+			else
+				  return a.SortValue_Rank > b.SortValue_Rank
+			end
+			
+			
 		end
 		
-		tsort(UF.Holders["raid40"], SortByClass)
+		--Fallthrough: Sort by order in Raid window.
+		return a.UnitNum < b.UnitNum
 	end
+	
+	local function SortByDefault(a, b)
+		return a.UnitNum < b.UnitNum
+	end
+	
+
+UF.headerGroupBy = {
+	CLASS = function(header)
+		--local groupingOrder = header.db and strjoin(',', header.db.CLASS1, header.db.CLASS2, header.db.CLASS3, header.db.CLASS4, header.db.CLASS5, header.db.CLASS6, header.db.CLASS7, header.db.CLASS8, header.db.CLASS9)
+		--if E.Retail and groupingOrder then
+		--	groupingOrder = groupingOrder..strjoin(',', header.db.CLASS10, header.db.CLASS11, header.db.CLASS12, header.db.CLASS13)
+		--end
+
+		local sortMethod = header.db and header.db.attr_SortMethod
+		header:SetAttribute('groupingOrder', groupingOrder or 'DEATHKNIGHT,DEMONHUNTER,DRUID,EVOKER,HUNTER,MAGE,PALADIN,PRIEST,ROGUE,SHAMAN,WARLOCK,WARRIOR,MONK')
+		header:SetAttribute('sortMethod', sortMethod or 'NAME')
+		header:SetAttribute('groupBy', 'CLASS')
+		header:SetAttribute('filterOnPet', nil)
+	end,
+	ROLE = function(header)
+		--local groupingOrder = header.db and strjoin(',', header.db.ROLE1, header.db.ROLE2, header.db.ROLE3, 'NONE')
+		local sortMethod = header.db and header.db.attr_SortMethod
+		header:SetAttribute('groupingOrder', groupingOrder or 'TANK,HEALER,DAMAGER,NONE')
+		header:SetAttribute('sortMethod', sortMethod or 'NAME')
+		header:SetAttribute('groupBy', 'ASSIGNEDROLE')
+		header:SetAttribute('filterOnPet', nil)
+	end,
+	NAME = function(header)
+		header:SetAttribute('groupingOrder', '1,2,3,4,5,6,7,8')
+		header:SetAttribute('sortMethod', 'NAME')
+		header:SetAttribute('groupBy', nil)
+		header:SetAttribute('filterOnPet', nil)
+	end,
+	GROUP = function(header)
+		local sortMethod = header.db and header.db.attr_SortMethod
+		header:SetAttribute('groupingOrder', '1,2,3,4,5,6,7,8')
+		header:SetAttribute('sortMethod', sortMethod or 'INDEX')
+		header:SetAttribute('groupBy', 'GROUP')
+		header:SetAttribute('filterOnPet', nil)
+	end,
+	PETNAME = function(header)
+		header:SetAttribute('groupingOrder', '1,2,3,4,5,6,7,8')
+		header:SetAttribute('sortMethod', 'NAME')
+		header:SetAttribute('groupBy', nil)
+		header:SetAttribute('filterOnPet', true) --This is the line that matters. Without this, it sorts based on the owners name
+	end,
+	INDEX = function(header)
+		header:SetAttribute('groupingOrder', '1,2,3,4,5,6,7,8')
+		header:SetAttribute('sortMethod', 'INDEX')
+		header:SetAttribute('groupBy', nil)
+		header:SetAttribute('filterOnPet', nil)
+	end,
+}
+
+function UF:CreateHeaders()
+	local ArenaHolder, PartyHolder, BossHolder, RaidHolder, RaidFullHolder, MaintankHolder
+	BossHolder 		= self:CreateUFHolder("boss")
+	ArenaHolder 	= self:CreateUFHolder("arena")
+	PartyHolder 	= self:CreateUFHolder("party")
+	RaidHolder 		= self:CreateUFHolder("raid")
+	RaidFullHolder 	= self:CreateUFHolder("raid40")
+	MaintankHolder 	= self:CreateUFHolder("maintank")
+	
+	for i=1,5 do
+		self:AssignUFHolder(BossHolder, self:Create("boss" .. i))
+		self:AssignUFHolder(ArenaHolder, self:Create("arena" .. i))
+	end
+	
+	self.RegisteredHeaderClusters = {
+		-- Arena doesn't work with that
+		-- ['arena'] = {
+			-- ['Holder'] = ArenaHolder,
+			-- ['GroupSize'] = 1,
+			-- ['LiteralName'] = "arena",
+			-- ['Unit'] = "arena",
+			-- ['ConfigKey'] = "arena",
+			-- ['Attributes'] = {
+				-- showParty 		= true,
+				-- showRaid 		= false,
+				-- showPlayer 		= true,
+				-- showSolo 		= false, -- Setting this to true results in a f*ed up header
+			-- }
+		-- },
+		['party'] = {
+			['Holder'] = PartyHolder,
+			['GroupSize'] = 1,
+			['LiteralName'] = "party",
+			['Unit'] = "party",
+			['ConfigKey'] = "party",
+			['Attributes'] = {
+				showParty 		= true,
+				showRaid 		= false,
+				showPlayer 		= false,
+				showSolo 		= false, -- Setting this to true results in a f*ed up header
+				groupingOrder 	= "TANK,HEALER,DAMAGER,NONE",
+				groupBy 		= "ASSIGNEDROLE",
+			}
+		},
+		['raid'] = {
+			['Holder'] = RaidHolder,
+			['GroupSize'] = 4,
+			['LiteralName'] = "raid",
+			['Unit'] = "raid",
+			['ConfigKey'] = "raid",
+			['Attributes'] = {
+				showParty 		= false,
+				showRaid 		= true,
+				showPlayer 		= true,
+				showSolo 		= false, -- Setting this to true results in a f*ed up header
+			}
+		},
+		['raid40'] = {
+			['Holder'] = RaidFullHolder,
+			['GroupSize'] = 8,
+			['LiteralName'] = "raid40",
+			['Unit'] = "raid",
+			['ConfigKey'] = "raid40",
+			['Attributes'] = {
+				showParty 		= false,
+				showRaid 		= true,
+				showPlayer 		= true,
+				showSolo 		= false, -- Setting this to true results in a f*ed up header
+			}
+		},
+		
+		-- Special Frames
+		['maintank'] = {
+			['Holder'] = MaintankHolder,
+			['GroupSize'] = 1,
+			['LiteralName'] = "MainTanks",
+			['Unit'] = "",
+			['ConfigKey'] = "maintank",
+			['Attributes'] = {
+				showParty 		= false,
+				showRaid 		= true,
+				showPlayer 		= true,
+				showSolo 		= false, -- Setting this to true results in a f*ed up header
+				groupFilter		= "MAINTANK",
+			}
+		},
+	}
+	local Headers = self.RegisteredHeaderClusters
+	
+	-- Creates all headers
+	for k,v in pairs(Headers) do
+		if not v.Frames then
+			v.Frames = {}
+		end
+		local WriteFilter
+		for i=1, v.GroupSize do
+			
+			if not v.Attributes.groupFilter then
+				WriteFilter = true
+			end
+			if WriteFilter then
+				v.Attributes.groupFilter = tostring(i)
+			end
+			v.Attributes.groupingOrder = tostring(i)
+			
+			v.Frames[i] = self.Headers:Create(v.LiteralName .. "_" .. i, v.ConfigKey, i, v.Holder, v.unit, v.Attributes)
+		end
+		
+		v.Holder.HasHeader = true
+		self.Headers:LoadConfig(v)
+	end
+end
+
 	
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- Refactor end
 -------------------------------------------------------------------------------------------------------------------------------------
 function UF:UpdateDB()
-	self.db = E.db.unitframe
+	self.db = CO.db.profile.unitframe
 	
 	for _, Module in pairs(self.Modules) do
-		Module.db = self.db
+		if Module.UpdateDB then
+			Module:UpdateDB()
+		else
+			Module.db = self.db
+		end
 	end
 end
 function UF:Init()
-	
 	self:UpdateDB()
-	E.PlayerClass = select(2, UnitClass("player"))
-
-	self:CreateUF("player")
-	self:CreateUF("target")
-	self:CreateUF("targettarget")
-	self:CreateUF("focus")
-	self:CreateUF("focustarget")
-	self:CreateUF("pet")
-
-	-- @TODO: Create a new type of UF Holder that dynamically can create unitframes on the fly when needed
-	--local HolderSortHandler = CreateFrame("Frame")
-	--HolderSortHandler:RegisterEvent("GROUP_ROSTER_UPDATE")
-	--HolderSortHandler:SetScript("OnEvent", UF.SortRaidHolder)
 	
-	local ArenaHolder 		= self:CreateUFHolder("arena")
-	local PartyHolder 		= self:CreateUFHolder("party")
-	local BossHolder 		= self:CreateUFHolder("boss")
-	local RaidHolder 		= self:CreateUFHolder("raid")
-	local RaidFullHolder 	= self:CreateUFHolder("raid40")
-
-	for i=1,5 do
-		self:AssignUFHolder(ArenaHolder, self:CreateUF("arena" .. i))
-		self:AssignUFHolder(PartyHolder, self:CreateUF("party" .. i))
-		self:AssignUFHolder(BossHolder, self:CreateUF("boss" .. i))
-	end
-	for i=1,20 do
-		self:AssignUFHolder(RaidHolder, self:CreateUF("raid" .. i))
-	end
-	for i=1,40 do
-		self:AssignUFHolder(RaidFullHolder, self:CreateUF("raid" .. i, "40"))
-	end
+	if not CO.db.char.unitframe.enable then return end
 	
-	-- Experimental
-	-- self.Headers:Create("raid")
 
-	self:LoadProfile()
+	self:Create("player")
+	self:Create("target")
+	self:Create("targettarget")
+	self:Create("focus")
+	self:Create("focustarget")
+	self:Create("pet")
+	
+	self:CreateHeaders()	
+
+	self:LoadConfig()
 	self:LoadAllHolderConfig()
 	
+	-- Handler for eventless units
 	PeriodicUnitUpdate:SetScript('OnUpdate', function(self, elapsed)
 		self.elapsed = (self.elapsed or 0) + elapsed
 		
-		if self.elapsed > 0.5 then
+		if self.elapsed > self.UpdateFrequency or 1 then
 			-------------------------
 				for _, frame in pairs(self) do
 					if type(frame) == 'table' then
-						if frame.ForceUpdate then
+						if frame.ForceUpdate and frame:IsVisible() then
 							UF_Update(frame, "OnUpdate")
 						end
 					end
@@ -961,6 +1490,9 @@ function UF:Init()
 			self.elapsed = 0
 		end
 	end)
+	
+	local Blizzard = E:LoadModule('Blizzard')
+	Blizzard:RemoveUnitframes()
 end
 
 E:AddModule("Unitframes", UF)

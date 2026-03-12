@@ -47,7 +47,7 @@ local MINOR = 1
 local lib, upgrade = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
-lib.frame     = lib.frame     or CreateFrame('Frame')
+lib.frame     = lib.frame     or CreateFrame('Frame', "LIB_SmoothStatusBar")
 lib.smoothing = lib.smoothing or {}
 
 -------------------------------------------------------------------------------
@@ -61,7 +61,8 @@ local function AnimationTick()
 	local limit = 30/GetFramerate()
 	for bar, value in pairs(lib.smoothing) do
 		local cur = bar:GetValue()
-		local new = cur + min((value-cur)/3, max(value-cur, limit))
+		--local new = cur + min((value-cur)/3, max(value-cur, limit))
+		local new = cur + min((value-cur)/3, max((value-cur)/(bar.AnimSlowdownFactor or 1), limit))
 		if new ~= new then
 			-- Mad hax to prevent QNAN.
 			new = value
@@ -96,16 +97,24 @@ if upgrade then
 end
 
 function lib:SmoothBar(bar)
-	if not bar.SetValue_ then
-		bar.SetValue_ = bar.SetValue;
-		bar.SetValue = SmoothSetValue;
-	end
+	--if not bar.SetValue_ then
+	--	bar.SetValue_ = bar.SetValue;
+	--	bar.SetValue = SmoothSetValue;
+--
+		bar.SetSmoothFactor = self.SetSmoothFactor;
+--	end
 end
 
 function lib:ResetBar(bar)
-	if bar.SetValue_ then
-		bar.SetValue = bar.SetValue_;
-		bar.SetValue_ = nil;
-		self.smoothing[bar] = nil; -- Fix for rapid change of settings (enable/disable)
-	end
+	--if bar.SetValue_ then
+	--	bar.SetValue = bar.SetValue_;
+	--	bar.SetValue_ = nil;
+	--	bar.SetSmoothFactor = nil;
+	--	
+	--	self.smoothing[bar] = nil; -- Fix for rapid change of settings (enable/disable)
+	--end
+end
+
+function lib:SetSmoothFactor(factor)
+	self.AnimSlowdownFactor = factor
 end

@@ -1,12 +1,17 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO,L,UF,AUR = E:LoadModules("Config", "Locale", "Unitframes", "Auras")
+local CO, UF, AUR, B, FI, BA = E:LoadModules("Config", "Unitframes", "Auras", "Blizzard", "Filters", "Bar_Auras")
 
 local _
-AUR.E = CreateFrame("Frame")
+AUR.E = CreateFrame("Frame", "CUI_PlayerAurasEventHandler")
 
 ------------------------------------
 local format		= string.format
 local GetTime		= GetTime
+local UnitAura				= C_TooltipInfo.GetUnitAura
+local GetAuraDataByIndex 	= C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+local UnpackAuraData 		= AuraUtil and AuraUtil.UnpackAuraData
+local GetAuraDuration 		= C_UnitAuras.GetAuraDuration
+local GetAuraApplicationDisplayCount = C_UnitAuras.GetAuraApplicationDisplayCount
 ------------------------------------
 
 
@@ -23,23 +28,25 @@ local Masque = E.Libs.Masque
 local MasqueGroup_Buffs = Masque and Masque:Group("CUI", format("%s %s", L["player"],  L["Buffs"]))
 local MasqueGroup_Debuffs = Masque and Masque:Group("CUI", format("%s %s", L["player"],  L["Debuffs"]))
 
-function AUR:LoadProfile()
+function AUR:LoadConfig()
 	
 	self.db = CO.db.profile.unitframe
+	if not CO.db.char.unitframe.enable then return end
 	
-	local Profile
+	local Config
+	if not self.Headers then return end
 	for k, header in pairs(self.Headers) do
-		if header:GetName() == "CUIPlayerBuffs" then Profile = self.db.buffs else Profile = self.db.debuffs end
+		if header:GetName() == "CUIPlayerBuffs" then Config = self.db.buffs else Config = self.db.debuffs end
 		
-		header.SortMethod = Profile.sortMethod
-		header.SortDirection = Profile.sortDirection
-		header.MaxWraps = Profile.maxWraps
-		header.MaxPerRow = Profile.maxPerRow
-		header.GrowthDirectionX = Profile.growthDirectionX
-		header.GrowthDirectionY = Profile.growthDirectionY
-		header.Size = Profile.size
-		header.GapX = Profile.gapX
-		header.GapY = Profile.gapY
+		header.SortMethod 		= Config.sortMethod
+		header.SortDirection 	= Config.sortDirection
+		header.MaxWraps 		= Config.maxWraps
+		header.MaxPerRow 		= Config.maxPerRow
+		header.GrowthDirectionX = Config.growthDirectionX
+		header.GrowthDirectionY = Config.growthDirectionY
+		header.Size 			= Config.size
+		header.GapX 			= Config.gapX
+		header.GapY 			= Config.gapY
 		
 		header.Point = ""
 		
@@ -59,7 +66,7 @@ function AUR:LoadProfile()
 			header.Point = header.Point .. "LEFT"
 		end
 		
-		header.useClassColor = Profile.borderUseClassColor or false
+		header.useClassColor = Config.borderUseClassColor or false
 		
 		header.Width = ((header.Size + header.GapX) * header.MaxPerRow)
 		header.Height = ((header.Size + header.GapY) * header.MaxWraps)
@@ -85,63 +92,230 @@ function AUR:ColorizeAll()
 	end
 end
 
-local function AuraAttributeChanged(button, attribute, index)
-	if attribute == "target-slot" then E:debugprint(attribute) end
+
+local QualityColors = {}
+do
+	for i=0,7 do
+		QualityColors[i] = {GetItemQualityColor(i)}
+		QualityColors[i][4] = 1 -- index 4 is a hex color from GetItemQualityColor, but we need an alpha value for our skin button
+	end
+end
+
+local function SetTooltip(button)
+	if button:GetAttribute('index') then
+		GameTooltip:SetUnitAura(button.header:GetAttribute('unit'), button:GetID(), button.filter)
+	elseif button:GetAttribute('target-slot') then
+		GameTooltip:SetInventoryItem('player', button:GetID())
+	end
+end
+
+local TimeLeftFormatter = CreateFromMixins(SecondsFormatterMixin);
+--TimeLeftFormatter:Init(0, SecondsFormatter.Abbreviation.Truncate, true);
+
+TimeLeftFormatter:Init(
+	SECONDS_PER_HOUR, 
+	SecondsFormatter.Abbreviation.None,
+	SecondsFormatterConstants.DontRoundUpLastUnit, 
+	SecondsFormatterConstants.DontConvertToLower)
+
+local function Button_OnUpdate(self, elapsed)
+	self.elapsed = self.elapsed - elapsed;
+
+	if ( self.elapsed <= 0 ) then
+		--------------------------------------------------------------
+		-- OnUpdate Code BEGIN
+		
+		if self.RunOnUpdate then
+			--if not self.HasTempEnchant then
+			--	self.timeLeftBase = E:makePositive(E:Round(GetTime() - self.AuraExpirationTime, 2))
+			--	
+			--else
+			--	self.timeLeftBase = self.AuraExpirationTime
+			--end
+			
+			--if self.timeLeftBase > 10 then self.timeLeft = E:FormatTime(self.timeLeftBase, 0); else self.timeLeft = E:FormatTime(self.timeLeftBase, 1); end
+			
+			
+			
+			--self.time:SetText(E:FormatTime(self.time.DurationObject:GetRemainingDuration(), 1))
+			
+			--print(issecretvalue(self.time.DurationObject:GetRemainingDuration(), false, false, 1))
+			--self.time:SetText(SecondsToTime(self.time.DurationObject:GetRemainingDuration(), false, false, 1))
+			--print(self.time.DurationObject:GetRemainingDuration(), SecondsToTimeAbbrev(self.time.DurationObject:GetRemainingDuration()))
+			--self.time:SetText(SecondsToTimeAbbrev(self.time.DurationObject:GetRemainingDuration()))
+			
+			--self.time:SetText(TimeLeftFormatter:Format(self.time.DurationObject:GetRemainingDuration()))
+		end
+		
+		if GameTooltip:IsOwned(self) then
+			SetTooltip(self)
+		end
+		
+
+		-- OnUpdate Code END
+		--------------------------------------------------------------
+		self.elapsed = 0.07;
+	end
+end
+
+function AUR:UpdateEnchant(self, index)
+	local InfoOffset = (strmatch(self:GetName(), '2$') and 6) or 2
+	local duration, remaining = 600, 0
+	local expiration = select(InfoOffset, GetWeaponEnchantInfo())
+	local charges = select(InfoOffset+1, GetWeaponEnchantInfo())
+	
+	self.HasTempEnchant = true
+	if not self.header then
+		self.header = self:GetParent()
+	end
+	
+	if charges and charges > 1 then
+		self.count:SetText(charges)
+	else
+		self.count:SetText('')
+	end
+	
+	self.Tex:SetTexture(GetInventoryItemTexture('player', index))
+	
+	if expiration then
+		
+		local quality = GetInventoryItemQuality('player', index)
+		local color
+		if quality and quality > 1 then
+			color = QualityColors[quality]
+			
+			E:ColorizeAuraButton(self, nil, nil, nil, nil, nil, nil, color)
+		else
+			E:ColorizeAuraButton(self, nil, nil, nil, nil, nil, self.header.useClassColor)
+		end
+		
+		remaining = expiration / 1000
+		if remaining <= 3600 and remaining > 1800 then
+			duration = 3600
+		elseif remaining <= 1800 and remaining > 600 then
+			duration = 1800
+		end
+		
+		self.AuraExpirationTime, self.AuraDuration = remaining, duration
+		
+		if duration <= 0.05 then
+			self.time:SetText('')
+			
+			self.RunOnUpdate = false
+			self.Cooldown:Hide()
+		else
+			self.RunOnUpdate = true
+			self.Cooldown:Show()
+			
+			self.Cooldown:SetCooldown((((expiration * 0.001) + GetTime())) - self.AuraDuration, self.AuraDuration)
+		end
+	else
+		self.time:SetText('')
+		self.RunOnUpdate = false
+		self.Cooldown:Hide()
+	end
+end
+
+local function UpdateAura(self, index)
+	-- Refresh those values all the time, since it seems to cause problems when we don't
+	if not self.header then
+		self.header = self:GetParent()
+	end
+	
+	self.HasTempEnchant = nil
+	
+	self.index = index
+	self.filter = self.header:GetAttribute("filter")
+	
+	local Data = GetAuraDataByIndex("player", index, self.filter)
+	--self.AuraName, self.AuraTexture, self.AuraCount, self.AuraDType, self.AuraDuration, self.AuraExpirationTime, self.AuraSpellID = 
+	--local Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.sourceUnit, Data.isStealable, Data.nameplateShowPersonal, Data.spellId, Data.canApplyAura, Data.isBossAura, Data.isFromPlayerOrPlayerPet, Data.nameplateShowAll, Data.timeMod
+	
+	self.AuraName, self.AuraTexture, self.AuraCount, self.AuraDType, self.AuraDuration, self.AuraExpirationTime, self.AuraSpellID = Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.spellId
+	
+	if self.AuraName then
+		if self.filter == "HARMFUL" then
+			if self.AuraDType then
+				self.debuffColor = DebuffTypeColor[self.AuraDType]
+			else
+				self.debuffColor = DebuffTypeColor["none"]
+			end
+			
+			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, nil, self.debuffColor)
+		else
+			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, self.header.useClassColor)
+			--Module:ColorizeAura(Slot, DType, Unit, UnitAuraClass, AuraName, SpellID)
+			--E:SkinButtonIcon(self.texture, E:ParseDBColor(self.header.useClassColor))
+		end
+		
+		
+		self.count:SetText(GetAuraApplicationDisplayCount("player", Data.auraInstanceID, 2, 99))
+		--if self.AuraCount and self.AuraCount > 1 then
+			--self.count:SetText(self.AuraCount)
+		--else
+			--self.count:SetText(E.STR.EMPTY)
+		--end
+		
+		self.Tex:SetTexture(self.AuraTexture)
+		
+		local Duration = GetAuraDuration("player", Data.auraInstanceID)
+		if Duration then
+			self.RunOnUpdate = true
+			self.Cooldown:SetCooldownFromDurationObject(Duration, true)
+			self.time.DurationObject = Duration
+			self.time:Show()
+		else
+			self.time:SetText(E.STR.EMPTY)
+			self.time:Hide()
+			
+			self.RunOnUpdate = false
+			self.Cooldown:Clear()
+		end
+	else
+		self.RunOnUpdate = false
+		self.Cooldown:Hide()
+	end
+end
+
+local function AuraAttributeChanged(self, attribute, index)
 	if attribute == "index" then
+		--if IsShiftKeyDown() then errno() end
+		if not self.throttleUpdate then
 		
-		-- Refresh those values all the time, since it seems to cause problems when we don't
-		if not button.header then
-			button.header = button:GetParent()
-		end
+			UpdateAura(self, index)
+			self.throttleUpdate = true
+		elseif self.header.spells[self] ~= index then
 		
-		button.index = index
-		button.unit = button.header:GetAttribute("unit")
-		button.filter = button.header:GetAttribute("filter")
-		button.AuraName, button.AuraTexture, button.AuraCount, button.AuraDType, button.AuraDuration, button.AuraExpirationTime, _, _, _, button.AuraSpellID = UnitAura(button.unit, index, button.filter)
-		if button.AuraName then
-			if button.filter == "HARMFUL" then
-				if button.AuraDType then
-					button.debuffColor = DebuffTypeColor[button.AuraDType]
-				else
-					button.debuffColor = DebuffTypeColor["none"]
-				end
-				
-				E:ColorizeAuraButton(button, button.AuraDType, button.unit, button.filter, button.AuraName, button.AuraSpellID, nil, button.debuffColor)
-			else
-				E:ColorizeAuraButton(button, button.AuraDType, button.unit, button.filter, button.AuraName, button.AuraSpellID, button.header.useClassColor)
-				--Module:ColorizeAura(Slot, DType, Unit, UnitAuraClass, AuraName, SpellID)
-				--E:SkinButtonIcon(button.texture, E:ParseDBColor(button.header.useClassColor))
-			end
-			
-			if button.AuraCount and button.AuraCount > 1 then
-				button.count:SetText(button.AuraCount)
-			else
-				button.count:SetText(E.STR.EMPTY)
-			end
-			
-			button.Tex:SetTexture(button.AuraTexture)
-			
-			if button.AuraDuration <= 0 then
-				button.time:SetText(E.STR.EMPTY)
-				
-				button:SetScript("OnUpdate", nil)
-				button.Cooldown:Hide()
-			else
-				button:SetScript("OnUpdate", AUR.Button_OnUpdate)
-				button.Cooldown:Show()
-				
-				button.Cooldown:SetCooldown(button.AuraExpirationTime - button.AuraDuration, button.AuraDuration)
-			end
+			self.header.spells[self] = index
 		end
+	elseif attribute == "target-slot" then
+		AUR:UpdateEnchant(self, index)
+		return
 	end
 end
 
 local function AuraButton_OnEnter(self)
-	self.IsHovered = true
+	GameTooltip:SetOwner(self, 'ANCHOR_BOTTOMLEFT', -5, -5)
+	self.elapsed = -1
 end
 local function AuraButton_OnLeave(self)
-	self.IsHovered = nil
 	GameTooltip:Hide()
+end
+local function AuraButton_OnShow(self)
+	if self.enchantIndex then
+		self.header.enchants[self.enchantIndex] = self
+		self.header.elapsedEnchants = 1 -- let the enchant update next frame
+	end
+end
+local function AuraButton_OnHide(self)
+	if self.enchantIndex then
+		self.header.enchants[self.enchantIndex] = nil
+	else
+		self.throttleUpdate = false
+	end
+end
+local function HandleClick(self, button)
+	FI:AddSpellIDToUnitAurabarsFilter(self.AuraSpellID, "player", self.AuraDuration)
 end
 
 function AUR:SetupCooldown(Button)
@@ -162,6 +336,7 @@ function AUR:CreateIcon(button)
 	-- 		Make the method more dynamic and allow aura bars to be created through it.
 	--		Maybe a simple bool?
 	
+	
 	button.Tex = button:CreateTexture(nil, "BORDER")
 	button.Tex:SetTexCoord(0,1,0,1)
 	--E:SkinButtonIcon(button.texture, E:GetUnitClassColor("player"))	
@@ -174,7 +349,7 @@ function AUR:CreateIcon(button)
 	button.FontHolder = CreateFrame("Frame", nil, button)
 	button.FontHolder:SetAllPoints(button.Cooldown)
 	
-	button.Cooldown:SetHideCountdownNumbers(true)
+	button.Cooldown:SetHideCountdownNumbers(false)
 
 	button.count = button.FontHolder:CreateFontString(nil, "ARTWORK")
 	E:InitializeFontFrame(button.count, "ARTWORK", CreateIconFont, 14, {1,1,1}, 1, {0,0}, "", 0, 0, button.FontHolder, "CENTER", {1,1})
@@ -186,26 +361,39 @@ function AUR:CreateIcon(button)
 	button.time:SetParent(button.FontHolder)
 	
 	if button:GetParent():GetAttribute("filter") == "HARMFUL" then
-		E:RegisterPathFont(button.count, "CO.db.profile.unitframe.debuffs.count")
-		E:RegisterPathFont(button.time, "CO.db.profile.unitframe.debuffs.time")
+		E:RegisterAutoFont(button.count, "CO.db.profile.unitframe.debuffs.count")
+		E:RegisterAutoFont(button.time, "CO.db.profile.unitframe.debuffs.time")
 		
-		E:UpdatePathFont("CO.db.profile.unitframe.debuffs.count")
-		E:UpdatePathFont("CO.db.profile.unitframe.debuffs.time")
+		E:UpdateAutoFont("CO.db.profile.unitframe.debuffs.count")
+		E:UpdateAutoFont("CO.db.profile.unitframe.debuffs.time")
 	else
-		E:RegisterPathFont(button.count, "CO.db.profile.unitframe.buffs.count")
-		E:RegisterPathFont(button.time, "CO.db.profile.unitframe.buffs.time")
+		E:RegisterAutoFont(button.count, "CO.db.profile.unitframe.buffs.count")
+		E:RegisterAutoFont(button.time, "CO.db.profile.unitframe.buffs.time")
 		
-		E:UpdatePathFont("CO.db.profile.unitframe.buffs.count")
-		E:UpdatePathFont("CO.db.profile.unitframe.buffs.time")
+		E:UpdateAutoFont("CO.db.profile.unitframe.buffs.count")
+		E:UpdateAutoFont("CO.db.profile.unitframe.buffs.time")
 	end
 		
-	button.rangeTimer = 0
-	button:HookScript("OnEnter", AuraButton_OnEnter)
-	button:HookScript("OnLeave", AuraButton_OnLeave)
-
+	button.elapsed = 0
+	button.header = button:GetParent()
+	button.throttleUpdate = false
+	button.enchantIndex = tonumber(strmatch(button:GetName(), 'TempEnchant(%d)$'))
+	if button.enchantIndex then
+		button.header['enchant'..button.enchantIndex] = button
+		button.header.enchantButtons[button.enchantIndex] = button
+	else
+		button.instant = true -- let update on attribute change
+	end
 	-- This Script gets called every time a aura changed/was added or removed.
 	-- We can use this to update the whole thing and its children.
 	button:SetScript("OnAttributeChanged", AuraAttributeChanged)
+	button:SetScript("OnUpdate", Button_OnUpdate)
+	button:SetScript("OnEnter", AuraButton_OnEnter)
+	button:SetScript("OnLeave", AuraButton_OnLeave)
+	button:SetScript("OnShow", AuraButton_OnShow)
+	button:SetScript("OnHide", AuraButton_OnHide)
+	--button:HookScript("OnClick", AuraButton_OnClick)
+	button.InvokeClick = HandleClick
 	
 	if not MasqueGroup_Buffs or not MasqueGroup_Debuffs then return end
 	
@@ -231,49 +419,70 @@ function AUR:CreateIcon(button)
 		AutoCast = nil,
 	}
 	
+	-- Let's disable this for now, since it seems to cause taint
+	--if true then return end
+	
 	local Target
-	if CO.db.profile.unitframe.buffs.useMasque and button:GetParent():GetAttribute("filter") == "HELPFUL" then
+	if CO.db.char.unitframe.buffs.useMasque and button:GetParent():GetAttribute("filter") == "HELPFUL" then
 		Target = MasqueGroup_Buffs
-	elseif CO.db.profile.unitframe.debuffs.useMasque and button:GetParent():GetAttribute("filter") == "HARMFUL" then
+	elseif CO.db.char.unitframe.debuffs.useMasque and button:GetParent():GetAttribute("filter") == "HARMFUL" then
 		Target = MasqueGroup_Debuffs
 	end
 	if Target then
 		Target:AddButton(button, ButtonData)
-		Target:ReSkin()
+		-- Don't ReSkin here, as it will: Impact performance, due to rapid creation of buttons and cause flickering, since the whole group is being iterated
+		--Target:ReSkin()
 		
+		-- Not needed anymore, but let's keep this
 		if button.__MSQ_BaseFrame then
 			button.__MSQ_BaseFrame:SetFrameLevel(2) --Lower the framelevel to fix issue with buttons created during combat
 		end
 	end
 end
 
-function AUR:Button_OnUpdate(elapsed)
-	self.rangeTimer = self.rangeTimer - elapsed;
-
-	if ( self.rangeTimer <= 0 ) then
-		--------------------------------------------------------------
-		-- OnUpdate Code BEGIN
-		
-		--if self.AuraDuration ~= 0 and self.AuraExpirationTime ~= nil then
-			self.timeLeftBase = E:makePositive(E:Round(GetTime() - self.AuraExpirationTime, 2))
-			
-			if self.timeLeftBase > 10 then self.timeLeft = E:FormatTime(self.timeLeftBase, 0); else self.timeLeft = E:FormatTime(self.timeLeftBase, 1); end
-			self.time:SetText(self.timeLeft)
-		--end
-		
-		if self.IsHovered then
-			if not GameTooltip:IsOwned(self) then
-				GameTooltip:SetOwner(self)
+local function AuraHeader_OnEvent(self, event)
+	if event == 'WEAPON_ENCHANT_CHANGED' then
+		local header = self.frame
+		for enchantIndex, button in next, header.enchantButtons do
+			if header.enchants[enchantIndex] ~= button then
+				header.enchants[enchantIndex] = button
+				header.elapsedEnchants = 0 -- reset the timer so we can wait for the data to be ready
 			end
-			GameTooltip:SetUnitAura(self.unit, self.index, self.filter)
-			
-			GameTooltip:Show()
 		end
-		
+	end
+end
 
-		-- OnUpdate Code END
-		--------------------------------------------------------------
-		self.rangeTimer = 0.07;
+local function AuraHeader_OnUpdate(self, elapsed)
+	local header = self.frame
+	if header.elapsedSpells and header.elapsedSpells > 0.1 then
+		local button, value = next(header.spells)
+		while button do
+			UpdateAura(button, value)
+
+			header.spells[button] = nil
+			button, value = next(header.spells)
+		end
+
+		header.elapsedSpells = 0
+	else
+		header.elapsedSpells = (header.elapsedSpells or 0) + elapsed
+	end
+
+	if header.elapsedEnchants and header.elapsedEnchants > 0.5 then
+		local index, enchant = next(header.enchants)
+		if index then
+			local _, main, _, _, _, offhand, _, _, _, ranged = GetWeaponEnchantInfo()
+			while enchant do
+				--AUR:UpdateEnchant(enchant, enchant:GetID())
+
+				header.enchants[index] = nil
+				index, enchant = next(header.enchants)
+			end
+		end
+
+		header.elapsedEnchants = 0
+	else
+		header.elapsedEnchants = (header.elapsedEnchants or 0) + elapsed
 	end
 end
 
@@ -287,7 +496,7 @@ function AUR:UpdateHeader(header)
 	-- That said, a frame with the "SecureAuraHeaderTemplate" simply needs to be created. Followed by the SetAttribute("template") or SetAttribute("weaponTemplate")
 	-- Maybe XML proves to be not that bad.	
 	
-	header:SetAttribute("consolidateTo", 0)
+	--header:SetAttribute("consolidateTo", 0)
 	header:SetAttribute('weaponTemplate', ("CUIAuraTemplate%d"):format(header.Size))
 	
 	header:SetAttribute("separateOwn", 0)
@@ -308,6 +517,7 @@ function AUR:UpdateHeader(header)
 
 	header:SetAttribute("template", ("CUIAuraTemplate%d"):format(header.Size))
 	
+	
 	-- Post-fix of values we have to update manually
 	local index = 1
 	for k, child in pairs({ header:GetChildren() }) do
@@ -322,9 +532,9 @@ function AUR:UpdateHeader(header)
 	end
 	
 	-- To actually apply the size
-	if MasqueGroup_Buffs and CO.db.profile.unitframe.buffs.useMasque then
+	if MasqueGroup_Buffs and CO.db.char.unitframe.buffs.useMasque then
 		MasqueGroup_Buffs:ReSkin()
-	elseif MasqueGroup_Debuffs and CO.db.profile.unitframe.debuffs.useMasque then
+	elseif MasqueGroup_Debuffs and CO.db.char.unitframe.debuffs.useMasque then
 		MasqueGroup_Debuffs:ReSkin()
 	end
 	
@@ -337,21 +547,35 @@ local function CreatePlayerAuraHeader(filter)
 	
 	local header = CreateFrame("Frame", name, E.Parent, "SecureAuraHeaderTemplate")
 	header:SetClampedToScreen(true)
+	header:UnregisterEvent('UNIT_AURA')
+	header:RegisterUnitEvent('UNIT_AURA', 'player', 'vehicle')
 	header:SetAttribute("unit", "player")
 	header:SetAttribute("filter", filter)
+	header.enchantButtons = {}
+	header.enchants = {}
+	header.spells = {}
 	
-	RegisterStateDriver(header, "visibility", "[petbattle] hide; show")
+	header.visibility = CreateFrame('Frame', "CUI_AurasVisibilityHandler", UIParent, 'SecureHandlerStateTemplate')
+	header.visibility:SetScript('OnUpdate', AuraHeader_OnUpdate) -- dont put this on the main frame
+	header.visibility:SetScript('OnEvent', AuraHeader_OnEvent) -- dont put this on the main frame
+	header.visibility.frame = header
+	header.auraType = auraType
+	header.filter = filter
+	header.name = name
+	
+	header.visibility:RegisterEvent('WEAPON_ENCHANT_CHANGED')
+	
+	-- This line causes a bug on the Blizz side of the statedriver code, DO NOT USE
+	-- The statedriver fires an update EVERY frame, since it gets caught in a loop *somehow*
+	--RegisterStateDriver(header, "visibility", "[petbattle] hide; show")
+	E:HandleFrameInPetBattles(header)
 	RegisterAttributeDriver(header, "unit", "[vehicleui] vehicle; player")
 
 	if filter == "HELPFUL" then
-		header:SetAttribute('consolidateDuration', nil)
+		header:SetAttribute('consolidateDuration', -1)
 		header:SetAttribute("includeWeapons", 1)
 	end
 	
-	header:SetAttribute("headerWidth", 300)
-	header:SetAttribute("headerHeight", 90)
-	
-	header:SetSize(300, 90)
 	header:Show()
 
 	return header
@@ -365,13 +589,15 @@ function AUR:InitializeAuras()
 	E:CreateMover(self.DebuffFrame, L["debuffs"], "BOTTOMRIGHT")
 	
 	self.Headers = {self.BuffFrame, self.DebuffFrame}
+	
+	B:RemovePlayerAuras()
 end
 
 function AUR:Init()	
 	self.db = CO.db.profile.unitframe.auras
 	
-	self:InitializeAuras()
-	self:LoadProfile()
+	--self:InitializeAuras()
+	--self:LoadConfig()
 end
 
 E:AddModule("Auras", AUR)

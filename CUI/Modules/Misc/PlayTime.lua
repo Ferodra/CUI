@@ -1,10 +1,15 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local L, CO, PT = E:LoadModules("Locale", "Config", "PlayTime")
-PT.Autoload = true
+local CO, Module = E:LoadModules("Config", "PlayTime")
+Module.Autoload = true
 -----------------------------------------------
 
-function PT:GetCharacterList()
-	self = PT
+local ipairs	= ipairs
+local pairs		= pairs
+local format	= string.format
+local tsort		= table.sort
+
+function Module:GetCharacterList()
+	self = Module
 	self.db = CO.db.global.timePlayed
 	local List = ""
 	
@@ -26,27 +31,27 @@ function PT:GetCharacterList()
               return a.time > b.time
         end
 	end
-	table.sort( chars, sort_func )
+	tsort( chars, sort_func )
 	
 	for k, v in ipairs(chars) do
 		self.characterColor  	= CO.db.profile.colors.classes[v.class]
 		self.characterColor.r, self.characterColor.g, self.characterColor.b = self.characterColor[1], self.characterColor[2], self.characterColor[3]
 		self.characterColorHex 	= E:RgbToHex({self.characterColor.r, self.characterColor.g, self.characterColor.b}, true)
 		
-		List = string.format("%s\n|c%s%s [%s]|r: %s", List, self.characterColorHex, v.name, v.level, E:FormatPlaytime(v.time) .. string.format(" [%d %s]", v.time / 3600, HOURS))
+		List = format("%s\n|c%s%s [%s]|r: %s", List, self.characterColorHex, v.name, v.level, E:FormatPlaytime(v.time) .. format(" [%d %s]", v.time / 3600, HOURS))
 	end
 	
 	return List
 end
 
-function PT:GetTotalPlaytime()
-	self = PT
+function Module:GetTotalPlaytime()
+	self = Module
 	self.db = CO.db.global.timePlayed
 	
-	return "\n" .. E:FormatPlaytime(self.db.total) .. string.format(" [%d %s]", self.db.total / 3600, HOURS)
+	return "\n" .. E:FormatPlaytime(self.db.total) .. format(" [%d %s]", self.db.total / 3600, HOURS)
 end
 
-function PT:GetAllCharacters()
+function Module:GetAllCharacters()
 	local Chars = {}
 	for k, v in pairs(CO.db.global.timePlayed.characters) do
 		Chars[k] = k
@@ -54,15 +59,15 @@ function PT:GetAllCharacters()
 	return Chars
 end
 
-function PT:RemoveCharacter(key)
+function Module:RemoveCharacter(key)
 	CO.db.global.timePlayed.characters[key] = nil
 	
-	local CD = E:GetModule("Config_Dialog")
+	local CD = E:LoadModule("Config_Dialog")
 	
 	if CD then
-		PT:UpdateTotal()
-		CD.Options.args.global.args.statisticsGroup.args.characterList.name = PT:GetCharacterList()
-		CD.Options.args.global.args.statisticsGroup.args.totalTime.name = PT:GetTotalPlaytime()
+		Module:UpdateTotal()
+		CD.Options.args.global.args.statisticsGroup.args.characterList.name = Module:GetCharacterList()
+		CD.Options.args.global.args.statisticsGroup.args.totalTime.name = Module:GetTotalPlaytime()
 	end
 	
 	if key then
@@ -76,8 +81,8 @@ local characterKey = UnitName("player") .. " - " .. realmKey
 local classKey = select(2, UnitClass("player"))
 local levelKey = UnitLevel("player")
 
-function PT:Update()
-	self = PT
+function Module:Update()
+	self = Module
 	self.db = CO.db.global.timePlayed
 	
 	-- Create new key if needed
@@ -90,7 +95,7 @@ function PT:Update()
 	-- Update total
 		self:UpdateTotal()
 		
-	local CD = E:GetModule("Config_Dialog")
+	local CD = E:LoadModule("Config_Dialog")
 	
 	if CD and CD.Options then
 		CD.Options.args.global.args.statisticsGroup.args.characterList.name = self:GetCharacterList()
@@ -106,14 +111,14 @@ function PT:Update()
 	end
 end
 
-function PT:UpdateTotal()
-	PT.db.total = 0
-	for k, v in pairs(PT.db.characters) do
-		PT.db.total = PT.db.total + v.time
+function Module:UpdateTotal()
+	Module.db.total = 0
+	for k, v in pairs(Module.db.characters) do
+		Module.db.total = Module.db.total + v.time
 	end
 end
 
-function PT:OnEvent(event, ...)
+function Module:OnEvent(event, ...)
 	if event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_LOGOUT" then
 		
 		self:PerformRequest()
@@ -123,7 +128,7 @@ function PT:OnEvent(event, ...)
 	end
 end
 
-function PT:SetEventHandler()
+function Module:SetEventHandler()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("PLAYER_LOGOUT")
 	self:RegisterEvent("TIME_PLAYED_MSG")
@@ -132,13 +137,13 @@ function PT:SetEventHandler()
 end
 
 -- Can be called externally
-function PT:PerformRequest()
-	PT.TimeRequesting = true
+function Module:PerformRequest()
+	Module.TimeRequesting = true
 		
 	RequestTimePlayed() -- Try to update on login or logout
 end
 
-function PT:HandleSystemMessage()
+function Module:HandleSystemMessage()
 	
 	-- We have to trick out the entire /played system here, since the CUI OnEvent request somehow returns 2 sets of playtime data
 	
@@ -146,7 +151,7 @@ function PT:HandleSystemMessage()
 	local o = ChatFrame_DisplayTimePlayed
 	ChatFrame_DisplayTimePlayed = function(...)
 		
-		if PT.TimeRequesting then
+		if Module.TimeRequesting then
 			return false
 		end
 		return o(...)
@@ -154,7 +159,7 @@ function PT:HandleSystemMessage()
 	
 	-- Add a custom slash command to do the thing for us
 	SlashCmdList['PLAYTIME_OVERRIDE'] = function(msg)
-		PT.TimeRequesting = false
+		Module.TimeRequesting = false
 		RequestTimePlayed()
 	end
 	
@@ -164,12 +169,12 @@ function PT:HandleSystemMessage()
 	-- ChatFrame_AddMessageEventFilter("TIME_PLAYED_MSG", Func)
 end
 
-function PT:Construct()
+function Module:Construct()
 	self:HandleSystemMessage()
 	self:SetEventHandler()
 end
 
-function PT:Init()
+function Module:Init()
 	self.db = CO.db.global.timePlayed
 	
 	if self.db.enable then
@@ -177,4 +182,4 @@ function PT:Init()
 	end
 end
 
-E:AddModule("PlayTime", PT)	
+E:AddModule("PlayTime", Module)	

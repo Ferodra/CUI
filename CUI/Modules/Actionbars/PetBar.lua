@@ -2,9 +2,10 @@ local E, L = unpack(select(2, ...)) -- Engine, Locale
 local AB = E:LoadModules("Actionbars")
 
 
-local _G 					=	_G
-local format 				=	string.format
-local NUM_PET_ACTION_SLOTS 	=	NUM_PET_ACTION_SLOTS
+local _G 					= _G
+local format 				= string.format
+local tinsert 				= table.insert
+local NUM_PET_ACTION_SLOTS 	= 10
 
 
 function AB:CreatePetActionBar()
@@ -18,15 +19,19 @@ function AB:CreatePetActionBar()
 	end)
 	
 	Bar.ProfileName = "petbar"
-	AB.ActionBars[BarName] = Bar
+	AB.ActionBars['petbar'] = Bar
+	Bar.buttons = {}
+	Bar.BlizzBar = true
+	Bar.ConfigKey = 'petbar'
 	
 	Bar:SetPoint("CENTER", E.Parent, "CENTER")
 	Bar:SetSize((32 + 3) * NUM_PET_ACTION_SLOTS, 32)
 	
 	Bar:SetScript("OnEnter", AB.BarMOver_OnEnter)
 	Bar:SetScript("OnLeave", AB.BarMOver_OnLeave)
-
 	Bar.CanBeFaded = true
+	
+	E:Remove(_G["PetActionBar"], true)
 	
 	for i=1, NUM_PET_ACTION_SLOTS do
 		Button = _G["PetActionButton" .. i]
@@ -35,7 +40,8 @@ function AB:CreatePetActionBar()
 		AB.ActionButtons["PetActionButton" .. i] = Button
 		-------------------------------------------
 
-		Button.isPetButton = true
+		Button.IsStanceButton = true
+		tinsert(Bar.buttons, Button)
 		
 		Button:SetSize(32, 32)
 		Button:ClearAllPoints()
@@ -46,8 +52,8 @@ function AB:CreatePetActionBar()
 		Button:HookScript("OnEnter", AB.BarMOverButton_OnEnter)
 		Button:HookScript("OnLeave", AB.BarMOverButton_OnLeave)
 
-		E:RegisterPathFont(Button.HotKey, "db.profile.actionbar.petbar.hotkey")
-		E:RegisterPathFont(Button.Count, "db.profile.actionbar.petbar.count")
+		E:RegisterAutoFont(Button.HotKey, "db.profile.actionbar.petbar.hotkey")
+		E:RegisterAutoFont(Button.Count, "db.profile.actionbar.petbar.count")
 		
 		--self:ActionButton_AddMasque(Button)
 		
@@ -56,5 +62,5 @@ function AB:CreatePetActionBar()
 	
 	E:SetVisibilityHandler(Bar)
 	
-	E:CreateMover(Bar, "Pet Actionbar")
+	E:CreateMover(Bar, "Pet Actionbar", nil, nil, nil, nil, "actionbars")
 end

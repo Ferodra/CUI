@@ -29,7 +29,8 @@ CO.Template_Font = {
 	["fontFlags"] = "",
 	["width"] = 0,
 	["horizontalAlign"] = "LEFT",
-	["fontColor"] = {1, 0.84, 0, 1},
+	["verticalAlign"] = "MIDDLE",
+	["fontColor"] = {['useClassColor'] = false, {1, 0.84, 0, 1}},
 }
 
 -- Key is simplified display Name on creation
@@ -59,6 +60,7 @@ CO.Template_UF = {
 			["fontFlags"] = "",
 			["width"] = 0,
 			["horizontalAlign"] = "LEFT",
+			["verticalAlign"] = "MIDDLE",
 			["fontColor"] = {1, 0.84, 0, 1},
 		},
 		["power"] = {
@@ -206,3 +208,12 @@ CO.Template_UF = {
 		["absorbTextureColor"] = {0, 0.5, 0.5, 1},
 	},
 }
+
+function CO:GetTemplate(type)
+	local Path = ('Template_%s'):format(type)
+	
+	if Path and CO[Path] then
+		local Config = E:TableDeepCopy(CO[Path])
+		return Config
+	end
+end

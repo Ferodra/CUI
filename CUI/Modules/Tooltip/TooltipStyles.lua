@@ -1,4 +1,4 @@
-local E, L = unpack(select(2, ...)) -- Engine, Locale
+local E = unpack(select(2, ...)) -- Engine, Locale
 local TT = E:LoadModules("Tooltip")
 
 --[[--------------------------------
@@ -21,7 +21,7 @@ TT.TooltipStyles = {
 		["BorderB"] 	= 0.4,
 		["BorderA"] 	= 1,
 		["OverrideBorder"] 	= true, -- If the border color should be changed
-		["BorderSize"] 	= 1, -- Can also be negative
+		["BorderSize"] 	= 2, -- Can also be negative
 		
 		["BackgroundR"] = 0.15,
 		["BackgroundG"] = 0.15,
@@ -32,7 +32,7 @@ TT.TooltipStyles = {
 		["BorderR"] 	= 0.9,
 		["BorderG"] 	= 0.9,
 		["BorderB"] 	= 0.9,
-		["BorderA"] 	= 1,
+		["BorderA"] 	= 2,
 		["OverrideBorder"] 	= true,
 		
 		["BackgroundR"] = 0.15,
@@ -46,7 +46,7 @@ TT.TooltipStyles = {
 		["BorderG"] 	= 1,
 		["BorderB"] 	= 1,
 		["BorderA"] 	= 0.35,
-		["BorderSize"] 	= 1,
+		["BorderSize"] 	= 2,
 		["OverrideBorder"] 	= true,
 		
 		["BackgroundR"] = 0.1,
@@ -59,7 +59,7 @@ TT.TooltipStyles = {
 		["BorderG"] 	= 1,
 		["BorderB"] 	= 1,
 		["BorderA"] 	= 1,
-		["BorderSize"] 	= 1,
+		["BorderSize"] 	= 2,
 		["OverrideBorder"] 	= true,
 		
 		["BackgroundR"] = nil,
@@ -72,7 +72,7 @@ TT.TooltipStyles = {
 		["BorderG"] 	= 1,
 		["BorderB"] 	= 1,
 		["BorderA"] 	= 1,
-		["BorderSize"] 	= 1,
+		["BorderSize"] 	= 2,
 		["OverrideBorder"] 	= true,
 		
 		["BackgroundR"] = nil,
@@ -87,4 +87,20 @@ TT.CurrentTooltipStyle = {
 	["Item"] 	= {},
 	["Spell"] 	= {},
 	["Unit"] 	= {},
+}
+
+TT.StyleOnlyTooltips = {
+	ItemRefTooltip,
+	ItemRefShoppingTooltip1,
+	ItemRefShoppingTooltip2,
+	AutoCompleteBox,
+	FriendsTooltip,
+	NamePlateTooltip,
+	ShoppingTooltip1,
+	ShoppingTooltip2,
+	--WorldMapTooltip,
+	StoryTooltip,
+	EmbeddedItemTooltip,
+	QuestScrollFrame.WarCampaignTooltip,
+	HealBot_ScanTooltip
 }

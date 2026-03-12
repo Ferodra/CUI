@@ -9,6 +9,12 @@ local _
 local pairs			= pairs
 local tinsert		= table.insert
 local Module = {}
+Module.ExcludeUnits = {'pet', 'boss'}
+
+local Textures = {
+	['leader'] = [[Interface\GroupFrame\UI-Group-LeaderIcon]],
+	['assist'] = [[Interface\GroupFrame\UI-Group-AssistantIcon]]
+}
 
 -----------------------------------------
 
@@ -16,23 +22,21 @@ local EventHandler = CreateFrame("Frame")
 local Events = {"PARTY_LEADER_CHANGED", "GROUP_ROSTER_UPDATE"}
 
 local function UpdateElement(self)
-	if self.Disabled then return end
-		self.Unit = self:GetParent().Unit
-		if unit and self.Unit ~= unit then return end
+	if self.Disabled or not UnitExists(self.Owner.unit) then return end
 	
 	local isAssist, isLeader
-	isLeader = (UnitInParty(self.Unit) or UnitInRaid(self.Unit)) and UnitIsGroupLeader(self.Unit)
+	isLeader = (UnitInParty(self.Owner.unit) or UnitInRaid(self.Owner.unit)) and UnitIsGroupLeader(self.Owner.unit)
 
 	if isLeader then
-		self.T:SetTexture([[Interface\GroupFrame\UI-Group-LeaderIcon]])
+		self.T:SetTexture(Textures['leader'])
 		self:Show()
 		
 		return
 	else
-		isAssist = UnitInRaid(self.Unit) and UnitIsGroupAssistant(self.Unit) and not UnitIsGroupLeader(self.Unit)
+		isAssist = UnitInRaid(self.Owner.unit) and UnitIsGroupAssistant(self.Owner.unit) and not UnitIsGroupLeader(self.Owner.unit)
 
 		if isAssist then
-			self.T:SetTexture([[Interface\GroupFrame\UI-Group-AssistantIcon]])
+			self.T:SetTexture(Textures['assist'])
 			self:Show()
 			
 			return
@@ -58,11 +62,11 @@ end
 ----------
 
 -- Gets called automatically when the unitframes first are initialized and on config update
-function Module:LoadProfile()
+function Module:LoadConfig()
 	local Config
 	
 	for _, self in pairs(EventHandler.Handles) do
-		Config = CO.db.profile.unitframe.units[self.ProfileUnit]
+		Config = CO.db.profile.unitframe.units[self.ConfigKey]
 		
 		if Config.leaderIcon then
 			if not Config.leaderIcon.enable then self.LeaderIcon:Hide(); self.LeaderIcon.T:SetTexture(nil) self.LeaderIcon.Disabled = true; else
@@ -78,9 +82,14 @@ function Module:LoadProfile()
 end
 
 function Module:Create(F)
-	F.LeaderIcon = E:CreateTextureFrame(nil, F, 20, 20, "ARTWORK")
+	local Element = E:CreateTextureFrame(nil, F, 20, 20, "ARTWORK")
 	
-	F.LeaderIcon.ForceUpdate = UpdateElement
+	Element.Owner = F
+	Element.ForceUpdate = UpdateElement
+	
+	Element:Hide()
+	
+	F.LeaderIcon = Element
 	
 	tinsert(EventHandler.Handles, F)
 end

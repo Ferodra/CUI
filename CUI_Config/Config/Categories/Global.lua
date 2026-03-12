@@ -1,5 +1,5 @@
 local E, L = unpack(CUI) -- Engine
-local CO, CD, L = E:LoadModules("Config", "Config_Dialog", "Locale")
+local CO, CD = E:LoadModules("Config", "Config_Dialog")
 
 local NUMBER_FORMATS = {
 	["METRIC"] = "Metric (K, M, G, T)",
@@ -9,15 +9,15 @@ local NUMBER_FORMATS = {
 	["CHINESE"] = "Chinese (W, Y)",
 }
 
-local BackgroundClasses = {['PLAYER_CLASS'] = '<<Your Current Class>>'}
-FillLocalizedClassList(BackgroundClasses)
-
+local BackgroundClasses = E:TableDeepCopy(E.ClassNames)
+BackgroundClasses['PLAYER_CLASS'] = ('<<%s>> (%s)'):format(L["YourCurrentClass"], L["Automatic"])
 -- Colorize class selection
 do
-	local Hex, Color, RGB
+	local Hex, Color, RGB, SetColor
 	for k, v in pairs(BackgroundClasses) do
-		if CO.db.profile.colors.classes[k] then
-			Color = CO.db.profile.colors.classes[k]
+		SetColor = E:GetClassColorByClassName(k)
+		if SetColor then
+			Color = SetColor
 			RGB = {Color[1], Color[2], Color[3]}
 			
 			Hex = E:RgbToHex(RGB, true)
@@ -31,7 +31,7 @@ end
 
 CD.Options.args.global = {
 	type = "group",
-	name = L["Global"],
+	name = '|cff1784d1' .. L["Global"] .. '|r',
 	order = 1,
 	childGroups = "tab",
 	args = {
@@ -43,18 +43,46 @@ CD.Options.args.global = {
 				autoCheckVersion = {
 					type = "toggle",
 					order = 21,
-					name = "Check Version",
+					name = L["CheckVersion"],
 					desc = "When enabled, CUI will periodically check if a new version is available.\n\nNOTE: This is a global setting and is not being saved in your character profile!",
-					get = function() return CO.db.global.communication.autoCheckVersion end,
-					set = function(info, value) CO.db.global.communication.autoCheckVersion = value; E:GetModule("Communication"):UpdateVersionCheck(); end,
+					--get = function() return CO.db.global.communication.autoCheckVersion end,
+					get = function() return false end,
+					--set = function(info, value) CO.db.global.communication.autoCheckVersion = value; E:LoadModule("Communication"):UpdateVersionCheckTicker(); end,
+					set = function(info, value) print("Stop it D:") end,
+					disabled = true,
 				},
-				numberFormat = {
-					name = "Number Format",
-					type = "select",
+				cameraDesc = {
+						type = "description",
+						order = 21.5,
+						name = "The Version Checking feature currently is fully disabled, as it contains some critical issues that require thorough fixing",
+						fontSize = "small",
+					},
+				revertCVarsOnDisable = {
+					type = "toggle",
 					order = 22,
+					name = "Revert CVars on Shutdown",
+					desc = "This functionality will revert every altered (by CUI) CVar back to it's previous state (default). So, when you disable CUI, there should be no leftover CVars. When first enabling this, all CVars already should have their default state, otherwise this won't work as expected!",
+					get = function() return CO.db.global.revertCVarsOnDisable end,
+					set = function(info, value) CO.db.global.revertCVarsOnDisable = value end,
+					hidden = true,
+				},
+				newLine = {type="description", name="", order=25},
+				numberFormat = {
+					name = L["NumberFormat"],
+					type = "select",
+					order = 26,
 					values = NUMBER_FORMATS,
 					get = function(info) return CO.db.global.numberFormat end,
-					set = function(info, value) CO.db.global.numberFormat = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
+					set = function(info, value) CO.db.global.numberFormat = value; E:LoadModule('Core'):InitNumberSuffix(); E:UpdateAllTagFonts() end,
+				},
+				newLine2 = {type="description", name="", order=30},
+				enableItemDB = {
+					type = "toggle",
+					order = 31,
+					name = "Log Character Data",
+					desc = "This functionality saves every item and currency on every one of your characters so that you can see all item counts in corresponding tooltips",
+					get = function() return CO.db.global.itemDB.enable end,
+					set = function(info, value) CO.db.global.itemDB.enable = value; E:LoadModule('ItemDB'):LoadConfig() end,
 				},
 			},
 		},
@@ -64,81 +92,91 @@ CD.Options.args.global = {
 			name = "Armory",
 			order = 2,
 			args = {
-				customArmory = {
+				enabled = {
 					type = "toggle",
 					order = 9,
 					width = "full",
-					name = "Custom Armory",
-					desc = "When enabled, CUI will add various information next to each gear slot in the armory frame. This controls the inspect frame as well as your own character panel",
-					get = function() return CO.db.profile.customArmory end,
-					set = function(info, value) CO.db.profile.customArmory = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
+					name = L["Enable"],
+					desc = L["ArmoryEnableDesc"],
+					get = function() return CO.db.global.customArmory.enabled end,
+					set = function(info, value) CO.db.global.customArmory.enabled = value; E:LoadModule("Armory"):LoadConfig(); end,
 				},
-				customArmoryShowItemlevel = {
+				showItemlevel = {
 					type = "toggle",
 					order = 10,
-					name = L["Armory Itemlevel"],
-					desc = L["Armory Itemlevel Desc"],
-					get = function() return CO.db.profile.customArmoryShowItemlevel end,
-					set = function(info, value) CO.db.profile.customArmoryShowItemlevel = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
-					disabled = function() return not CO.db.profile.customArmory end,
+					name = L["ArmoryItemlevel"],
+					desc = L["ArmoryItemlevelDesc"],
+					get = function() return CO.db.global.customArmory.showItemlevel end,
+					set = function(info, value) CO.db.global.customArmory.showItemlevel = value; E:LoadModule("Armory"):LoadConfig(); end,
+					disabled = function() return not CO.db.global.customArmory.enabled end,
 				},
-				customArmoryShowEnchants = {
+				showEnchants = {
 					type = "toggle",
 					order = 11,
-					name = "Show Enchant Info",
-					desc = "When enabled, you'll be informed about missing essential enchants on each piece of gear gear",
-					get = function() return CO.db.profile.customArmoryShowEnchants end,
-					set = function(info, value) CO.db.profile.customArmoryShowEnchants = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
-					disabled = function() return not CO.db.profile.customArmory end,
+					name = L["ArmoryEnchant"],
+					desc = L["ArmoryEnchantDesc"],
+					get = function() return CO.db.global.customArmory.showEnchants end,
+					set = function(info, value) CO.db.global.customArmory.showEnchants = value; E:LoadModule("Armory"):LoadConfig(); end,
+					disabled = function() return not CO.db.global.customArmory.enabled end,
 				},
-				customArmoryShowGems = {
+				showGems = {
 					type = "toggle",
 					order = 12,
-					name = "Show Gem Info",
-					desc = "When enabled, Gem Slots will be shown next to the corresponding gear slots",
-					get = function() return CO.db.profile.customArmoryShowGems end,
-					set = function(info, value) CO.db.profile.customArmoryShowGems = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
-					disabled = function() return not CO.db.profile.customArmory end,
+					name = L["ArmoryGem"],
+					desc = L["ArmoryGemDesc"],
+					get = function() return CO.db.global.customArmory.showGems end,
+					set = function(info, value) CO.db.global.customArmory.showGems = value; E:LoadModule("Armory"):LoadConfig(); end,
+					disabled = function() return not CO.db.global.customArmory.enabled end,
 				},
 				newLine = {type="description", name="", order=15},
-				customArmoryBackground = {
+				overrideBackground = {
 					type = "toggle",
 					order = 16,
-					name = L["Armory Class BG"],
-					desc = L["Armory Class BG Desc"],
-					get = function() return CO.db.profile.customArmoryBackground end,
-					set = function(info, value) CO.db.profile.customArmoryBackground = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
-					disabled = function() return not CO.db.profile.customArmory end,
+					name = L["ArmoryOverrideBackground"],
+					desc = L["ArmoryOverrideBackgroundDesc"],
+					get = function() return CO.db.global.customArmory.overrideBackground end,
+					set = function(info, value) CO.db.global.customArmory.overrideBackground = value; E:LoadModule("Armory"):LoadConfig(); end,
+					disabled = function() return not CO.db.global.customArmory.enabled end,
 				},
-				customArmoryBackgroundTexture = {
-					type = "toggle",
-					order = 17,
-					name = "Use Custom Texture",
-					desc = "Lets you specify your own texture for your character panel (only!)",
-					get = function() return CO.db.profile.customArmoryBackgroundTexture end,
-					set = function(info, value) CO.db.profile.customArmoryBackgroundTexture = value; E:GetModule("Armory"):LoadProfile(); end,
-					disabled = function() return not CO.db.profile.customArmory or not CO.db.profile.customArmoryBackground end,
-				},
-				customArmoryBackgroundTexturePath = {
-					type = "input",
-					order = 18,
-					name = "Texture Path",
-					width = "double",
-					get = function() return CO.db.profile.customArmoryBackgroundTexturePath end,
-					set = function(info, value) CO.db.profile.customArmoryBackgroundTexturePath = value; E:GetModule("Armory"):LoadProfile(); end,
-					disabled = function() return not CO.db.profile.customArmory or not CO.db.profile.customArmoryBackground end,
-					hidden = function() return not CO.db.profile.customArmoryBackgroundTexture end,
-				},
-				customArmoryBackgroundUseClass = {
-					type = "select",
-					order = 18,
-					name = "Select Class Background",
-					desc = "Choose which class background you want to use in your own armory",
-					get = function() return CO.db.profile.customArmoryBackgroundUseClass end,
-					set = function(info, value) CO.db.profile.customArmoryBackgroundUseClass = value; E:GetModule("Armory"):LoadProfile() end,
-					values = BackgroundClasses,
-					disabled = function() return not CO.db.profile.customArmory or not CO.db.profile.customArmoryBackground end,
-					hidden = function() return CO.db.profile.customArmoryBackgroundTexture end,
+				backgroundGroup = {
+						type = "group",
+						name = "Background",
+						order = 20,
+						guiInline = true,
+						hidden = function() return not CO.db.global.customArmory.overrideBackground end,
+						args = {
+								useCustomBackground = {
+								type = "toggle",
+								order = 17,
+								name = L["CustomTexture"],
+								desc = L["CustomTextureDesc"],
+								get = function() return CO.db.global.customArmory.useCustomBackground end,
+								set = function(info, value) CO.db.global.customArmory.useCustomBackground = value; E:LoadModule("Armory"):LoadConfig(); end,
+								disabled = function() return not CO.db.global.customArmory.enabled or not CO.db.global.customArmory.overrideBackground end,
+							},
+							customBackgroundPath = {
+								type = "input",
+								order = 18,
+								name = L["TexturePath"],
+								width = "double",
+								get = function() return CO.db.global.customArmory.customBackgroundPath end,
+								set = function(info, value) CO.db.global.customArmory.customBackgroundPath = value; E:LoadModule("Armory"):LoadConfig(); end,
+								disabled = function() return not CO.db.global.customArmory.enabled or not CO.db.global.customArmory.overrideBackground end,
+								hidden = function() return not CO.db.global.customArmory.useCustomBackground end,
+							},
+							classBackground = {
+								type = "select",
+								order = 18,
+								width = 1.25,
+								name = L["ArmoryBackgroundOfClass"],
+								desc = L["ArmoryBackgroundOfClassDesc"],
+								get = function() return CO.db.global.customArmory.classBackground end,
+								set = function(info, value) CO.db.global.customArmory.classBackground = value; E:LoadModule("Armory"):LoadConfig() end,
+								values = BackgroundClasses,
+								disabled = function() return not CO.db.global.customArmory.enabled or not CO.db.global.customArmory.overrideBackground end,
+								hidden = function() return CO.db.global.customArmory.useCustomBackground end,
+							},
+						},
 				},
 			},
 		},
@@ -153,24 +191,24 @@ CD.Options.args.global = {
 					order = 11,
 					name = L["OverrideWorldNameFont"],
 					desc = L["WorldNameFontDesc"],
-					get = function() return CO.db.profile.global.overrideWorldNameFont end,
-					set = function(info, value) CO.db.profile.global.overrideWorldNameFont = value; CD:ShowNotification("RELOAD_NOTIFICATION"); end,
+					get = function() return CO.db.profile.media.overrideWorldNameFont end,
+					set = function(info, value) CO.db.profile.media.overrideWorldNameFont = value; CD:ShowNotification("RELOG_NOTIFICATION"); end,
 				},
-				overrideDamageFont = {
+				overrideWorldDamageFont = {
 					type = "toggle",
 					order = 12,
 					name = L["OverrideWorldDamageFont"],
 					desc = L["WorldDamageFontDesc"],
-					get = function() return CO.db.profile.global.overrideDamageFont end,
-					set = function(info, value) CO.db.profile.global.overrideDamageFont = value; CD:ShowNotification("RELOAD_NOTIFICATION"); end,
+					get = function() return CO.db.profile.media.overrideWorldDamageFont end,
+					set = function(info, value) CO.db.profile.media.overrideWorldDamageFont = value; CD:ShowNotification("RELOG_NOTIFICATION"); end,
 				},
-				overrideDefaultFont = {
+				overrideWorldDefaultFont = {
 					type = "toggle",
 					order = 13,
 					name = L["OverrideWorldDefaultFont"],
 					desc = L["WorldDefaultFontDesc"],
-					get = function() return CO.db.profile.global.overrideDefaultFont end,
-					set = function(info, value) CO.db.profile.global.overrideDefaultFont = value; CD:ShowNotification("RELOAD_NOTIFICATION"); end,
+					get = function() return CO.db.profile.media.overrideWorldDefaultFont end,
+					set = function(info, value) CO.db.profile.media.overrideWorldDefaultFont = value; CD:ShowNotification("RELOG_NOTIFICATION"); end,
 				},
 				newLine = {type="description", name="", order=14},
 				worldNameFont = {
@@ -180,9 +218,9 @@ CD.Options.args.global = {
 				  desc = L["WorldNameFontDesc"],
 				  order = 15,
 				  values = CO.AceGUIWidgetLSMlists["font"],
-				  get = function(info) return CO.db.profile.global.worldNameFont end,
-				  set = function(info, value) CO.db.profile.global.worldNameFont = value end,
-				  disabled = function() return not CO.db.profile.global.overrideWorldNameFont end,
+				  get = function(info) return CO.db.profile.media.worldNameFont end,
+				  set = function(info, value) CO.db.profile.media.worldNameFont = value; CD:ShowNotification("RELOG_NOTIFICATION"); end,
+				  disabled = function() return not CO.db.profile.media.overrideWorldNameFont end,
 				},
 				worldDamageFont = {
 				  name = L["WorldDamageFont"],
@@ -191,20 +229,20 @@ CD.Options.args.global = {
 				  desc = L["WorldDamageFontDesc"],
 				  order = 16,
 				  values = CO.AceGUIWidgetLSMlists["font"],
-				  get = function(info) return CO.db.profile.global.worldDamageFont end,
-				  set = function(info, value) CO.db.profile.global.worldDamageFont = value end,
-				  disabled = function() return not CO.db.profile.global.overrideDamageFont end,
+				  get = function(info) return CO.db.profile.media.worldDamageFont end,
+				  set = function(info, value) CO.db.profile.media.worldDamageFont = value; CD:ShowNotification("RELOG_NOTIFICATION"); end,
+				  disabled = function() return not CO.db.profile.media.overrideWorldDamageFont end,
 				},
 				worldDefaultFont = {
-				  name = L["WorldDefaultFont"],
-				  dialogControl = "LSM30_Font",
 				  type = "select",
-				  desc = L["WorldDefaultFontDesc"],
 				  order = 17,
+				  name = L["WorldDefaultFont"],
+				  desc = L["WorldDefaultFontDesc"],
+				  dialogControl = "LSM30_Font",
 				  values = CO.AceGUIWidgetLSMlists["font"],
-				  get = function(info) return CO.db.profile.global.worldDefaultFont end,
-				  set = function(info, value) CO.db.profile.global.worldDefaultFont = value end,
-				  disabled = function() return not CO.db.profile.global.overrideDefaultFont end,
+				  get = function(info) return CO.db.profile.media.worldDefaultFont end,
+				  set = function(info, value) CO.db.profile.media.worldDefaultFont = value; CD:ShowNotification("RELOG_NOTIFICATION"); end,
+				  disabled = function() return not CO.db.profile.media.overrideWorldDefaultFont end,
 				},
 				generalHeader = {
 					order = 20,
@@ -216,17 +254,17 @@ CD.Options.args.global = {
 					order = 21,
 					name = L["OverrideGlobalFont"],
 					desc = L["OverrideGlobalFontDesc"],
-					get = function() return CO.db.profile.global.overrideGeneralFont end,
-					set = function(info, value) CO.db.profile.global.overrideGeneralFont = value; CD:ShowNotification("RELOAD_NOTIFICATION"); end,
+					get = function() return CO.db.profile.media.overrideGeneralFont end,
+					set = function(info, value) CO.db.profile.media.overrideGeneralFont = value; CD:ShowNotification("RELOAD_NOTIFICATION"); end,
 				},
 				generalFontSize = {
 					name = L["FontHeight"],
 					type = "range",
 					order = 22,
 					min = 6, max = 90, step = 1,
-					get = function(info) return CO.db.profile.global.generalFontSize end,
-					set = function(info, value) CO.db.profile.global.generalFontSize = value; E:GetModule("ArtLib"):UpdateFonts() end,
-					disabled = function() return not CO.db.profile.global.overrideGeneralFont end,
+					get = function(info) return CO.db.profile.media.generalFontSize or 12 end,
+					set = function(info, value) CO.db.profile.media.generalFontSize = value; E:LoadModule("ArtLib"):UpdateFonts() end,
+					disabled = function() return not CO.db.profile.media.overrideGeneralFont end,
 				},
 				generalFont = {
 					name = "General Font",
@@ -235,61 +273,9 @@ CD.Options.args.global = {
 					desc = L["OverrideGlobalFontDesc"],
 					order = 23,
 					values = CO.AceGUIWidgetLSMlists["font"],
-					get = function(info) return CO.db.profile.global.generalFont end,
-					set = function(info, value) CO.db.profile.global.generalFont = value; E:GetModule("ArtLib"):UpdateFonts() end,
-					disabled = function() return not CO.db.profile.global.overrideGeneralFont end,
-				},
-			},
-		},
-		
-		statisticsGroup = {
-			type = "group",
-			name = L["Statistics"],
-			order = -1,
-			args = {
-				enable = {
-					type = "toggle",
-					name = L["EnableLogging"],
-					order = 0,
-					get = function(info) return CO.db.global.timePlayed.enable end,
-					set = function(info, value) CO.db.global.timePlayed.enable = value; CD:ShowNotification("RELOAD_NOTIFICATION") end,
-				},
-				deleteCharacter = {
-					type = "select",
-					name = L["RemoveCharacter"],
-					order = 1,
-					values = E:GetModule("PlayTime"):GetAllCharacters(),
-					get = function(info) return true end,
-					set = function(info, value) E:GetModule("PlayTime"):RemoveCharacter(value) end,
-				},
-				update = {
-					type = "execute",
-					name = "Update",
-					order = 2,
-					func = function() E:GetModule("PlayTime"):PerformRequest(); CD.Options.args.global.args.statisticsGroup.args.update.name = ". . ." end,
-					disabled = function() return not CO.db.global.timePlayed.enable or CD.Options.args.global.args.statisticsGroup.args.update.name == ". . ." end,
-				},
-				totalPlaytimeHeader = {
-					type = "header",
-					name = L["YourPlaytime"],
-					order = 10,
-				},
-				totalTime = {
-					type = "description",
-					name = E:GetModule("PlayTime"):GetTotalPlaytime(),
-					fontSize = "large",
-					order = 15,
-				},
-				playtimeHeader = {
-					type = "header",
-					name = L["CharacterPlaytime"],
-					order = 20,
-				},
-				characterList = {
-					type = "description",
-					name = E:GetModule("PlayTime"):GetCharacterList(),
-					fontSize = "medium",
-					order = 25,
+					get = function(info) return CO.db.profile.media.generalFont end,
+					set = function(info, value) CO.db.profile.media.generalFont = value; E:LoadModule("ArtLib"):UpdateFonts() end,
+					disabled = function() return not CO.db.profile.media.overrideGeneralFont end,
 				},
 			},
 		},

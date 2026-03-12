@@ -1,5 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local L, CO, COMM = E:LoadModules("Locale", "Config", "Communication")
+local CO, COMM = E:LoadModules("Config", "Communication")
 COMM.Autoload = true
 
 --[[--
@@ -14,62 +14,49 @@ local SendAddonMessage 				= C_ChatInfo.SendAddonMessage
 local RegisterAddonMessagePrefix 	= C_ChatInfo.RegisterAddonMessagePrefix
 
 local Prefix = "CUI"
-local Handler = CreateFrame("Frame")
+local Handler = CreateFrame("Frame", "CUI_AddonCommFrame")
 
-local CachedUpgradeVersion = 0
+local MessageSentBase = 'Message sent to Channel: "%s" - Content: "%s"'
 
+-- Table of functions we expose to the message handler
+-- This is to prevent cases where people could mess with our COMM system
+local Public = {
+	['VERSIONCHECK'] = true,
+}
 
 --[[----------------
 	Core
 ----------------]]--
 	
-	local function CompareVersion(Compare)
-		
-		local Revision, Version, VersionDate = unpack(E:FullSplit(Compare, "?"))
-		
-		Revision = tonumber(Revision)
-		
-		if Revision and Revision > E.Revision and Revision > CachedUpgradeVersion then
-			if type(VersionDate) == "number" then
-				VersionDate = E:FormatDate(VersionDate)
-			end
-			E:print((L["NewVersion"]):format(Version, VersionDate, Revision))
-			
-			CachedUpgradeVersion = Revision
-		end
-	end
-	
-	local function AnswerRequest(Type, Channel)
-		if Type == "VERSIONCHECK" then
-			COMM:SendMessage(("VERSIONCHECK---%s?%s?%s"):format(E.Revision, E.Version, E.VersionDate), Channel)
-		end
-	end
-	
 	local function HandleMessage(_, _, Pref, Message, Channel, Sender)
 		-- Make sure the message is from a CUI user that is not the player himself
-		if Pref == Prefix and Sender ~= COMM.PlayerName then
-			E:debugprint("CUI Message from", Sender, ": ", Message)
-			local Type, Args = unpack(E:FullSplit(Message, "---"))
-			
-			-- We have to be overly protective here, since literally ANYTHING could have been sent
-			
-			if Type == "VERSIONCHECK" then
-				if Args then
-					CompareVersion(Args)
-				else -- Is a request
-					AnswerRequest(Type, Channel)
+		if Pref == Prefix then
+			if Sender ~= COMM.PlayerName then
+				--if not Message:find("---", nil, true) then return end
+				E:debugprint("CUI Message from", Sender, ": ", Message)
+				local Type, Args = unpack(E:FullSplit(Message, "---"))
+				
+				-- We have to be overly protective here, since literally ANYTHING could have been sent
+				
+				-- Modular Comm Handler, so we don't have to put everything in this method
+				-- Method should look like this: COMM:MESSAGETYPE(Args, Channel, Sender)
+				-- Also filters malformed args
+				if Type and Public[Type] and COMM[Type] and ((Args and not Args:find("??", nil, true)) or (not Args and Message)) then
+					COMM[Type](Args or Message, Channel, Sender)
 				end
+			else
+				E:debugprint((MessageSentBase):format(Channel, Message))
 			end
 		end
 	end
 	
-	function COMM:SendMessage(message, channel)
-		SendAddonMessage(Prefix, message, channel)
+	function COMM:SendMessage(Message, Channel)
+		SendAddonMessage(Prefix, Message, Channel)
 	end
 	
 	function COMM:GetGroupChannelType()
 		if IsInGroup() or IsInRaid() then
-			if IsActiveBattlefieldArena() then
+			if UnitInBattleground("player") or IsActiveBattlefieldArena() then
 				return "BATTLEGROUND"
 			else
 				if IsPartyLFG() then
@@ -86,14 +73,16 @@ local CachedUpgradeVersion = 0
 	--
 	
 	do
-		RegisterAddonMessagePrefix(Prefix)
-		Handler:RegisterEvent("CHAT_MSG_ADDON")
-		Handler:SetScript("OnEvent", HandleMessage)
+		-- RegisterAddonMessagePrefix(Prefix)
+		-- Handler:RegisterEvent("CHAT_MSG_ADDON")
+		-- Handler:SetScript("OnEvent", HandleMessage)
 	end
 
 --[[----------------
 	Version Check
 ----------------]]--
+	
+	local CachedUpgradeVersion = 0
 	
 	-- Checks every minute for potential upgrades
 	local function VersionCheck_OnUpdate(self, elapsed)
@@ -106,13 +95,13 @@ local CachedUpgradeVersion = 0
 		end
 	end
 	
-	local CheckVersion = CreateFrame("Frame")
+	local CheckVersion = CreateFrame("Frame", "CUI_VersionCheckFrame")
 	CheckVersion:RegisterEvent("PLAYER_ENTERING_WORLD")
-	CheckVersion:RegisterEvent("GROUP_ROSTER_UPDATE")
-	CheckVersion:RegisterEvent("UPDATE_INSTANCE_INFO")
+	--CheckVersion:RegisterEvent("GROUP_ROSTER_UPDATE")
+	--CheckVersion:RegisterEvent("UPDATE_INSTANCE_INFO")
 	CheckVersion.Enabled = false
 	
-	function COMM:UpdateVersionCheck()
+	function COMM:UpdateVersionCheckTicker()
 		if CO.db.global.communication.autoCheckVersion then
 			if not CheckVersion.Enabled then
 				CheckVersion.Enabled = true
@@ -140,16 +129,47 @@ local CachedUpgradeVersion = 0
 		end
 		
 		local Channel = COMM:GetGroupChannelType()
-		COMM:SendMessage("VERSIONCHECK", Channel)
+		if Channel then
+			COMM:SendMessage("VERSIONCHECK", Channel)
+		end
+	end
+	
+	local function VERSIONCHECK_COMPARE(Args)
+		local Revision, Version, VersionDate = unpack(E:FullSplit(Args, "?"))
+		
+		Revision = tonumber(Revision)
+		
+		if Revision and Revision > E.Revision and Revision > CachedUpgradeVersion then
+			if type(VersionDate) == "number" then
+				VersionDate = E:FormatDate(VersionDate)
+			end
+			E:print((L["NewVersion"]):format(Version, VersionDate, Revision))
+			
+			CachedUpgradeVersion = Revision
+		end
+	end
+	
+	local function VERSIONCHECK_ANSWER(Channel)
+		COMM:SendMessage(("VERSIONCHECK---%s?%s?%s"):format(E.Revision, E.Version, E.VersionDate), Channel)
+	end
+	
+	function COMM:VERSIONCHECK(Args, Channel, Sender)
+		if Args then
+			VERSIONCHECK_COMPARE(Args)
+		else -- Is a request
+			VERSIONCHECK_ANSWER(Channel)
+		end
 	end
 
 
 function COMM:Init()
 	
-	self.PlayerName = UnitFullName("player")
+	local Name, Realm = UnitFullName("player")
+	self.PlayerName = ('%s-%s'):format(Name, Realm)
 	
 	-- Auto update state
-	self:UpdateVersionCheck()
+	--self:UpdateVersionCheckTicker()
 end
 
-E:AddModule("Communication", COMM)
+-- Disabled for now - doesn't work properly
+--E:AddModule("Communication", COMM)

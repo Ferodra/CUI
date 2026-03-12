@@ -21,7 +21,6 @@ function E:GetRandomTableKey(t)
 	 keys[i] = k
 	 i = i+1
 	end
-	-- then
 
 	local m
 	m = math.random(1,#keys)
@@ -29,16 +28,8 @@ function E:GetRandomTableKey(t)
 end
 
 function E:GetRandomTableEntry(t)
-	local keys, i = {}, 1
-	for k,_ in pairs(t) do
-	 keys[i] = k
-	 i = i+1
-	end
-	-- then
-
-	local m
-	m = math.random(1,#keys)
-	return t[ keys[m] ]
+	local Key = self:GetRandomTableKey(t)
+	return t[Key]
 end
 
 function E:tableContainsKey(tbl, item)
@@ -58,11 +49,11 @@ function E:GetTableLength(t)
     return c
 end
 
-function E:GetTablePath(Path, Source)
+function E:GetTableByPath(Path, Source)
 	local Separator = "."
     local Parts = {};
     local i = 1;
-    for PathPart in string.gmatch(Path, "([^"..Separator.."]+)") do
+    for PathPart in Path:gmatch("([^"..Separator.."]+)") do
         Parts[i] = PathPart;
         i = i + 1;
     end
@@ -75,7 +66,7 @@ function E:GetTablePath(Path, Source)
     return Target
 end
 
-function E:tableContainsValue(tbl, item, itemType)
+function E:TableContainsValue(tbl, item, itemType)
     for key, value in pairs(tbl) do
 		if itemType then
 			if value == item and type(item) == itemType then return key end
@@ -86,7 +77,7 @@ function E:tableContainsValue(tbl, item, itemType)
     return false
 end
 
-function E:tableContainsValueAtN(tbl, item, position)
+function E:TableContainsValueAtN(tbl, item, position)
     for key, value in pairs(tbl) do
         if value[position] == item then return key end
     end
@@ -143,7 +134,7 @@ function E:RgbToHex(rgb, SmallValue)
 			value = floor(value / 16)
 			hex = sub('0123456789ABCDEF', index, index) .. hex			
 		end
-
+		
 		if(len(hex) == 0)then
 			hex = '00'
 
@@ -171,6 +162,15 @@ end
 function E:Split(str)
 	t = {}
 	for word in str:gmatch("%w+") do tinsert(t, word) end
+	
+	return t
+end
+
+function E:SplitAt(str, delimiter)
+	delimiter = delimiter or '%s' -- Default to spaces
+	
+	local t = {}
+	for word in str:gmatch('([^'..delimiter..']+)') do tinsert(t, '['..word) end
 	
 	return t
 end
@@ -281,8 +281,17 @@ function E:stringToLower(str)
 	return lower(str)
 end
 
-function E:StringReplace(str, searchStrStr, replaceStr)
-	return string.gsub(str, searchStrStr, replaceStr)
+function E:StringReplace(str, searchStr, replaceStr)
+	if not searchStr or not replaceStr then return end
+	print(searchStr, type(searchStr), replaceStr, type(replaceStr), issecretvalue(replaceStr))
+	
+	if not issecretvalue(replaceStr) then
+		return string.gsub(str, searchStr, replaceStr)
+	else
+		--/dump C_StringUtil.WrapString("b", "a", "c")
+		local Buffer = string.gsub(str, searchStr, '%%s')
+		return string.format(Buffer, replaceStr)
+	end
 end
 
 function E:getHighestFrameLevelChild(parentFrame)
@@ -322,69 +331,195 @@ function E:GetBiggestChildrenInfo(parentFrame)
 	return biggestChild, lastX, lastY
 end
 
+-- Micro optimizations
+local NUMBERFORMAT_BASE 			= '%s%s'
+local NUMBERFORMAT_LOWNUMBER_BASE	= "%.0f"
+
+local Suffix_Met_T, Suffix_Met_G, Suffix_Met_M, Suffix_Met_K = ' T', ' G', ' M', ' K'
 function E:FormatNumber_Metric(placeValue, num)
 	if num >= 1e12 then
-        return placeValue:format(num / 1e12) .. " T" -- trillion
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e12), Suffix_Met_T)
     elseif num >= 1e9 then
-        return placeValue:format(num / 1e9) .. " G" -- billion
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e9), Suffix_Met_G)
     elseif num >= 1e6 then
-        return placeValue:format(num / 1e6) .. " M" -- million
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e6), Suffix_Met_M)
     elseif num >= 1e3 then
-        return placeValue:format(num / 1e3) .. " K" -- thousand
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e3), Suffix_Met_K)
     end
 	
-	return format("%.0f", num)
+	return NUMBERFORMAT_LOWNUMBER_BASE:format(num)
 end
 
+local Suffix_Ger_Bio, Suffix_Ger_Mrd, Suffix_Ger_Mio, Suffix_Ger_Tsd = ' Bio', ' Mrd', ' Mio', ' Tsd'
 function E:FormatNumber_German(placeValue, num)
 	if num >= 1e12 then
-        return placeValue:format(num / 1e12) .. " Bio" -- trillion
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e12), Suffix_Ger_Bio)
     elseif num >= 1e9 then
-        return placeValue:format(num / 1e9) .. " Mrd" -- billion
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e9), Suffix_Ger_Mrd)
     elseif num >= 1e6 then
-        return placeValue:format(num / 1e6) .. " Mio" -- million
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e6), Suffix_Ger_Mio)
     elseif num >= 1e3 then
-        return placeValue:format(num / 1e3) .. " Tsd" -- thousand
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e3), Suffix_Ger_Tsd)
     end
 	
-	return format("%.0f", num)
+	return NUMBERFORMAT_LOWNUMBER_BASE:format(num)
 end
 
+local Suffix_Kor_8, Suffix_Kor_4, Suffix_Kor_3 = '억', '만', '천'
 function E:FormatNumber_Korean(placeValue, num)
 	if num >= 1e8 then
-		return placeValue:format(num / 1e8) .."억"
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e8), Suffix_Kor_8)
 	elseif num >= 1e4 then
-		return placeValue:format(num / 1e4) .."만"
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e4), Suffix_Kor_4)
 	elseif num >= 1e3 then
-		return placeValue:format(num / 1e3) .."천"
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e3), Suffix_Kor_3)
 	end
 	
-	return format("%.0f", num)
+	return NUMBERFORMAT_LOWNUMBER_BASE:format(num)
 end
 
+local Suffix_Eng_T, Suffix_Eng_B, Suffix_Eng_M, Suffix_Eng_K = ' T', ' B', ' M', ' K'
 function E:FormatNumber_English(placeValue, num)
 	if num >= 1e12 then
-        return placeValue:format(num / 1e12) .. " T" -- trillion
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e12), Suffix_Eng_T)
     elseif num >= 1e9 then
-        return placeValue:format(num / 1e9) .. " B" -- billion
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e9), Suffix_Eng_B)
     elseif num >= 1e6 then
-        return placeValue:format(num / 1e6) .. " M" -- million
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e6), Suffix_Eng_M)
     elseif num >= 1e3 then
-        return placeValue:format(num / 1e3) .. " K" -- thousand
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e3), Suffix_Eng_K)
     end
 	
-	return format("%.0f", num)
+	return NUMBERFORMAT_LOWNUMBER_BASE:format(num)
 end
 
+local Suffix_Chi_8, Suffix_Chi_4 = 'Y', 'W'
 function E:FormatNumber_Chinese(placeValue, num)
 	if num >= 1e8 then
-		return placeValue:format(num / 1e8) .."Y"
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e8), Suffix_Chi_8)
 	elseif num >= 1e4 then
-		return placeValue:format(num / 1e4) .."W"
+		return format(NUMBERFORMAT_BASE, placeValue:format(num / 1e4), Suffix_Chi_4)
 	end
 	
-	return format("%.0f", num)
+	return NUMBERFORMAT_LOWNUMBER_BASE:format(num)
 end
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------
+
+
+E.Abbreviate = {}
+E.ShortPrefixValues = {}
+E.ShortPrefixStyles = {
+	CHINESE = {{1e12,'兆'}, {1e8,'亿'}, {1e4,'万'}},
+	TCHINESE = {{1e12,'兆'}, {1e8,'億'}, {1e4,'萬'}},
+	KOREAN = {{1e12,'조'}, {1e8,'억'}, {1e4,'만'}},
+	ENGLISH = {{1e12,'T'}, {1e9,'B'}, {1e6,'M'}, {1e3,'K'}},
+	GERMAN = {{1e12,'Bio'}, {1e9,'Mrd'}, {1e6,'Mio'}, {1e3,'Tsd'}},
+	METRIC = {{1e12,'T'}, {1e9,'G'}, {1e6,'M'}, {1e3,'k'}}
+}
+
+E.GetFormattedTextStyles = {
+	CURRENT = '%s',
+	CURRENT_MAX = '%s - %s',
+	CURRENT_PERCENT = '%s - %.1f%%',
+	CURRENT_MAX_PERCENT = '%s - %s | %.1f%%',
+	PERCENT = '%.1f%%',
+	DEFICIT = '-%s',
+}
+
+
+	local asianUnits = {
+		CHINESE = E.ShortPrefixStyles.CHINESE,
+		TCHINESE = E.ShortPrefixStyles.TCHINESE,
+		KOREAN = E.ShortPrefixStyles.KOREAN,
+	}
+
+	local westernUnits = {
+		ENGLISH = E.ShortPrefixStyles.ENGLISH,
+		GERMAN = E.ShortPrefixStyles.GERMAN,
+		METRIC = E.ShortPrefixStyles.METRIC
+	}
+
+	local westernDivisors = {
+		[0] = {1e12, 1e9, 1e6, 1e3},
+		{1e11, 1e8, 1e5, 1e2},
+		{1e10, 1e7, 1e4, 1e1},
+		{1e9, 1e6, 1e3, 1e0},
+	}
+
+	local asianDivisors = {
+		1e11, 1e7, 1e3
+	}
+
+	local short = { breakpoints = {} }
+	local long = { long = true }
+
+	E.Abbreviate.short = short
+	E.Abbreviate.long = long
+
+	local function BuildAbbreviateConfigs()
+
+		local style = 'METRIC'
+		local asian = asianUnits[style]
+		local units = asian or westernUnits[style or 'ENGLISH']
+
+		long.isAsian = asian
+		short.isAsian = asian
+
+		local decimal = 1
+		if decimal > 3 then decimal = 3 end
+
+		local signi = (asian and asianDivisors) or westernDivisors[decimal]
+		local factor = (asian and 10) or (10 ^ decimal)
+
+		for i = 1, (asian and 3) or 4 do
+			local unit = units[i]
+
+			short.breakpoints[i] = {
+				breakpoint = unit[1],
+				abbreviation = unit[2],
+				significandDivisor = signi[i],
+				fractionDivisor = factor,
+				abbreviationIsGlobal = false
+			}
+		end
+
+		if CreateAbbreviateConfig then
+			short.config = CreateAbbreviateConfig(short.breakpoints)
+
+			wipe(short.breakpoints)
+		end
+    end
+
+BuildAbbreviateConfigs()
+
+
+
+
+
+----------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
 
 function E:readableNumber(num, places)
     local ret, placeValue
@@ -393,7 +528,8 @@ function E:readableNumber(num, places)
     if not num then
         return 0
 	else
-		ret = E:NumberFormatFunc(placeValue, num)
+		--ret = E:NumberFormatFunc(placeValue, num)
+		ret = AbbreviateNumbers(num, short)
 	end
     
 	-- To correctly format to target delimiter
@@ -402,14 +538,44 @@ function E:readableNumber(num, places)
 	end
 end
 
-function E:FormatMoney(copper, texture)
+function E:FormatMoney(copper, breakupNumbers)
 	--return (("%dg %ds %dc"):format(copper / 100 / 100, (copper / 100) % 100, copper % 100))
-	return texture and GetCoinTextureString(copper) or GetCoinText(copper)
+	-- BreakUpLargeNumbers
+	return GetMoneyString(copper, breakupNumbers)
+end
+
+local timeYears, timeMonths, timeDays, timeHours, timeMinutes = 3600*24*356, 3600*24*31, 3600*24, 3600, 60
+
+function E:GetFormattedCooldownTime(time, places)
+	if time > 0 then
+		if time > timeMinutes then
+			if time > 300 then
+				if time > timeHours then
+					if time > timeDays then
+						time = format('%sd', E:GetFloat(time / timeDays, places))
+					else
+						time = format('%sh', E:GetFloat(time / timeHours, places))
+					end
+				else
+					time = format('%sm', E:GetFloat(time / timeMinutes, places))
+				end
+			else
+				time = format('%d:%02d', time / timeMinutes, time % timeMinutes)
+				places = 0
+			end
+		else
+			time = E:GetFloat(time, places)
+		end
+	else
+		time = ''
+		places = 0
+	end
+	
+	return time, places
 end
 
 -- Optimization through pre-calculating the timings
 local TimeStr
-local timeYears, timeMonths, timeDays, timeHours, timeMinutes = 3600*24*356, 3600*24*31, 3600*24, 3600, 60
 function E:FormatTime(s, places)
 	if not places then places = 0 end
 	
@@ -431,7 +597,11 @@ function E:FormatTime(s, places)
 		end
 	end
 	
-	return TimeStr
+	return TimeStr, places
+end
+
+function E:FormatTimeSimple(seconds)
+	return date('%H:%M:%S', seconds)
 end
 
 function E:FormatDate(timeStr)
@@ -459,15 +629,15 @@ function E:RoundToNearest(num)
 	return tonumber(string.format("%.0f", num))
 end
 
-local function Remove(o)
-	if o.UnregisterAllEvents then
-		o:UnregisterAllEvents()
+local function Remove(self)
+	if self.UnregisterAllEvents then
+		self:UnregisterAllEvents()
 	else
-		o.Show = o.Hide
+		self.Show = self.Hide
 	end
 
-	o:SetScript("OnShow", function(self) self:Hide() end)
-	o:Hide()
+	self:SetScript("OnShow", function(self) self:Hide() end)
+	self:Hide()
 end
 
 -- We use this to basically copy the separate default tables into the massive combined one.
@@ -498,19 +668,19 @@ function E:TableMove(t, old, new)
     t[new] = value
 end
 
-function E:TableMerge(t1, t2)
-    for k,v in pairs(t2) do
+function E:TableMerge(target, source)
+    for k,v in pairs(source) do
         if type(v) == "table" then
-            if type(t1[k] or false) == "table" then
-                E:TableMerge(t1[k] or {}, t2[k] or {})
+            if type(target[k] or false) == "table" then
+                E:TableMerge(target[k] or {}, source[k] or {})
             else
-                t1[k] = v
+                target[k] = v
             end
         else
-            t1[k] = v
+            target[k] = v
         end
     end
-    return t1
+    return target
 end
 
 -- Provides an easy way to retrieve color information from a table
@@ -519,7 +689,7 @@ function E:GetRGB(Data)
 end
 
 function E:GetFloat(Number, Decimals)
-	return format(('%%.%df'):format(Decimals), Number)
+	return format(('%%.%df'):format(Decimals), Number), Decimals
 end
 
 local LinkInfo = {}
@@ -529,6 +699,32 @@ function E:GetItemLinkInfo(l)
 		GetItemInfo(l)
 	
 	return LinkInfo
+end
+
+function E:GetAllSpecInfo()
+	if not E.SpecInfo then
+		
+		E.SpecInfo = {}
+		local SpecID, SpecName, IconID
+		
+		for i=1, GetNumClasses() do
+			if not E.SpecInfo[i] then
+				E.SpecInfo[i] = {}
+			end
+			
+			for a=1, GetNumSpecializationsForClassID(i) do
+				E.SpecInfo[i][a] = {}
+				
+				SpecID, SpecName, _, IconID = GetSpecializationInfoForClassID(i, a)
+				
+				E.SpecInfo[i][a].SpecID 	= SpecID
+				E.SpecInfo[i][a].SpecName 	= SpecName
+				E.SpecInfo[i][a].IconID		= IconID
+			end
+		end
+	end
+	
+	return E.SpecInfo
 end
 
 

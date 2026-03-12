@@ -1,0 +1,4 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="CharacterGroup.lua"/>
+	<Script File="ItemButton.lua"/>
+</Ui>

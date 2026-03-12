@@ -1,51 +1,69 @@
 local E, L = unpack(CUI) -- Engine
-local CO, CD, L = E:LoadModules("Config", "Config_Dialog", "Locale")
+local CO, CD = E:LoadModules("Config", "Config_Dialog")
 
 CD.Options.args = {
-		CUIVersion = {
-			order = 0,
-			type = "description",
-			name = ("|cff1784d1Version: %s [Revision %s] - Updated: %s|r"):format(E.Version, E.Revision, E:FormatDate(E.VersionDate)),
-			width = "full"
-		},
+		--CUIVersion = {
+		--	order = 0,
+		--	type = "description",
+		--	name = ("|cff1784d1Version: %s [Revision %s] - Updated: %s|r"):format(E.Version, E.Revision, E:FormatDate(E.VersionDate)),
+		--	width = "full"
+		--},
 		CUIHeader = {
 			order = 1,
 			type = "header",
-			name = "",
+			name = ("|cff1784d1Version: %s [Revision %s] - Updated: %s|r"):format(E.Version, E.Revision, E:FormatDate(E.VersionDate)),
 			width = "full",
 		},
 		LUAErrors = {
 			order = 2,
 			type = 'toggle',
+			width = 'half',
 			name = L["Lua-Errors"],
 			desc = L["Lua-ErrorsDesc"],
 			get = function(info) return CO.db.profile.LUAErrors or false end,
 			set = function(info, value) CO.db.profile.LUAErrors = value end,
 		},
-		KeybindSetup = {
+		ConfigType = {
 			order = 3,
+			type = 'select',
+			name = L["ConfigType"],
+			desc = L["ConfigTypeDesc"],
+			values = function()
+				if not CD.GetConfigTypeList then
+					return {}
+				else
+					return CD:GetConfigTypeList()
+				end
+			end,
+			get = function(info) return CD.CurrentConfigType end,
+			set = function(info, value) CO.db.global.configType = value; CD:SetConfigType() end,
+		},
+		KeybindSetup = {
+			order = 4,
 			type = 'execute',
+			width = 0.7,
 			name = L["SetKeybinds"],
 			desc = L["SetKeybindsDesc"],
 			func = function() CD.KB:Toggle(); CD:CloseOptions(); GameTooltip:Hide() end,
 		},
 		Install = {
-			order = 4,
+			order = 5,
 			type = 'execute',
+			width = 0.7,
 			name = L["Install"] .. " [TBD]",
 			desc = L["InstallDesc"],
 			func = function() E:print("This will trigger the installation!") end,
 			disabled = true,
 		},
 		ToggleAnchors = {
-			order = 5,
+			order = 6,
 			type = "execute",
 			name = L["Toggle Anchors"],
 			desc = L["Toggle AnchorsDesc"],
-			func = function() CD:CloseOptions(); E:ToggleMover(true); CD:ShowNotification("HANDLE_MOVE_NOTIFICATION"); CD:ToggleMoveGrid(true); GameTooltip:Hide() end,
+			func = function() CD:EnableEditmode(false) end,
 		},
 		ResetAllMovers = {
-			order = 6,
+			order = 7,
 			type = "execute",
 			name = L["Reset Anchors"],
 			desc = L["Reset AnchorsDesc"],

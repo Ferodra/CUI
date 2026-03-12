@@ -1,6 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO,L,UF,BA,TT = E:LoadModules("Config", "Locale", "Unitframes", "Bar_Auras", "Tooltip")
-local UAUR = UF.Modules["Auras"]
+local CO, UF, BA, TT, FI = E:LoadModules("Config", "Unitframes", "Bar_Auras", "Tooltip", "Filters")
 
 --[[-------------------------------------------------------------------------
 
@@ -18,11 +17,12 @@ local CreateFrame 				= CreateFrame
 local DebuffTypeColor 			= DebuffTypeColor
 local UnitExists 				= UnitExists
 local UnitCanAttack 			= UnitCanAttack
-local UnitAura 					= UnitAura
+local UnitAura					= C_TooltipInfo.GetUnitAura
+local GetAuraDataByIndex 		= C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+local UnpackAuraData 			= AuraUtil and AuraUtil.UnpackAuraData
 -----------------------------------------------------------------------------
 
-BA.E = CreateFrame("Frame")
-BA.Bars = {}
+BA.Containers = {}
 BA.Auras = {}
 
 
@@ -33,12 +33,14 @@ local MasqueGroup = Masque and Masque:Group("CUI", L["Aura Bars"])
 
 BA.BAR_NUM = BAR_NUM
 
-local function SortByExpiration(a,b)
+local function SortBars(a,b)
 	if a and b then
-		if a[6] < b[6] then
+		if a[8] > b[8] then
 			return true
-		elseif a[6] > b[6] then
+		elseif a[8] < b[8] then
 			return false
+		else
+			return a[6] < b[6]
 		end
 	end
 end
@@ -51,16 +53,19 @@ local function AuraButton_OnLeave(self)
 	GameTooltip:Hide()
 end
 
-function BA:LoadProfile()
-	for Unit, Header in pairs(self.Bars) do
+function BA:LoadConfig()
+	
+	self.db = CO.db.profile.auras
+	
+	for Unit, Header in pairs(self.Containers) do
 		local profileData = CO.db.profile.auras.units[Unit].aurabars
 		
 		Header.BarNum = profileData.barNum
 		if profileData.enable == false then
 			Header:Hide()
 		else
-			
 			Header.NumberFormat = profileData.cooldownIdentifier
+			Header.filterType	= profileData.filterType or -1
 			
 			E:RegisterNumberFormatDBPath("db.profile.auras.units." .. Unit .. ".aurabars.cooldownIdentifier")
 			E:CacheNumberFormat(Header.NumberFormat)
@@ -106,6 +111,7 @@ function BA:LoadProfile()
 			end
 			
 			BA:UpdateHeader(Header)
+			BA:UpdateAuraCache(Unit)
 			BA:UpdateAuras(Unit)
 			
 			Header:Show()
@@ -118,8 +124,8 @@ function BA:UpdateHeader(Header)
 	
 	for i=1, Header.BarNumMax do
 		if Header[i].Visible then
-			SizeX = Header[i]:GetWidth() + CO.db.profile.auras.units[Header.Unit].aurabars.iconSize
-			SizeY = SizeY + Header[i]:GetHeight() + CO.db.profile.auras.units[Header.Unit].aurabars.gapY
+			SizeX = Header[i]:GetWidth() + CO.db.profile.auras.units[Header.unit].aurabars.iconSize
+			SizeY = SizeY + Header[i]:GetHeight() + CO.db.profile.auras.units[Header.unit].aurabars.gapY
 		end
 	end
 	
@@ -128,11 +134,11 @@ function BA:UpdateHeader(Header)
 end
 
 function BA:ToggleBars(Unit)
-	if self.Bars[Unit].ForceShow then
-		self.Bars[Unit].ForceShow = nil
+	if self.Containers[Unit].ForceShow then
+		self.Containers[Unit].ForceShow = nil
 		self:UpdateAuras(Unit) -- Push update to show correct stuff again
 	else
-		self.Bars[Unit].ForceShow = true
+		self.Containers[Unit].ForceShow = true
 	end
 end
 ------------------------------------------------------------------------------------------------------------------------------
@@ -147,14 +153,26 @@ function BA:UpdateName(Object, Aura)
 end
 
 function BA:UpdateTime(Object, TimeLeft, Format)
-	E:WriteNumberFormat(Object, Format, TimeLeft)
+	if TimeLeft > 0 then
+		E:WriteNumberFormat(Object, Format, TimeLeft)
+		--Object:SetText(E:GetFloat(TimeLeft, 1))
+	else
+		Object:SetText("")
+	end
 end
 
 function BA:UpdateBarValues(Object, TimeLeft, Duration)
-	Object:SetValue(TimeLeft)
-	if Object.CurrentDuration ~= Duration then
-		Object:SetMinMaxValues(0, Duration)
-		Object.CurrentDuration = Duration
+	
+	if not (TimeLeft == 0 and Duration == 0) then
+		Object:SetValue(TimeLeft)
+		if Object.CurrentDuration ~= Duration then
+			Object:SetMinMaxValues(0, Duration)
+			Object.CurrentDuration = Duration
+		end
+	else
+		Object:SetValue(1)
+		Object:SetMinMaxValues(0, 1)
+		Object.CurrentDuration = 0
 	end
 end
 
@@ -178,7 +196,7 @@ end
 local TooltipUnit, TooltipRealIndex, TooltipParent
 function BA:BuildTooltip(self)
 	TooltipParent = self:GetParent()
-	TooltipUnit = TooltipParent:GetParent().Unit
+	TooltipUnit = TooltipParent:GetParent().unit
 	if not BA.Auras[TooltipUnit] or not BA.Auras[TooltipUnit][TooltipParent.Index] then return end
 	
 	-- We have to retrieve the real aura index, since we do remove and sort auras from the table
@@ -186,6 +204,7 @@ function BA:BuildTooltip(self)
 		-- Because of the way how we assign the tables, we can do a direct comparison
 		if v == BA.Auras[TooltipUnit][TooltipParent.Index] then
 			TooltipRealIndex = v.RealIndex
+			--print(TooltipRealIndex, v[1])
 		end
 	end	
 	
@@ -199,7 +218,7 @@ end
 
 local HideAllFrame
 function BA:HideAll(Unit)
-	HideAllFrame = self.Bars[Unit]
+	HideAllFrame = self.Containers[Unit]
 		for i=1, HideAllFrame.BarNumMax do
 			if not HideAllFrame[i].IsHidden then
 				HideAllFrame[i]:Hide()
@@ -223,59 +242,66 @@ function BA:Bar_OnUpdate(elapsed)
 		return
 	end
 
-	if not (BA.Auras[self.Unit] and BA.Auras[self.Unit][1]) and not self.AllHidden then BA:HideAll(self.Unit); return end
+	if not (BA.Auras[self.unit] and BA.Auras[self.unit][1]) and not self.AllHidden then BA:HideAll(self.unit); return end
 
 	-- Execute post-sort when needed
 	if not self.UpdateInProgress and self.QueueAuraSort then
-		tsort(BA.Auras[self.Unit], SortByExpiration)
+		tsort(BA.Auras[self.unit], SortBars)
 		
 		self.QueueAuraSort = nil
 	end
 
-
+	local CurrentBar, CurrentAura
 	for i=1, self.BarNum do
 		-- If we don't have any auras of the unit, return
-		if UnitExists(self.Unit) and BA.Auras[self.Unit] and BA.Auras[self.Unit][i] and BA.Auras[self.Unit][i][5] and BA.Auras[self.Unit][i][5] > 0 then
+		if UnitExists(self.unit) and BA.Auras[self.unit] and BA.Auras[self.unit][i] and BA.Auras[self.unit][i][5] and BA.Auras[self.unit][i][5] > 0 then
 			
-			self.CurrentBar = self[i]
-			self.CurrentAura = BA.Auras[self.Unit][i]
+			CurrentBar = self[i]
+			CurrentAura = BA.Auras[self.unit][i]
 			
-			if self.CurrentAura then
-				self.CurrentBar.duration = self.CurrentAura[5]
-				self.CurrentBar.timeLeft = self.CurrentAura[6] - GetTime()
+			if CurrentAura then
+				CurrentBar.duration = CurrentAura[5]
 				
-				if self.CurrentBar.timeLeft < 0 then self.CurrentAura[i] = nil else
-					
-					BA:UpdateBarValues(BA.Bars[self.Unit][i].Bar.Overlay, self.CurrentBar.timeLeft, self.CurrentBar.duration)
-					BA:UpdateTime(self.CurrentBar.Bar.Overlay.time, self.CurrentBar.timeLeft, self.NumberFormat)
+				-- Fix for some random auras without duration that somehow pass until this point
+				if CurrentAura[6] then
+					CurrentBar.timeLeft = CurrentAura[6] - GetTime()
+				
+					if CurrentBar.timeLeft < 0 then CurrentAura[i] = nil else
+						
+						BA:UpdateBarValues(BA.Containers[self.unit][i].Bar.Overlay, CurrentBar.timeLeft, CurrentBar.duration)
+						BA:UpdateTime(CurrentBar.Bar.Overlay.time, CurrentBar.timeLeft, self.NumberFormat)
+					end
+				else
+					BA:UpdateBarValues(BA.Containers[self.unit][i].Bar.Overlay, 0, 0)
+					BA:UpdateTime(CurrentBar.Bar.Overlay.time, 0, self.NumberFormat)
 				end
 				
-				if self.CurrentBar.Icon.IsHovered then
-					BA:BuildTooltip(self.CurrentBar.Icon)
+				if CurrentBar.Icon.IsHovered then
+					BA:BuildTooltip(CurrentBar.Icon)
 				end
 			end
-			if not self.CurrentBar:IsVisible() then self.CurrentBar:Show(); self.CurrentBar.IsHidden = nil; self.AllHidden = nil end
+			if not CurrentBar:IsVisible() then CurrentBar:Show(); CurrentBar.IsHidden = nil; self.AllHidden = nil end
 		else
 			if self[i]:IsVisible() then self[i]:Hide() end
 		end
 	end
 end
 
-function BA:CreateBar(Holder)
+function BA:CreateBar(Container)
 	local CreatedNew = false
-	local Unit = Holder.Unit
+	local Unit = Container.unit
 	local BarColor
 	
 	local Frame
 	
-	for i = 1, Holder.BarNum do
-		if not Holder[i] then
+	for i = 1, Container.BarNum do
+		if not Container[i] then
 			Frame = CreateFrame("Frame", format("AuraBar%s%s", Unit, i)) -- Acts as a parent
-			Holder[i] = Frame
+			Container[i] = Frame
 			
-			Frame:SetPoint(E.STR.BOTTOMLEFT, Holder, E.STR.BOTTOMLEFT, BAR_GAP_X, (CO.db.profile.auras.units[Unit].aurabars.gapY + BAR_SIZE_Y) * (i - 1))
+			Frame:SetPoint(E.STR.BOTTOMLEFT, Container, E.STR.BOTTOMLEFT, BAR_GAP_X, (CO.db.profile.auras.units[Unit].aurabars.gapY + BAR_SIZE_Y) * (i - 1))
 			Frame:SetSize(BAR_SIZE_X, BAR_SIZE_Y)
-			Frame:SetParent(Holder)
+			Frame:SetParent(Container)
 			
 			self:CreateIcon(Frame, format("AuraBar%s%sIcon", Unit, i))
 			Frame.Icon:SetScript("OnEnter", AuraButton_OnEnter)
@@ -311,15 +337,16 @@ function BA:CreateBar(Holder)
 				AutoCast = nil,
 			}
 			
-			if MasqueGroup and CO.db.profile.auras.generalAurabars.useMasque then
+			if MasqueGroup and CO.db.char.auras.generalAurabars.useMasque then
 				MasqueGroup:AddButton(Frame.Icon, ButtonData)
+				
+				-- Not needed anymore, but let's keep this
 				if Frame.Icon.__MSQ_BaseFrame then
 					Frame.Icon.__MSQ_BaseFrame:SetFrameLevel(2) --Lower the framelevel to fix issue with buttons created during combat
 				end
 			end
 			
 			Frame.Index = i
-			
 			Frame:Hide()
 			
 			CreatedNew = true
@@ -327,33 +354,40 @@ function BA:CreateBar(Holder)
 	end
 	
 	if CreatedNew then
-		E:UpdatePathFont("db.profile.auras.units." .. Unit .. ".aurabars.time")
-		E:UpdatePathFont("db.profile.auras.units." .. Unit .. ".aurabars.name")
+		E:UpdateAutoFont("db.profile.auras.units." .. Unit .. ".aurabars.time")
+		E:UpdateAutoFont("db.profile.auras.units." .. Unit .. ".aurabars.name")
 	end
 	
-	if Holder.BarNum > (Holder.BarNumMax or 0) then
-		Holder.BarNumMax = Holder.BarNum
+	if Container.BarNum > (Container.BarNumMax or 0) then
+		Container.BarNumMax = Container.BarNum
 	end
 end
 
-function BA:CreateBars(Unit)
+-- Creates a bar container for a given unit 
+function BA:CreateBarContainer(Unit)
 	
-	if not self.Bars[Unit] then
-		self.Bars[Unit] = CreateFrame("Frame", format("AuraBarContainer%s", Unit))
-		self.Bars[Unit]:SetPoint(E.STR.CENTER, E.Parent, E.STR.CENTER)
-		self.Bars[Unit]:SetSize(BAR_SIZE_X, BAR_SIZE_Y * BAR_NUM)
+	local Container = self.Containers[Unit]
+	
+	if not Container then
+		Container = CreateFrame("Frame", format("AuraBarContainer%s", Unit), E.Parent)
+		self.Containers[Unit] = Container
 		
-		self.Bars[Unit].Unit = Unit
-		self.Bars[Unit].BarNum = BAR_NUM
+		Container:SetPoint(E.STR.CENTER, E.Parent, E.STR.CENTER)
+		Container:SetSize(BAR_SIZE_X, BAR_SIZE_Y * BAR_NUM)		
 		
-		E:CreateMover(self.Bars[Unit], format("%s %s", L[Unit], L["AuraBars"]), E.STR.BOTTOMLEFT)
+		Container.unit = Unit
+		Container.BarNum = BAR_NUM
+		
+		Container:SetHideInPetBattles(true)
+		E:HandleFrameInPetBattles(Container)
+		E:CreateMover(Container, format("%s %s", L[Unit], L["AuraBars"]), E.STR.BOTTOMLEFT, nil, nil, nil, "unitframes")
 	end
 	
-	self:CreateBar(self.Bars[Unit])
+	self:CreateBar(Container)
 	
 	-- Post script to prevent issues
-	if not self.Bars[Unit]:GetScript("OnUpdate") then
-		self.Bars[Unit]:SetScript("OnUpdate", BA.Bar_OnUpdate)
+	if not Container:GetScript("OnUpdate") then
+		Container:SetScript("OnUpdate", BA.Bar_OnUpdate)
 	end
 	
 	self:UpdateAuraCache(Unit)
@@ -385,77 +419,147 @@ function BA:InitFonts(F, Unit)
 		F[n]:SetJustifyH(v[1])
 		F[n]:SetPoint(v[1], F, v[1], v[4], 0)
 		
-		E:RegisterPathFont(F[n], "db.profile.auras.units." .. Unit .. ".aurabars." .. n)
+		E:RegisterAutoFont(F[n], "db.profile.auras.units." .. Unit .. ".aurabars." .. n)
 	end
 end
 
-local AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, UnitAuraClass, CurrentAuraIndex, SpellID
-function BA:UpdateAuraCache(Unit)
-	if not UnitExists(Unit) or not self.Bars[Unit] then return end
+local function IsAuraFiltered(Unit, SpellID, AuraDuration)
+	return (FI:IsFiltered(BA.Containers[Unit].filterType, SpellID) or (AuraDuration and (AuraDuration == 0 or AuraDuration >= (BA.db.units[Unit].aurabars.maxThreshold or 0))))
+end
+
+function BA:AddAuraToCache(Unit, Index, AuraData)
+	if not AuraData then return false end
+	
+	if not IsAuraFiltered(Unit, AuraData.spellId, AuraData.duration) then
+		local Data = {
+			[1] = AuraData.name,
+			[2] = AuraData.icon,
+			[3] = AuraData.applications,
+			[4] = AuraData.dispelName,
+			[5] = AuraData.duration,
+			[6] = AuraData.expirationTime,
+			[7] = AuraData.spellId,
+			[8] = FI:GetAuraPriority(self.Containers[Unit].filterType, AuraData.spellId)
+		}
+		
+		local Index = #self.Auras[Unit]+1
+		self.Auras[Unit][Index] = {}
+		tinsert(self.Auras[Unit][Index], Data)
+	end
+	
+	-- UnpackAuraData
+	-- return auraData.name,
+		-- auraData.icon,
+		-- auraData.applications,
+		-- auraData.dispelName,
+		-- auraData.duration,
+		-- auraData.expirationTime,
+		-- auraData.sourceUnit,
+		-- auraData.isStealable,
+		-- auraData.nameplateShowPersonal,
+		-- auraData.spellId,
+		-- auraData.canApplyAura,
+		-- auraData.isBossAura,
+		-- auraData.isFromPlayerOrPlayerPet,
+		-- auraData.nameplateShowAll,
+		-- auraData.timeMod,
+		-- unpack(auraData.points);
+end
+
+-- If return false then we should run a full update instead
+function BA:ProcessEventInfo(Unit, EventInfo)
+	if not EventInfo then return false end
+	
+	if EventInfo.removedAuraInstanceIDs then
+		for k,v in pairs(EventInfo.removedAuraInstanceIDs) do
+			--print(k,v)
+		end
+	end
+	if EventInfo.addedAuras then
+		for k,v in pairs(EventInfo.addedAuras) do
+			--self:AddAuraToCache(v)
+		end
+	end
+	--self.Auras[Unit]
+	
+	-- @TODO: Change this to true after this method is fully implemented
+	return false
+end
+
+local AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, UnitAuraClass, SpellID, CurrentAuraIndex, Index
+function BA:UpdateAuraCache(Unit, EventInfo)
+	if not UnitExists(Unit) or not self.Containers[Unit] then return end
+	if InCombatLockdown() then return end -- Skip aurabars in combat until blizz releases a filtering fix..
 	
 	-- We use this to gain more control over the sort process, since it sometimes seems to run when we update the aura cache
 	self.UpdateInProgress = true
-	CurrentAuraIndex = 1
 	
-	-- Start with a clean table
-	if self.Auras[Unit] then wipe(self.Auras[Unit]) end
-	if not self.Auras[Unit] then self.Auras[Unit] = {} end
+	if not BA:ProcessEventInfo(Unit, EventInfo) then
+		CurrentAuraIndex = 1
+		Index = 1
 	
-	if UnitCanAttack(Unit, E.STR.player) then UnitAuraClass = E.STR.HARMFUL; else UnitAuraClass = E.STR.HELPFUL; end
+		-- Start with a clean table
+		if self.Auras[Unit] then wipe(self.Auras[Unit]) end
+		if not self.Auras[Unit] then self.Auras[Unit] = {} end
 	
-	-- Iterate until we reach the last auraID of the unit
-	while true do
-		
-		AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, _, _, _, SpellID = UnitAura(Unit, CurrentAuraIndex, UnitAuraClass .. "|PLAYER")
-		if not AuraName then
-			if self.Auras[Unit] and self.Auras[Unit][CurrentAuraIndex] then
-				self.Auras[Unit][CurrentAuraIndex] = nil
-			end
+		if UnitCanAttack(Unit, E.STR.player) then UnitAuraClass = E.STR.HARMFUL; else UnitAuraClass = E.STR.HELPFUL; end
+	
+		-- Iterate until we reach the last auraID of the unit
+		while true do
 			
-			-- If aura would have been the first one. R.I.P
-			if CurrentAuraIndex == 1 then
-				wipe(self.Auras[Unit])
-			end
+			AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, _, _, _, SpellID = UnpackAuraData(GetAuraDataByIndex(Unit, CurrentAuraIndex, UnitAuraClass .. "|PLAYER"))
 			
+			if not AuraName then			
 				break
+			end
+			
+			-- If this aura should actually be displayed
+			--if not (FI:IsFiltered(self.Containers[Unit].filterType, SpellID) or (AuraDuration and (AuraDuration == 0 or AuraDuration >= (self.db.units[Unit].aurabars.maxThreshold or 0)))) then
+			if not IsAuraFiltered(Unit, SpellID, AuraDuration) then
+				--print(UnpackAuraData(GetAuraDataByIndex(Unit, CurrentAuraIndex, UnitAuraClass .. "|PLAYER")))
+				
+				if not self.Auras[Unit][Index] then self.Auras[Unit][Index] = {} end
+				
+				
+				-- Used for tooltips
+				self.Auras[Unit][Index].RealIndex = CurrentAuraIndex
+				
+				-- Numerical indexing for better sort results (results at all)
+				self.Auras[Unit][Index][1] = AuraName
+				self.Auras[Unit][Index][2] = AuraTexture
+				self.Auras[Unit][Index][3] = AuraCount
+				self.Auras[Unit][Index][4] = AuraDType
+				self.Auras[Unit][Index][5] = AuraDuration
+				self.Auras[Unit][Index][6] = AuraExpirationTime
+				self.Auras[Unit][Index][7] = SpellID
+				self.Auras[Unit][Index][8] = FI:GetAuraPriority(self.Containers[Unit].filterType, SpellID)
+				
+				-- Also cache the aura type [Harmful or Helpful]
+				self.Auras[Unit].AuraType = UnitAuraClass
+				
+				Index = Index + 1
+			end
+			
+			CurrentAuraIndex = CurrentAuraIndex + 1
 		end
-		
-		if not self.Auras[Unit][CurrentAuraIndex] then self.Auras[Unit][CurrentAuraIndex] = {} end
-		
-		
-		-- Used for tooltips
-		self.Auras[Unit][CurrentAuraIndex].RealIndex = CurrentAuraIndex
-		
-		-- Numerical indexing for better sort results (results at all)
-		self.Auras[Unit][CurrentAuraIndex][1] = AuraName
-		self.Auras[Unit][CurrentAuraIndex][2] = AuraTexture
-		self.Auras[Unit][CurrentAuraIndex][3] = AuraCount
-		self.Auras[Unit][CurrentAuraIndex][4] = AuraDType
-		self.Auras[Unit][CurrentAuraIndex][5] = AuraDuration
-		self.Auras[Unit][CurrentAuraIndex][6] = AuraExpirationTime
-		self.Auras[Unit][CurrentAuraIndex][7] = SpellID
-		
-		-- Also cache the aura type [Harmful or Helpful]
-		self.Auras[Unit].AuraType = UnitAuraClass
-		
-		CurrentAuraIndex = CurrentAuraIndex + 1
 	end
 	
 	self.UpdateInProgress = nil
 	
+	-- NOTE: As of 16-0-2025, we moved this into the loop above to remove excess overhead. No functionality should be lost through this.
 	-- Remove uneccessary entries. Start from the end. Otherwise the loop would cancel after removing the first entry
-	for i=#self.Auras[Unit],1,-1 do
+	--for i=#self.Auras[Unit],1,-1 do
 		-- Remove auras with a duration higher than 5 minutes or no duration at all
 		-- @TODO: Make this highly customizable and migrate this method to an external file inside the AUR namespace
 		-- So we can use it for more than just the aurabars
-		if self.Auras[Unit][i] and (self.Auras[Unit][i][5] == 0 or self.Auras[Unit][i][5] >= 300) then
-			tremove(self.Auras[Unit], i)
-		end
-	end
+		--if FI:IsFiltered(self.Containers[Unit].filterType, self.Auras[Unit][i][7]) or (self.Auras[Unit][i] and (self.Auras[Unit][i][5] == 0 or self.Auras[Unit][i][5] >= (self.db.units[Unit].aurabars.maxThreshold or 0))) then
+		--	tremove(self.Auras[Unit], i)
+		--end
+	--end
 	
 	-- Sort by expiration time
 	if self.Auras[Unit] and not self.UpdateInProgress then
-		tsort(self.Auras[Unit], SortByExpiration)
+		tsort(self.Auras[Unit], SortBars)
 	elseif self.UpdateInProgress then
 		self.QueueAuraSort = true
 	end
@@ -465,54 +569,61 @@ function BA:UpdateAuraCache(Unit)
 	self:UpdateAuras(Unit)
 end
 
-function BA:UpdateAuras(Unit)
+function BA:UpdateAuras(Unit, ForceUpdateCache)
+
+	if ForceUpdateCache then self:UpdateAuraCache(Unit) end
 	
-	self.CurrentUpdate = self.Bars[Unit]
+	local AuraCache 	= BA.Auras[Unit]
+	local BarCluster 	= self.Containers[Unit]
+	local Bar, Aura
 	
-	for i=1, self.CurrentUpdate.BarNum do
+	for i=1, BarCluster.BarNum do
 		-- If we don't have any auras of the unit, return
-		if UnitExists(self.CurrentUpdate.Unit) and BA.Auras[Unit] and BA.Auras[Unit][i] and BA.Auras[Unit][i][5] > 0 then
+		if UnitExists(BarCluster.unit) and AuraCache and AuraCache[i] then
 			
-			self.CurrentUpdate.CurrentBar = self.CurrentUpdate[i]
-			self.CurrentUpdate.CurrentAura = BA.Auras[Unit][i]
+			Bar = BarCluster[i]
+			Aura = AuraCache[i]
 			
-			if self.CurrentUpdate.CurrentAura then
-				self.CurrentUpdate.CurrentBar.duration = self.CurrentUpdate.CurrentAura[5]
-				self.CurrentUpdate.CurrentBar.timeLeft = self.CurrentUpdate.CurrentAura[6] - GetTime()
+			if Aura then
+				Bar.duration = Aura[5]
+				Bar.timeLeft = Aura[6] - GetTime()
 				
-				if self.CurrentUpdate.CurrentBar.timeLeft < 0 then self.CurrentUpdate.CurrentAura[i] = nil else
+				if Bar.timeLeft < 0 then Aura[i] = nil else
 					
 					-- Perform updates
-					BA:UpdateBarColor(self.CurrentUpdate.CurrentBar, self.CurrentUpdate.CurrentAura[4], Unit, BA.Auras[Unit].AuraType, self.CurrentUpdate.CurrentAura[1], self.CurrentUpdate.CurrentAura[7])
-					BA:UpdateBarValues(self.CurrentUpdate.CurrentBar.Bar.Overlay, self.CurrentUpdate.CurrentBar.timeLeft, self.CurrentUpdate.CurrentBar.duration)
-					self.CurrentUpdate.CurrentBar.Icon.Tex:SetTexture(self.CurrentUpdate.CurrentAura[2])
+					BA:UpdateBarColor(Bar, Aura[4], Unit, AuraCache.AuraType, Aura[1], Aura[7])
+					BA:UpdateBarValues(Bar.Bar.Overlay, Bar.timeLeft, Bar.duration)
+					Bar.Icon.Tex:SetTexture(Aura[2])
 					
-					BA:UpdateName(self.CurrentUpdate.CurrentBar.Bar.Overlay.name, self.CurrentUpdate.CurrentAura)
-					BA:UpdateTime(self.CurrentUpdate.CurrentBar.Bar.Overlay.time, self.CurrentUpdate.CurrentBar.timeLeft, self.CurrentUpdate.NumberFormat)
+					BA:UpdateName(Bar.Bar.Overlay.name, Aura)
+					BA:UpdateTime(Bar.Bar.Overlay.time, Bar.timeLeft, BarCluster.NumberFormat)
 				end
 			end
-			if not self.CurrentUpdate.CurrentBar:IsVisible() then self.CurrentUpdate.CurrentBar:Show(); self.CurrentUpdate.CurrentBar.IsHidden = nil; self.CurrentUpdate.AllHidden = nil end
+			if not Bar:IsVisible() then Bar:Show(); Bar.IsHidden = nil; BarCluster.AllHidden = nil end
 		else
-			if self.CurrentUpdate[i]:IsVisible() then self.CurrentUpdate[i]:Hide() end
+			if BarCluster[i]:IsVisible() then BarCluster[i]:Hide() end
 		end
 	end
 end
 
 function BA:Init()
+	if not CO.db.char.unitframe.enable then return end
 	self.db = CO.db.profile.auras
 	
-	self.E:RegisterEvent("UNIT_AURA", "player", "target")
-	self.E:RegisterEvent("PLAYER_TARGET_CHANGED")
-	self.E:SetScript("OnEvent", function(selfE, event, ...)
-		if event == "PLAYER_TARGET_CHANGED" then self:UpdateAuraCache("target") else
+	self:RegisterUnitEvent("UNIT_AURA", "player", "target")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED")
+	self:SetScript("OnEvent", function(self, event, ...)
+		if event == "UNIT_AURA" then
 			self:UpdateAuraCache(...)
+		else
+			self:UpdateAuraCache("target")
 		end
 	end)
 	
-	self:CreateBars("player")
-	self:CreateBars("target")
+	self:CreateBarContainer("player")
+	self:CreateBarContainer("target")
 	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
 E:AddModule("Bar_Auras", BA)

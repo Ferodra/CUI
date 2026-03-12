@@ -1,0 +1,29 @@
+## Interface: 120000
+## Title: |cff1784d1CUI|r |cFFFEB200Statistics|r
+## Author: Arenima@AlleriaEU
+## Notes: Saves character data to make it available everywhere (Playtime, Equipment, . . .)
+## Version: 0.1 Alpha Release
+## SavedVariables: CUISTATSDB
+## X-Embeds: Ace3
+## X-Revision: 101
+## X-Timestamp: 1600805500 
+## Category-enUS: UI Overhaul
+## Category-deDE: UI-Überholung
+## Category-esES: Renovación de la UI
+## Category-esMX: Renovación de la UI
+## Category-itIT: Revisione dell'UI
+## Category-frFR: Révision de l'UI
+## Category-ptBR: Renovação da UI
+## Category-ruRU: Переработка интерфейса
+## Category-koKR: UI 개편
+## Category-zhCN: UI重构
+## Category-zhTW: UI重構
+## IconTexture: Interface\AddOns\CUI\Textures\CUILogo
+
+## Dependencies: CUI
+
+Libs\__load.xml
+Modules\__load.xml
+Init.lua
+
+ConfigDefaults.lua

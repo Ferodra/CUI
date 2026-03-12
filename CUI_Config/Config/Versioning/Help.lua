@@ -1,5 +1,5 @@
 local E, L = unpack(CUI) -- Engine
-local CD, L = E:LoadModules("Config_Dialog", "Locale")
+local CD = E:LoadModules("Config_Dialog")
 
 local FAQ = {
 	type = "group",
@@ -8,7 +8,7 @@ local FAQ = {
 	args = {
 		WorldFonts = {
 			type = "description",
-			name = "I've changed one of the World-Fonts, but it does not seem to apply.\n|cff1784d1This feature requires you to at least perform a relog, to make any changes.\nNote that not every font will work for this, as the AddOn load-order is really important for that one. Check the 'ArtLib.lua' in the CUI Core files for more information on how to get it working.|r",
+			name = "I've changed one of the World-Fonts, but it does not seem to apply.\n|cff1784d1This feature requires you to at least perform a relog to make any changes.\nNote that not every font will work for this, as the AddOn load-order is essential for this feature. Basically, the AddOn the Font is contained in, has to be loaded before CUI. Check the 'ArtLib.lua' in the CUI Core files for more information on how to add fonts to the AddOn, which then will work 100%. Unfortunately, this solution isn't optimal, as the file resets after every AddOn update. A better one, which then uses the CUI Config Menu, will be implemented at some point.|r",
 			order = 1,
 		},
 		FocusSet = {
@@ -18,22 +18,22 @@ local FAQ = {
 		},
 		BugReport = {
 			type = "description",
-			name = "I've found this weird bug and don't know what to do!\n|cff1784d1If you encounter a strange issue with CUI, it often is resolved by a relog or '/reload'.\nIf you want to, you can also report this bug in the Curse project-page along with information about that exactly you did as it occured. It helps further development of CUI.|r",
+			name = "I've found this weird bug and don't know what to do!\n|cff1784d1If you encounter a strange issue with CUI, it often is resolved by a relog or '/reload'.\nIf you want to, you can also report this bug on the Curse project-page along with information about what exactly you did as it occured. It helps further development of CUI.|r",
 			order = 3,
 		},
-		DisableUnitframes = {
+		SortUnitframes = {
 			type = "description",
-			name = "I want to disable a unitframe and can't seem to find any option for that!\n|cff1784d1As of 0.8.0r, there indeed is no option to disable normal unitframes directly. Instead you can modify the visibility of clustered unitframes (Arena, Party, Raid, Raid40, Boss) to '0' (without the quotes), so it will never appear. Click the 'Default Visibility' Button below this option to restore the default.|r",
+			name = "Is there any way to sort Party or Raidframes by specific things?\n|cff1784d1Not yet. I've already prototyped a function for that, but it's still pretty buggy and needs lots more work to actually be useful. Worst case would be that CUI has to switch to a part of the Blizzard API that's kinda weird and very fragile.|r",
 			order = 4,
 		},
 		Installation = {
 			type = "description",
-			name = "What about this 'Install' button?\n|cff1784d1This is a feature that has yet to come. Chanches are high that it will be released along 1.0.0r, as it will be a lot of work and would be too much to implement newer features into the system then.|r",
+			name = "What about this 'Install' button?\n|cff1784d1This is a feature that has yet to come. Chanches are that it will be released along 1.0.0r, as there are still planned major features that have to be in place before an installation system makes sense.|r",
 			order = 5,
 		},
 		Default = {
 			type = "description",
-			name = "I want to get back the original Micromenu/Minimap/Bags/... !\n|cff1784d1There currently is no way of simply disabling the skin of the modified frames. That has yet to come. It also is already planned to modify the look of frames like the Game-Menu, Quest-Frames, etc. but i want to tackle that topic as good as possible and that will take a lot of further research to do.|r",
+			name = "I want to get back the original Micromenu/Minimap/Bags/... !\n|cff1784d1There currently is no way of simply disabling the skin of the modified frames. That has yet to come. It also is already planned to modify the look of frames like the Game-Menu, Quest-Frames, etc. but i want to tackle that topic as efficiently as possible and that will take a lot of further research to do.|r",
 			order = 6,
 		},
 	},

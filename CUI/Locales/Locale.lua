@@ -1,24 +1,12 @@
-local E, L = unpack(select(2, ...)) -- Engine, Locale
-local L, LOC_deDE, LOC_enUS = E:LoadModules("Locale", "Locale_deDE", "Locale_enUS")
+local E = select(2, ...) -- Engine
 
 local Locale = GetLocale()
 
-function L:Init()
-	if Locale == "enUS" then
-		L = LOC_enUS
-		
-	elseif Locale == "deDE" then
-		L = LOC_deDE
-	elseif Locale == "enGB" then
-		L = LOC_enUS
-	else
-		L = LOC_enUS -- More to come hopefully
-	end
+do 
+	E[2] = E[1].Libs.AceLocale:GetLocale('CUI', Locale)
 	
-	-- CLASSES
-	FillLocalizedClassList(L)
+	local L = E[2]
+	
+	-- Additional strings
+	L["VisibilityDesc_FULL"] = L["VisibilityDesc"] .. "\n[pet] [petbattle] [combat] [vehicle] [flying] [form:N] [stealth]\n\n\n" .. L["VisibilityDescSec"] .. " https://wow.gamepedia.com/Macro_conditionals"
 end
-
-L:Init()
-
-E:AddModule("Locale", L)

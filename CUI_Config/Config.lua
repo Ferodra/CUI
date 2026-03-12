@@ -1,15 +1,19 @@
 local E, L = unpack(CUI) -- Engine
-local CO, CD, L = E:LoadModules("Config", "Config_Dialog", "Locale")
+local CO, CD = E:LoadModules("Config", "Config_Dialog")
+
+local C_Timer_After = C_Timer.After
 
 CD.Autoload = true
 CD.OptionsOpen = false
 
 CD.AC										=			LibStub("AceConfig-3.0")
-CD.ACD										=			LibStub("AceConfigDialog-3.0-CUI")
-CD.KB 										= 			LibStub("LibKeyBound-1.0")
+CD.ACD										=			LibStub("AceConfigDialog-3.0")
+CD.ACR										=			LibStub("AceConfigRegistry-3.0")
+CD.KB 										= 			LibStub("LibKeyBound-1.0-CUI")
 
 local _
-CD.DEFAULT_WIDTH, CD.DEFAULT_HEIGHT			= 			890, 650
+CD.DEFAULT_WIDTH, CD.DEFAULT_HEIGHT			= 			890, 655
+CD.AUTOSORTINDEX							=			99999
 
 CD.FrameChooser								=			CreateFrame("Frame", nil, E.Parent)
 CD.FrameChooser.State						=			false
@@ -25,6 +29,19 @@ function CD:InitializeOptionsCategory(TablePath, DisplayName, Order)
 	}
 end
 
+function CD:GetNewLine(index)
+	return {type="description", name="", order=index}
+end
+
+function CD:GetAutoSortIndex()
+	return self.AUTOSORTINDEX
+end
+
+local NewFeatureStr = "%s |cff42f572(" .. L["New"] .. ")|r"
+function CD:GetNewFeatureString(str)
+	return (NewFeatureStr):format(str)
+end
+
 function CD:InitializeSettings()
 	
 	E:InitSettingsModules()
@@ -37,11 +54,45 @@ function CD:InitializeSettings()
 	-------------------------------------------------------------
 end
 
+function CD:DelayedGUIRefresh(delay)
+	delay = delay or 0.01
+	
+	C_Timer_After(delay, function()
+		CD:RefreshConfigGUI()
+	end)
+end
+
+function CD:DelayedOpenOptions(delay)
+	delay = delay or 0.01
+	
+	C_Timer.After(delay, function()
+		CD:OpenOptions()
+	end)
+end
+
+function CD:InitExtraFrames()
+	if self.FramesInitialized then return end
+	
+	local Frame = CO:GetConfigWindow()
+	if not Frame then return end
+	
+	-------------------------------------------
+	
+	
+	
+	-------------------------------------------	
+	
+	self.FramesInitialized = true
+end
+
 local CombatWatcher = CreateFrame("Frame", nil, E.Parent)
 function CD:OpenOptions()
 	if not InCombatLockdown() then
 		self.ACD:SetDefaultSize("CUI", CD.DEFAULT_WIDTH, CD.DEFAULT_HEIGHT)
 		self.ACD:Open("CUI")
+		
+		self:SetConfigType()
+		self:InitExtraFrames()
 		--CombatWatcher:UnregisterEvent("PLAYER_REGEN_DISABLED")
 		
 		self.OptionsOpen = true
@@ -51,8 +102,21 @@ function CD:OpenOptions()
 end
 
 function CD:CloseOptions()
-	self.ACD:Close("CUI")
+	self.ACD:Close('CUI')
 	self.OptionsOpen = false
+end
+
+function CD:OpenPath(path)
+	self:OpenOptions()
+	self.ACD:SelectGroup('CUI', unpack(path))
+end
+
+function CD:RefreshConfigGUI(...)
+	if select(1, ...) == nil then
+		self.ACR:NotifyChange('CUI')
+	else
+		self.ACD:SelectGroup("CUI", ...)
+	end
 end
 
 function CD:Init()

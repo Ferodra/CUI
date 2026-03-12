@@ -1,0 +1,20 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Frame name="RestLoopTemplate_CUI" alpha="1" virtual="true" hidden="true">
+		<Size x="32" y="32"/>
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="RestTexture" alpha="1" alphaMode="BLEND" atlas="UI-HUD-UnitFrame-Player-Rest-Flipbook">
+					<Size x="32" y="32"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Animations>
+			<AnimationGroup parentKey="RestLoopAnim" looping="REPEAT" setToFinalAlpha="true">
+				<FlipBook smoothing="NONE" childKey="RestTexture" duration="1.5" order="1" flipBookRows="7" flipBookColumns="6" flipBookFrames="42" flipBookFrameWidth="0" flipBookFrameHeight="0"/>
+			</AnimationGroup>
+		</Animations>
+	</Frame>
+</Ui>

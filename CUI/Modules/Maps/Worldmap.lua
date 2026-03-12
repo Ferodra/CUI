@@ -1,14 +1,14 @@
-local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, L, WM = E:LoadModules("Config", "Locale", "Worldmap")
+local E = unpack(select(2, ...)) -- Engine, Locale
+local CO, Module = E:LoadModules("Config", "Worldmap")
 
 ----------------------------------------------------------------------
 local format		= string.format
 ----------------------------------------------------------------------
 ----------------------------------------------------------------------
-	local Coords = CreateFrame("Frame")
+	local Coords = CreateFrame("Frame", "CUI_WorldmapFrame")
 
 	local XRaw, YRaw, LastUpdate = 0, 0, 0
-	function WM:UpdateCoords(elapsed)
+	function Module:UpdateCoords(elapsed)
 		LastUpdate = LastUpdate + elapsed
 		
 		if LastUpdate >= 0.05 then
@@ -20,37 +20,37 @@ local format		= string.format
 		end
 	end
 
-	function WM:StartCoords(self)
+	local function OnEnter(self)
 		if CO.db.profile.worldmap.coords.enable then
-			Coords:SetScript("OnUpdate", WM.UpdateCoords)
+			Coords:SetScript("OnUpdate", Module.UpdateCoords)
 			Coords:Show()
 		end
 	end
 
-	function WM:StopCoords(self)
+	local function OnLeave(self)
 		Coords:SetScript("OnUpdate", nil)
 		Coords:Hide()
 	end
 
-	function WM:ConstructMapCoords()
+	function Module:ConstructMapCoords()
 		
 		Coords:SetSize(250, 20)
 		Coords:SetPoint("BOTTOM", WorldMapFrame.ScrollContainer, "BOTTOM")
 		Coords:SetParent(WorldMapFrame.ScrollContainer)
 		
-		Coords.Font = Coords:CreateFontString(nil)
-			E:InitializeFontFrame(Coords.Font, "OVERLAY", "FRIZQT__.TTF", 12, {0.933, 0.886, 0.125}, 0.9, {0,0}, "", 0, 0, Coords, "LEFT", {1,1})
+		Coords.Font = E:NewFontObject(nil, "OVERLAY", Coords, 12)
+		--Coords.Font = Coords:CreateFontString(nil)
+		--E:InitializeFontFrame(Coords.Font, "OVERLAY", "FRIZQT__.TTF", 12, {0.933, 0.886, 0.125}, 0.9, {0,0}, "", 0, 0, Coords, "LEFT", {1,1})
 		Coords.Font:SetJustifyH("LEFT")
-		
-		E:RegisterPathFont(Coords.Font, "db.profile.worldmap.coords")
+		E:RegisterAutoFont(Coords.Font, "db.profile.worldmap.coords")
 					
-		WorldMapFrame.ScrollContainer:HookScript("OnEnter", WM.StartCoords)
-		WorldMapFrame.ScrollContainer:HookScript("OnLeave", WM.StopCoords)
+		WorldMapFrame.ScrollContainer:HookScript("OnEnter", OnEnter)
+		WorldMapFrame.ScrollContainer:HookScript("OnLeave", OnLeave)
 	end
 ----------------------------------------------------------------------
 
-function WM:Init()
+function Module:Init()
 	self:ConstructMapCoords()
 end
 
-E:AddModule("Worldmap", WM)
+E:AddModule("Worldmap", Module)

@@ -1,10 +1,9 @@
 ----------------------------------------------------
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, L = E:LoadModules("Config", "Locale")
-local UF
+local CO, UF = E:LoadModules("Config", "Unitframes")
 
-local RRD = CreateFrame("Frame", "RaidRoleFrame", E.Parent, "SecureHandlerStateTemplate")
-RRD.Autoload = true -- This will cause CUI to automatically load this module. No external init needed.
+local Module = CreateFrame("Frame", "RaidRoleFrame", E.Parent, "SecureHandlerStateTemplate")
+Module.Autoload = true -- This will cause CUI to automatically load this module. No external init needed.
 ----------------------------------------------------
 
 local format					= string.format
@@ -20,7 +19,7 @@ local RegisterStateDriver		= RegisterStateDriver
 local Types = {[1] = {"TANK", "LEFT"}, [2] = {"HEALER", "CENTER"}, [3] = {"DAMAGER", "RIGHT"}}
 
 
-function RRD:LoadProfile()
+function Module:LoadConfig()
 	self.db = CO.db.profile.dataframes.raidroledata
 	
 	UnregisterStateDriver(self, "visible")
@@ -40,24 +39,25 @@ function RRD:LoadProfile()
 		else
 			RegisterStateDriver(self, "visible", "1")
 		end
+		
+		self.ForceMoverEnabled = nil
 	else
 		RegisterStateDriver(self, "visible", "0")
+		self.ForceMoverEnabled = false
 	end
-	
-	E:GetMover(self):SetScale(self.db.scale)
 end
 
-function RRD:Toggle()
+function Module:Toggle()
 	if not self.State then
 		self.State = true
 	else
 		self.State = false
 	end
 	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-function RRD:NumAddUnit(i, unit)
+function Module:NumAddUnit(i, unit)
 	self.NumRoles[i] = {}
 	self.NumRoles[i].Count = self.NumRoles.Count + 1
 	self.NumRoles[i].Unit = unit
@@ -66,9 +66,9 @@ function RRD:NumAddUnit(i, unit)
 end
 
 -- GetGroupMemberCounts essentially does the same thing, but we also want the corresponding player names
--- UnitGroupRolesAssigned(F.Unit)
+-- UnitGroupRolesAssigned(F.unit)
 -- @TODO: Clean this mess of a function up
-function RRD:GetNumRoles(type)
+function Module:GetNumRoles(type)
 	self.NumRoles = {}
 	self.NumRoles.Count = 0
 	if not IsInRaid() then
@@ -106,7 +106,7 @@ function RRD:GetNumRoles(type)
 	return self.NumRoles
 end
 
--- /dump CUI:GetModule("RaidRoleData"):GetNumRoles("TANK")
+-- /dump CUI[1]:LoadModule("RaidRoleData"):GetNumRoles("TANK")
 
 local function Update(self, event, ...)
 	self.Roles.TANK.Num 	= self:GetNumRoles("TANK")
@@ -118,7 +118,7 @@ local function Update(self, event, ...)
 	self.Roles.DAMAGER.Font:SetText(self.Roles.DAMAGER.Num.Count)
 end
 
-function RRD:InitUpdate()
+function Module:InitUpdate()
 	self:RegisterEvent("PLAYER_ROLES_ASSIGNED")
 	self:RegisterEvent("ROLE_CHANGED_INFORM")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE")
@@ -127,7 +127,7 @@ function RRD:InitUpdate()
 	self:SetScript("OnEvent", Update)
 end
 
-function RRD:Construct()
+function Module:Construct()
 	self:SetSize(210, 45)
 	
 	self.Background = E:CreateBackground(self)
@@ -172,16 +172,16 @@ function RRD:Construct()
 	E:SetVisibilityHandler(self)
 	RegisterStateDriver(self, "visible", "[group:raid] 1; [group:party] 1; 0")
 	
-	E:CreateMover(self, L["raidRoleFrame"], nil, nil, nil, "A frame that provides you with a quick summary of what roles are filled in your group.")
+	E:CreateMover(self, L["raidRoleFrame"], nil, nil, nil, "A frame that provides you with a quick summary of what roles are filled in your group.", "misc")
 end
 
-function RRD:Init()
+function Module:Init()
 	self.db = CO.db.profile.dataframes.raidroledata
-	
-	UF = E:GetModule("Unitframes")
+
+	E:HandleFrameInPetBattles(self)
 
 	self:Construct()
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-E:AddModule("RaidRoleData", RRD)
+E:AddModule("RaidRoleData", Module)

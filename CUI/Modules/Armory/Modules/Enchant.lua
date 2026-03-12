@@ -15,14 +15,37 @@ local ENCHANTED_TOOLTIP_LINE = ENCHANTED_TOOLTIP_LINE
 local EnchantMatchKey = ENCHANTED_TOOLTIP_LINE:gsub('%%s', '(.+)')
 
 -- Those tables can be modified at any time
-	-- Slot Whitelist
-	Module.EnchantSlots = {
-		[10] = true, -- Hand
-		[11] = true, -- Finger 1
-		[12] = true, -- Finger 2
-		[16] = true, -- Weapon 1
-		[17] = true, -- Weapon 2
-	}
+	-- Slot Whitelist for displaying missing enchants
+do
+	if E.IsRetail then
+		Module.EnchantSlots = {
+			[1] = false, 	-- Head
+			[2] = false, 	-- Neck
+			[3] = false, 	-- Shoulder
+			[5] = true, 	-- Chest
+			[6] = false, 	-- Waist
+			[7] = true, 	-- Legs
+			[8] = true, 	-- Feet
+			[9] = true, 	-- Wrist
+			[10] = false, 	-- Hand
+			[11] = true, 	-- Finger 1
+			[12] = true, 	-- Finger 2
+			[13] = false, 	-- Trinket 1
+			[14] = false, 	-- Trinket 2
+			[15] = true, 	-- Cloak
+			[16] = true, 	-- Weapon 1
+			[17] = true, 	-- Weapon 2
+		}
+	else
+		Module.EnchantSlots = {
+			-- [10] = true, -- Hand
+			[11] = true, 	-- Finger 1
+			[12] = true, 	-- Finger 2
+			[16] = true, 	-- Weapon 1
+			[17] = true, 	-- Weapon 2
+		}
+	end
+end
 	-- Item Class Blacklist
 	-- Data from: https://wow.gamepedia.com/ItemType
 	Module.NonEnchantableSubIDs = {
@@ -37,13 +60,16 @@ function Module:ItemShouldBeEnchanted(ItemLink)
 	local _, _, _, ItemEquipLoc, _, itemClassID, itemSubClassID = GetItemInfoInstant(ItemLink)
 	local Slots = A.ItemInvTypeToSlot[ItemEquipLoc]
 	
+	-- Off-Hand Only Equipment like Books etc. cannot be enchanted!
+	if ItemEquipLoc == 'INVTYPE_HOLDABLE' then return false end
+	
 	-- This will return the required count when more than one slot is given
 	-- A.e.: Ring Slots are 11 and 12. Even if we remove Slot 11 from the table above, we'll always be notified when
 	-- less than one enchant is present
 	for _, Slot in pairs(Slots) do
 		if self.EnchantSlots[Slot] then
 			if self.NonEnchantableSubIDs[itemClassID] then
-				if E:tableContainsValue(self.NonEnchantableSubIDs[itemClassID], itemSubClassID) then
+				if E:TableContainsValue(self.NonEnchantableSubIDs[itemClassID], itemSubClassID) then
 					return false
 				else
 					return true
@@ -63,7 +89,7 @@ function Module:GetInfo(ItemLink)
 	local IsEnchanted = false
 	
 	if ItemLink then							
-		Enchant = A:GetTooltipData(ItemLink, EnchantMatchKey, EnchantMatchKey)
+		Enchant = E.ScanningTooltip:GetData(ItemLink, EnchantMatchKey, EnchantMatchKey)
 		
 		if Enchant then
 			Output = ("|cff3ef434%s|r"):format(Enchant)

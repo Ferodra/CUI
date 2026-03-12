@@ -1,15 +1,9 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Button name='CUIAuraTemplate' inherits='SecureActionButtonTemplate' virtual='true' framelevel="4">
+	<Button name='CUIAuraTemplate' inherits='SecureActionButtonTemplate' virtual='true' framelevel="4" registerForClicks='RightButtonUp'>
 		<Size x='32' y='32'/>
-		<Attributes>
-			<Attribute name='type' value='cancelaura'/>
-		</Attributes>
-		<Script File="Auras.lua"/>
 		<Scripts>
 			<OnLoad>
-				local E = unpack(CUI)
-				E:GetModule("Auras"):CreateIcon(self)
-				self:RegisterForClicks('RightButtonUp')
+				CUI[1]:LoadModule("Auras"):CreateIcon(self)
 			</OnLoad>
 			<OnEnter>
 				GameTooltip:SetOwner(self, 'ANCHOR_BOTTOMLEFT', -5, -5)
@@ -21,6 +15,10 @@
 			</OnEnter>
 			<OnLeave function='GameTooltip_Hide'/>
 		</Scripts>
+		<Attributes>
+			<Attribute name='type' value='cancelaura'/>
+			<Attribute name='shift-type2' value='InvokeClick'/>
+		</Attributes>
 		<Layers>
 			<Layer level="OVERLAY">
 				<Texture name="$parentBorder" file="Interface\Buttons\UI-Debuff-Overlays" parentKey="border">
@@ -127,4 +125,6 @@
 	<Button name='CUIAuraTemplate60' inherits='CUIAuraTemplate' virtual='true'>
 		<Size x='60' y='60'/>
 	</Button>
+	
+	<Script File="Auras.lua"/>
 </Ui>

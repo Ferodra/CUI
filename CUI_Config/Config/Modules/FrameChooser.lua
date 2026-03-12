@@ -1,5 +1,11 @@
 local E, L = unpack(CUI) -- Engine
-local CD, L = E:LoadModules("Config_Dialog", "Locale")
+local CD = E:LoadModules("Config_Dialog")
+
+local GetAtlasInfo = C_Texture.GetAtlasInfo
+local GetMouseFocus = GetMouseFocus or function()
+	local frames = _G.GetMouseFoci()
+	return frames and frames[1]
+end
 
 function CD:ToggleFrameChooser(Path)
 	
@@ -7,7 +13,7 @@ function CD:ToggleFrameChooser(Path)
 		
 		self.FrameChooser.UpdateTimer = 0
 		
-		self.FrameChooser.Selection = CreateFrame("Frame", nil, self.FrameChooser)
+		self.FrameChooser.Selection = CreateFrame("Frame", nil, self.FrameChooser, BackdropTemplateMixin and "BackdropTemplate")
 		self.FrameChooser.Selection:SetFrameStrata("TOOLTIP")
 		self.FrameChooser.Selection:SetBackdrop({
 		  edgeFile = [[Interface\Buttons\WHITE8X8]],
@@ -83,7 +89,8 @@ function CD:GetClickIcon(str)
 	str = string.gsub(str, "{Atlas|([%w_]+):?(%d*)}", function(atlasName, size)
 				size = tonumber(size) or 0;
 
-				local filename, width, height, txLeft, txRight, txTop, txBottom = GetAtlasInfo(atlasName);
+				local info = GetAtlasInfo(atlasName)
+				local filename, width, height, txLeft, txRight, txTop, txBottom = info.file, info.width, info.height, info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
 
 				if (not filename) then return; end
 

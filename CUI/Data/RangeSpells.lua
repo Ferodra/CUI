@@ -4,6 +4,7 @@ E.RangeSpells = {
 	["DRUID"] = {
 		["enemy"] = {
 			8921, -- Moonfire
+			190984, -- Solar Wrath
 		},
 		["friendly"] = {
 			8936, -- Regrowth

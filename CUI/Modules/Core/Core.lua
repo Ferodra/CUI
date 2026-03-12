@@ -6,29 +6,33 @@ local CO, CORE = E:LoadModules("Config", "Core")
 -----------]]--
 
 function CORE:InitNumberSuffix()
-	E.NumberFormatSuffix = CO.db.global.numberFormat
+	local DBSuffix = CO.db.global.numberFormat
 	
-	if E.NumberFormatSuffix == "METRIC" then
+	if DBSuffix == "METRIC" then
 		E.NumberFormatFunc = E.FormatNumber_Metric
-	elseif E.NumberFormatSuffix == "GERMAN" then
+	elseif DBSuffix == "GERMAN" then
 		E.NumberFormatFunc = E.FormatNumber_German
-	elseif E.NumberFormatSuffix == "ENGLISH" then
+	elseif DBSuffix == "ENGLISH" then
 		E.NumberFormatFunc = E.FormatNumber_English
-	elseif E.NumberFormatSuffix == "CHINESE" then
+	elseif DBSuffix == "CHINESE" then
 		E.NumberFormatFunc = E.FormatNumber_Chinese
-	elseif E.NumberFormatSuffix == "KOREAN" then
+	elseif DBSuffix == "KOREAN" then
 		E.NumberFormatFunc = E.FormatNumber_Korean
 	else
 		E.NumberFormatFunc = E.FormatNumber_Metric
 	end
+	
+	E.NumberFormatSuffix = DBSuffix
 end
 
-function CORE:LoadProfile()
+function CORE:LoadConfig()
 	self:InitNumberSuffix()
 end
 
 function CORE:Init()
-	self:LoadProfile()
+	self:LoadConfig()
+	
+	E.PlayerName = UnitName('player')
 end
 
 E:AddModule("Core", CORE)

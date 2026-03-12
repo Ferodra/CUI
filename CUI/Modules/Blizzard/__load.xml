@@ -1,3 +1,4 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Script File="Blizzard_Frames.lua"/>
+	<Script File="Blizzard.lua"/>
+	<Script File="Alertframes.lua"/>
 </Ui>

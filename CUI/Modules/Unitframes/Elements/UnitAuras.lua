@@ -1,5 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, L, UF = E:LoadModules("Config", "Locale", "Unitframes")
+local CO, UF, FI = E:LoadModules("Config", "Unitframes", "Filters")
 
 ----------------------------------------------
 local _
@@ -8,16 +8,21 @@ local max				= math.max
 local floor				= math.floor
 local ceil				= math.ceil
 local format			= string.format
+local lower				= string.lower
 local tinsert			= table.insert
 local pairs				= pairs
 local type				= type
-local UnitAura			= UnitAura
+local UnitAura				= C_TooltipInfo.GetUnitAura
+local GetAuraDataByIndex 	= C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+local UnpackAuraData 		= AuraUtil and AuraUtil.UnpackAuraData
 local DebuffTypeColor	= DebuffTypeColor
 local UnitExists		= UnitExists
 local UnitCanAttack		= UnitCanAttack
+local GetAuraDuration 		= C_UnitAuras.GetAuraDuration
+local GetAuraApplicationDisplayCount = C_UnitAuras.GetAuraApplicationDisplayCount
 ----------------------------------------------
 
-local MouseOverUpdater = CreateFrame("Frame")
+local MouseOverUpdater = CreateFrame("Frame", "CUI_UnitAurasMouseoverUpdater")
 local Module = {}
 Module.Frames = {}
 
@@ -45,7 +50,7 @@ local MasqueGroup_Debuffs = Masque and Masque:Group("CUI", format("%s %s", L["un
 						-> [4] = AuraDType
 						-> [5] = AuraDuration
 						-> [6] = AuraExpirationTime
-				-> UnitAuraClass = HELPFUL or HARMFUL, based on faction towards player
+				-> AuraUnitFaction = HELPFUL or HARMFUL, based on faction towards player
 
 ------------------------------------------------]]
 
@@ -60,8 +65,6 @@ function Module:ToggleTestMode(state)
 			Holder = Entry[Type]
 			
 			if state then
-				
-				Holder:UnregisterAllEvents()
 				AuraType = (Type == "Buffs") and "HELPFUL" or "HARMFUL"
 				
 				-- Create missing slots
@@ -82,29 +85,36 @@ function Module:ToggleTestMode(state)
 				self:UpdateHolderSize(Holder)
 				self:UpdateSlotPositions(Holder)
 			else
-				if not Holder:IsEventRegistered("UNIT_AURA") then
-					Holder:RegisterEvent("PLAYER_ENTERING_WORLD")
-					Holder:RegisterUnitEvent("UNIT_AURA", Holder.Unit)
-				end
+				-- if not Holder:IsEventRegistered("UNIT_AURA") then
+					-- Holder:RegisterEvent("PLAYER_ENTERING_WORLD")
+					-- Holder:RegisterUnitEvent("UNIT_AURA", Holder.unit)
+				-- end
 				
 				Holder.ActiveSlots = 0
 			end
 		end
 		
 		if not state then
-			Module:UpdateIcons(Unit)
+			--Module:UpdateIcons(Unit)
 		end
 	end
 end
 
-local function SortByExpiration(a,b)
+local function SortAuras(a,b)
 	if a and b then
 		if a:IsShown() and b:IsShown() then
-			if a:GetParent().SortDirection == "+" then
-				return a.Expiration > b.Expiration
+			if a.Priority > b.Priority then
+				return true
+			elseif a.Priority < b.Priority then
+				return false
 			else
-				return a.Expiration < b.Expiration
+				if a:GetParent().SortDirection == "+" then
+					return a.Expiration > b.Expiration
+				else
+					return a.Expiration < b.Expiration
+				end
 			end
+			
 		elseif a:IsShown() then
 			return true
 		end
@@ -143,14 +153,13 @@ function Module:CreateIcon(Slot, Type)
 	Slot.Tex = Slot:CreateTexture(nil, "BACKGROUND")
 	Slot.Tex:SetParent(Slot)
 	Slot.Tex:SetAllPoints(Slot)
-	Slot.Tex:SetSize(32, 32)
 	
 	Slot.Highlight = Slot:CreateTexture(nil, "HIGHLIGHT")
 	Slot.Highlight:SetColorTexture(1, 1, 1, 0.45)
 	
 	--E:SkinButtonIcon(Slot.Tex, {0.3, 0.3, 0.8, 1})
 	
-	self:SetupTooltip(Slot)
+	self:SetupInteraction(Slot)
 	self:SetupCooldown(Slot)
 	
 	Slot.Cooldown.Time = CreateFrame("Frame", nil, Slot.Cooldown)
@@ -165,7 +174,7 @@ function Module:CreateIcon(Slot, Type)
 		Slot.FontOverlay:SetAllPoints(true)
 	Slot.Count = self:InitFont(Slot, Slot.FontOverlay, "Count")
 	
-	if not CO.db.profile.unitframe.unitBuffs.useMasque and not CO.db.profile.unitframe.unitDebuffs.useMasque then return end
+	if not CO.db.char.unitframe.unitBuffs.useMasque and not CO.db.char.unitframe.unitDebuffs.useMasque then return end
 	
 	local ButtonData = {
 		FloatingBG = nil,
@@ -187,13 +196,14 @@ function Module:CreateIcon(Slot, Type)
 	}
 	
 	local Target
-	if Type == "Buffs" and CO.db.profile.unitframe.unitBuffs.useMasque then
+	if Type == "Buffs" and CO.db.char.unitframe.unitBuffs.useMasque then
 		Target = MasqueGroup_Buffs
-	elseif Type == "Debuffs" and CO.db.profile.unitframe.unitDebuffs.useMasque then
+	elseif Type == "Debuffs" and CO.db.char.unitframe.unitDebuffs.useMasque then
 		Target = MasqueGroup_Debuffs
 	end
 	if Target then
 		Target:AddButton(Slot, ButtonData)
+		-- Don't ReSkin here, as it will: Impact performance, due to rapid creation of buttons and cause flickering, since the whole group is being iterated
 		--Target:ReSkin()
 		
 		if Slot.__MSQ_BaseFrame then
@@ -208,18 +218,18 @@ end
 ----------------------------------
 -- AURA TOOLTIP
 ----------------------------------
-	
+	local TooltipUpdateFrequency = 0.25
 	local function BuildTooltip(self)
 		if not Module.TestMode then
 			GameTooltip:SetOwner(self)
-			GameTooltip:SetUnitAura(self:GetParent():GetParent().Unit, self.RealIndex, self.AuraClass)
+			GameTooltip:SetUnitAura(self:GetParent().Owner.unit, self.RealIndex, self.AuraClass)
 		end
 	end
 	
 	local function AuraMouseOver_OnUpdate(self, elapsed)
 		self.UpdateDelay = (self.UpdateDelay or 0) + elapsed
 		
-		if self.UpdateDelay >= 0.25 then
+		if self.UpdateDelay >= TooltipUpdateFrequency then
 			BuildTooltip(self.Slot)
 			
 			self.UpdateDelay = 0
@@ -232,7 +242,7 @@ end
 		else
 			MouseOverUpdater.Slot = Slot
 			MouseOverUpdater:SetScript("OnUpdate", AuraMouseOver_OnUpdate)
-			AuraMouseOver_OnUpdate(MouseOverUpdater, 999) -- Force update to prevent flashing
+			AuraMouseOver_OnUpdate(MouseOverUpdater, TooltipUpdateFrequency + 1) -- Force update to prevent flashing
 		end
 	end
 
@@ -243,10 +253,18 @@ end
 		SetAuraMouseUpdater(self, false)
 		GameTooltip:Hide()
 	end
+	local function AuraButton_OnClick(self, button, state)
+		if IsShiftKeyDown() then
+			FI:AddSpellIDToUnitAurabarsFilter(self.SpellID, self:GetParent().Owner.unit, self.Duration)
+		end
+	end
 
-	function Module:SetupTooltip(Slot)
+	function Module:SetupInteraction(Slot)
 		Slot:SetScript("OnEnter", AuraButton_OnEnter)
 		Slot:SetScript("OnLeave", AuraButton_OnLeave)
+		Slot:SetScript("OnClick", AuraButton_OnClick)
+		
+		Slot:RegisterForClicks('RightButtonUp')
 	end
 	
 ----------------------------------
@@ -256,49 +274,77 @@ end
 ----------------------------------
 -- LOAD PROFILE
 ----------------------------------
-local function ConfigLoader(UnitOrFrame)	
-	local Frame
+local function GetHolderAnchor(Holder)
+	local AnchorFrame, PositionConflict = nil, false
 	
-	if type(UnitOrFrame) == "string" then
-		Frame = UF.Frames[UnitOrFrame]
-	elseif type(UnitOrFrame) == "table" then
-		Frame = UnitOrFrame
+	if Holder.AttachTo == "Frame" then
+		AnchorFrame = Holder.Owner
+	else
+		if (Holder.AttachTo == Holder.OtherHolder.Type and Holder.OtherHolder.AttachTo == Holder.Type) or Holder.Type == Holder.AttachTo then
+			PositionConflict = true
+			AnchorFrame = Holder.Owner
+		else
+			AnchorFrame = Holder.OtherHolder
+		end
+	end
+	
+	return AnchorFrame, PositionConflict
+end
+local function ConfigLoader(UnitOrFrame, Frame, RefreshUnitOnly)	
+	if not Frame then
+		if type(UnitOrFrame) == "string" then
+			-- Frame = UF.Frames[UnitOrFrame]
+			-- @TODO
+			-- I would like something more performant, but for now this is enough.
+			Frame = UF:GetUnitframe(UnitOrFrame)
+		elseif type(UnitOrFrame) == "table" then
+			Frame = UnitOrFrame
+		end
 	end
 	
 	if not Frame then return end
 	
 	-------------------------------------------------------------------------
-		local ProfileTarget = Module.db.units[Frame.ProfileUnit]
+		local AnchorFrame
+		local Config = Module.db.units[Frame.ConfigKey]
+		local Type, OtherHolder, HolderConfig, OtherHolderConfig, PositionConflict
 		
-		for i=1, #Module.Holders[Frame.Unit] do
-		-- Aura config
-			-- Let's clear those bois first, before we get into any trouble
-			for _, Type in pairs(Module.HOLDER_TYPES) do
-				Module.Holders[Frame.Unit][i][Type]:ClearAllPoints()
+		if not RefreshUnitOnly then
+			-- Let's update those bois first, before we get into any trouble, as the settings are dependent on each other
+			for k, Holder in pairs(Frame.AuraHolders) do
+				Holder:ClearAllPoints()
+				
+				Type = Holder.Type
+				HolderConfig = Config[lower(Type)]
+				OtherHolder = Frame[(Type == "Buffs") and "Debuffs" or "Buffs"]
+				
+				Holder.OtherHolder 		= OtherHolder
+				Holder.Enabled 			= HolderConfig.enable
+				Holder.NumPerRow 		= HolderConfig.numPerRow
+				Holder.MaxWraps 		= HolderConfig.maxWraps
+				Holder.Num_Auras		= Holder.NumPerRow * Holder.MaxWraps
+				Holder.Position			= HolderConfig.position
+				Holder.AttachTo			= HolderConfig.attachTo
+				Holder.SlotSize 		= HolderConfig.size
+				Holder.GapX 			= HolderConfig.gapX
+				Holder.GapY 			= HolderConfig.gapY
+				Holder.OffsetX 			= HolderConfig.offsetX
+				Holder.OffsetY 			= HolderConfig.offsetY
+				Holder.SortDirection	= HolderConfig.sortDirection
+				Holder.SortBy			= HolderConfig.sortBy
+				Holder.FilterType		= HolderConfig.filterType
+				Holder.ClickThrough 	= HolderConfig.clickThrough
+				Holder.SlotAlpha		= HolderConfig.alpha
+				Holder.MinDuration		= HolderConfig.minDuration
 			end
+		end
+		
+		for k, Holder in pairs(Frame.AuraHolders) do
+			Type = Holder.Type
+			OtherHolder = Frame[(Type == "Buffs") and "Debuffs" or "Buffs"]
+			OtherHolderConfig = Config[lower((Type == "Buffs") and "Debuffs" or "Buffs")]
 			
-			for _, Type in pairs(Module.HOLDER_TYPES) do
-				local Holder, OtherHolder, Profile, OtherProfile, PositionConflict
-				Holder = Module.Holders[Frame.Unit][i][Type]
-				Profile = ProfileTarget[string.lower(Type)]
-				OtherHolder = Module.Holders[Frame.Unit][i][(Type == "Buffs") and "Debuffs" or "Buffs"]
-				OtherProfile = ProfileTarget[string.lower((Type == "Buffs") and "Debuffs" or "Buffs")]
-				
-				Holder.OtherHolder = OtherHolder
-				Holder.Enabled 		= Profile.enable
-				Holder.NumPerRow 	= Profile.numPerRow
-				Holder.MaxWraps 	= Profile.maxWraps
-				Holder.Num_Auras	= Holder.NumPerRow * Holder.MaxWraps
-				Holder.Position		= Profile.position
-				Holder.AttachTo		= Profile.attachTo
-				Holder.SlotSize 	= Profile.size
-				Holder.GapX 		= Profile.gapX
-				Holder.GapY 		= Profile.gapY
-				Holder.OffsetX 		= Profile.offsetX
-				Holder.OffsetY 		= Profile.offsetY
-				Holder.SortDirection= Profile.sortDirection
-				Holder.SortBy		= Profile.sortBy
-				
+			if not RefreshUnitOnly then
 				if Holder.Position == "CENTER" or Holder.Position == "TOP" or Holder.Position == "BOTTOM" then
 					Holder.HasCenterPositioning = true
 				else
@@ -306,71 +352,74 @@ local function ConfigLoader(UnitOrFrame)
 					Holder.HasCenterPositioning = false
 				end
 				
-				if Profile.enable then
-					
-					PositionConflict = false
-					
-					-- Position
-					if Holder.AttachTo == "Frame" then
-						Holder:SetPoint(E:InversePosition(Holder.Position), Module.Holders[Frame.Unit][i], Holder.Position, Holder.OffsetX, Holder.OffsetY)
-					elseif Holder.AttachTo == "Buffs" then
-						if OtherHolder.AttachTo ~= "Buffs" and OtherProfile.attachTo ~= "Debuffs" and Type ~= "Buffs" then
-							Holder:SetPoint(E:InversePosition(Holder.Position), Module.Holders[Frame.Unit][i].Buffs, Holder.Position, Holder.OffsetX, Holder.OffsetY)
-						else
-							PositionConflict = true
-						end
-					elseif Holder.AttachTo == "Debuffs" then
-						if OtherHolder.AttachTo ~= "Debuffs" and OtherProfile.attachTo ~= "Buffs" and Type ~= "Debuffs" then
-							Holder:SetPoint(E:InversePosition(Holder.Position), Module.Holders[Frame.Unit][i].Debuffs, Holder.Position, Holder.OffsetX, Holder.OffsetY)
-						else
-							PositionConflict = true
-						end
-					end
-					
-					if PositionConflict then
-						Holder:SetPoint(E:InversePosition(Holder.Position), Module.Holders[Frame.Unit][i], Holder.Position, Holder.OffsetX, Holder.OffsetY)
-						E:print("There is an issue with the " .. Frame.ProfileUnit .. " " .. Type .. ", because they are attached to " .. Holder.AttachTo .. ", which is attached to " .. OtherProfile.attachTo)
-					end
-					
+				-- Position regardless of status, as we still can anchor things to it and need updated positioning therefore
+				AnchorFrame, PositionConflict = GetHolderAnchor(Holder)
+				Holder:SetPoint(E:InversePosition(Holder.Position), AnchorFrame, Holder.Position, Holder.OffsetX, Holder.OffsetY)
+				
+				if PositionConflict then
+					E:print("There is an issue with the " .. Frame.ConfigKey .. " " .. Type .. ", because they are attached to " .. Holder.AttachTo .. ", creating a loop!")
+				end
+				
+				if Holder.Enabled then		
 					for k, Slot in pairs(Holder.AuraSlot) do
 						Slot:SetSize(Holder.SlotSize, Holder.SlotSize)
+						Slot:EnableMouse(not Holder.ClickThrough)
+						
+						if Holder.SlotAlpha then
+							Slot:SetAlpha(Holder.SlotAlpha)
+						end
 						
 						Slot:Hide() -- To hide not required slots. Will be shown on next update
 					end
 					
-					if not Holder:IsEventRegistered("UNIT_AURA") then
-						Holder:RegisterEvent("PLAYER_ENTERING_WORLD")
-						Holder:RegisterUnitEvent("UNIT_AURA", Holder.Unit)
-					end
+					-- if not Holder:IsEventRegistered("UNIT_AURA") then
+						-- Holder:RegisterEvent("PLAYER_ENTERING_WORLD")
+						-- Holder:RegisterUnitEvent("UNIT_AURA", Holder.unit)
+					-- end
 				else
 					-- Just scale down, since we may want to anchor stuff
-					Holder:UnregisterAllEvents()
+					for k, Slot in pairs(Holder.AuraSlot) do
+						Slot:Hide() -- To hide not required slots. Will be shown on next update
+					end
 					Module:DisableHolder(Holder)
-					Holder:ClearAllPoints()
-					Holder:SetPoint(E:InversePosition(Holder.Position), Module.Holders[Frame.Unit][i], Holder.Position, Holder.OffsetX, Holder.OffsetY)
 				end
 			end
 			
-			if not Module.TestMode then
-				-- Force Update
-				Module:UpdateIcons(Frame.Unit)
+			Frame.AuraEventHandler:UnregisterAllEvents()
+			
+			if Holder.Enabled or OtherHolder.Enabled then
+				Frame.AuraEventHandler:RegisterUnitEvent("UNIT_AURA", Frame.unit)
+				Frame.AuraEventHandler:SetScript("OnEvent", Module.Auras_OnEvent)
 			else
-				Module:ToggleTestMode(true)
+				Frame.AuraEventHandler:SetScript("OnEvent", nil)
 			end
+			
+			if RefreshUnitOnly then return end
 			
 			if MasqueGroup_Debuffs then MasqueGroup_Debuffs:ReSkin() end
 			if MasqueGroup_Buffs then MasqueGroup_Buffs:ReSkin() end
+		end
+		
+		if not Module.TestMode then
+			-- Force Update
+			Module:UpdateIcons(Frame)
+		else
+			--Module:ToggleTestMode(true)
 		end
 	
 	-------------------------------------------------------------------------
 end
 
+local function UpdateUnit(self)
+	--local Unit = self.Frame.unit
+	ConfigLoader(self.Frame, nil, true)
+end
+
 function Module:DisableHolder(Holder)
-	if not Holder.OtherHolder.Enabled then
+	if not Holder.OtherHolder.Enabled or Holder.ActiveSlots <= 0 then
 		Holder:SetSize(1, 1)
 		return
 	end
-	
 	
 	if Holder.OtherHolder.Position:find("LEFT") or Holder.OtherHolder.Position:find("RIGHT") then
 		Holder:SetSize(1, Holder.SlotSize)
@@ -383,7 +432,11 @@ end
 -- No unit/frame = Update all
 -- Otherwise only the specified unit-set or frame will be updated
 -- This makes the config less laggy, as we are dealing with so many frames here
-function Module:LoadProfile(Unit)
+function Module:LoadConfig(Unit, ForSingleFrame)
+	
+	if Unit and ForSingleFrame then
+		ConfigLoader(Unit)
+	end
 	
 	if not Unit then
 		for _, Frame in pairs(Module.Frames) do
@@ -453,36 +506,24 @@ end
 ----------------------------------
 -- SLOT
 ----------------------------------
-
-	local CurrentVisible
 	function Module:UpdateCenterPositioning(Holder)
-		CurrentVisible = Holder.ActiveSlots
-		
-		for i = 1, #Holder.AuraSlot do
-			if select(1, Holder.AuraSlot[i]:GetPoint()) ~= "CENTER" then
-				Holder.AuraSlot[i]:ClearAllPoints()
-			end
-			Holder.AuraSlot[i]:SetPoint("CENTER", Holder, "CENTER", Module:GetGrowthDirection(Holder.SlotSize, "CENTER", i, CurrentVisible, Holder.GapX), 0)
-		end
+		E:SortFrames(Holder.AuraSlot, Holder, Holder.SlotSize, Holder.SlotSize, 1, Holder.NumPerRow, nil, nil, 1, 1, true)
 	end
 
 	-- @TODO: Center requires active positioning
-	local GrowthDirection
 	function Module:GetGrowthDirection(Size, Direction, NumCurrent, NumVisible, Gap)
 		Gap = Gap or 1
 		
 		if Direction == "UP" or Direction == "RIGHT" then
-			GrowthDirection = Size + Gap
+			return Size + Gap
 		elseif Direction == "DOWN" or Direction == "LEFT" then
-			GrowthDirection = (Size + Gap) * (-1)
+			return (Size + Gap) * (-1)
 		elseif Direction == "CENTER" and NumCurrent and NumVisible then
-			GrowthDirection = (NumCurrent - NumVisible / 2) * (Size + Gap) - Size / 2
+			return (NumCurrent - NumVisible / 2) * (Size + Gap) - Size / 2
 		end
-		
-		return GrowthDirection
 	end
 
-	local InitFontData = {["Time"] = {"CENTER", 0, 0, 0, 0, "MIDDLE"}, ["Count"] = {"BOTTOMRIGHT", 0, 0, -2, 2, "RIGHT"}} -- Alignment, Width, Height, XOffset
+	local InitFontData = {["Time"] = {"CENTER", 0, 0, 0, 0, "CENTER"}, ["Count"] = {"BOTTOMRIGHT", 0, 0, -2, 2, "RIGHT"}} -- Alignment, Width, Height, XOffset, YOffset, JustifyH
 	function Module:InitFont(Slot, Parent, Font)
 		local v = InitFontData[Font]
 		Parent = Parent or Slot
@@ -497,7 +538,7 @@ end
 		return Slot[Font]
 	end
 	
-	local RepositioningSlot, RepositioningOffsetX, RepositioningOffsetY
+	local RepositioningSlot
 	function Module:RepositionSlot(Holder, Index)
 		RepositioningSlot = Holder.AuraSlot[Index]
 		
@@ -515,12 +556,14 @@ end
 		end
 		
 		-- Prevent random flashing
-		if not RepositioningSlot.PointCache or RepositioningSlot.PointCache ~= Holder.SlotAnchor then
-			RepositioningSlot:ClearAllPoints()
+		if Holder.SlotAnchor then
+			if select(1, RepositioningSlot:GetPoint()) ~= Holder.SlotAnchor then
+				RepositioningSlot:ClearAllPoints()
+			end
+			
+			RepositioningSlot:SetPoint(Holder.SlotAnchor, Holder, Holder.SlotAnchor)
+			RepositioningSlot.PointCache = Holder.SlotAnchor
 		end
-		
-		RepositioningSlot:SetPoint(Holder.SlotAnchor, Holder, Holder.SlotAnchor)
-		RepositioningSlot.PointCache = Holder.SlotAnchor
 		
 		-- We have to use the previous column and row values to make it work properly
 		RepositioningSlot.XOffset = ((Holder.SlotSize * Holder.CurrentColumn) + (Holder.GapX * Holder.CurrentColumn)) * RepositioningSlot.MathPrefix_X
@@ -538,11 +581,11 @@ end
 	end
 	
 	function Module:UpdateSlotPositions(Holder)
-		sort(Holder.AuraSlot, SortByExpiration)
-		
-		local Slot
+		--sort(Holder.AuraSlot, SortAuras)
 		
 		if not Holder.HasCenterPositioning then
+			
+			local Slot
 			
 			Holder.CurrentColumn = 0
 			Holder.CurrentRow = 0
@@ -557,53 +600,78 @@ end
 			self:UpdateCenterPositioning(Holder)
 		end
 	end
+	
+	local FontPath_Base = "db.profile.unitframe.units.%s.%s.%s"
+	local function GetFontPath(Holder, ConfigKey, Type)
+		return (FontPath_Base):format(ConfigKey or Holder.ConfigKey or Holder.Owner.ConfigKey, lower(Holder.Type), Type)
+	end
 
 	-- We use this method to create slots on the fly while updating auras
-	function Module:CreateSlot(Holder, Index, ProfileUnit)
-		if Holder.AuraSlot[Index] then return end
-		
-		Holder.AuraSlot[Index] = CreateFrame("Button", format("CUI_AuraIcon%s", Index), Holder)
-		Holder.AuraSlot[Index]:SetSize(Holder.SlotSize, Holder.SlotSize)
-		
-		Holder.AuraSlot[Index]:EnableMouse(true)
-		
-		self:CreateIcon(Holder.AuraSlot[Index], Holder.Type)
-		
-		E:RegisterPathFont(Holder.AuraSlot[Index].Cooldown.Time.Text, "db.profile.unitframe.units." .. (ProfileUnit or Holder.ProfileUnit or Holder.Parent.ProfileUnit) .. "."  .. string.lower(Holder.Type) .. ".time")
-		E:RegisterPathFont(Holder.AuraSlot[Index].Count, "db.profile.unitframe.units." .. (ProfileUnit or Holder.ProfileUnit or Holder.Parent.ProfileUnit) .. "."  .. string.lower(Holder.Type) .. ".count")
-		
-		Holder.CurrentColumn = 0
-		Holder.CurrentRow = 0
-		
-		self:RepositionSlot(Holder, Index)
+	function Module:CreateSlot(Holder, Index, ConfigKey)
+		if not Holder.AuraSlot[Index] then
+			
+			Holder.AuraSlot[Index] = CreateFrame("Button", format("CUI_AuraIcon%s", Index), Holder)
+			Holder.AuraSlot[Index]:SetSize(Holder.SlotSize, Holder.SlotSize)
+			self:CreateIcon(Holder.AuraSlot[Index], Holder.Type)
+			
+			Holder.AuraSlot[Index]:SetAlpha(Holder.SlotAlpha or 1)
+			Holder.AuraSlot[Index]:EnableMouse(not Holder.ClickThrough)
+			
+			E:RegisterAutoFont(Holder.AuraSlot[Index].Cooldown.Time.Text, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'time'))
+			E:RegisterAutoFont(Holder.AuraSlot[Index].Count, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'count'))
+			
+			Holder.CurrentColumn = 0
+			Holder.CurrentRow = 0
+			
+			self:RepositionSlot(Holder, Index)
+			
+		end
 		
 		return Holder.AuraSlot[Index]
 	end
 	
-	function Module:PopulateSlot(Slot, Unit, RealIndex, AuraType, UnitAuraClass, Texture, Count, DType, ExpirationTime, Duration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID)
+	function Module:PopulateSlot(Slot, Unit, RealIndex, AuraType, AuraUnitFaction, Texture, Count, DType, ExpirationTime, UnitCaster, Duration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID, AuraInstanceID)
 		Slot.RealIndex = RealIndex -- Used for tooltips
 		Slot.AuraClass = AuraType -- Used for tooltips
 		
 		Slot.Name 		= AuraName
 		Slot.Duration 	= Duration
 		Slot.Expiration = ExpirationTime
-		
-		if Count > 1 then
-			Slot.Count:SetText(Count)
-			Slot.Count:Show()
+		Slot.SpellID 	= SpellID
+		if Unit == 'player' or Unit == 'target' then
+			--Slot.Priority = FI:GetAuraPriority(CO.db.profile.auras.units[Unit].aurabars.filterType, SpellID)
+			Slot.Priority = 99
 		else
-			Slot.Count:Hide()
+			Slot.Priority = 1
 		end
+		
+		Slot.DisplayCount = GetAuraApplicationDisplayCount(Unit, AuraInstanceID, 2, 99)
+		
+		Slot.Count:Show()
+		Slot.Count:SetText(Slot.DisplayCount)
+		-- if Count > 1 then
+			-- Slot.Count:SetText(Count)
+			-- Slot.Count:Show()
+		-- else
+			-- Slot.Count:Hide()
+		-- end
 		
 		Slot.Tex:SetTexture(Texture)
-		E:ColorizeAuraButton(Slot, DType, Unit, AuraType, AuraName, SpellID, CO.db.profile.unitframe.aurasDefaultBorderColor)
+		--if CO.db.profile.unitframe.desaturateOtherDebuffs and AuraType == 'HARMFUL' and AuraUnitFaction == AuraType and UnitCaster ~= 'player' then
+		-- if not IsCastByPlayer then
+			-- Slot.Tex:SetDesaturated(true)
+		-- else
+			-- Slot.Tex:SetDesaturated(false)
+		-- end
+			
+		-- E:ColorizeAuraButton(Slot, DType, Unit, AuraType, AuraName, SpellID, CO.db.profile.unitframe.aurasDefaultBorderColor)
 		
-		if Slot.Cooldown and ExpirationTime and Duration and Duration > 0 then
-			Slot.Cooldown:SetCooldown(ExpirationTime - Duration, Duration)
-			Slot.Cooldown:Show()
-		else
-			Slot.Cooldown:Hide()
-		end
+		-- if Slot.Cooldown and ExpirationTime and Duration and Duration > 0 then
+			-- Slot.Cooldown:SetCooldown(ExpirationTime - Duration, Duration)
+			-- Slot.Cooldown:Show()
+		-- else
+			-- Slot.Cooldown:Hide()
+		-- end
 	end
 
 ----------------------------------
@@ -618,7 +686,7 @@ end
 		-- Fires whenever the icons are being updated
 		-- Requires Slot Num per Row, GapX, GapY, SlotSize and Num of active Slots
 		
-		if Holder.ActiveSlots > 0 then
+		if Holder.ActiveSlots and Holder.ActiveSlots > 0 then
 			Holder.SizeX = ((Holder.NumPerRow / Holder.ActiveSlots) <= 1) and ((Holder.NumPerRow * (Holder.SlotSize + Holder.GapX) - Holder.GapX)) or ((Holder.ActiveSlots * (Holder.SlotSize + Holder.GapX) - Holder.GapX))
 			Holder.SizeY = (max((ceil(Holder.ActiveSlots / Holder.NumPerRow)), 1) * (Holder.SlotSize + Holder.GapY)) - Holder.GapY
 			
@@ -633,28 +701,28 @@ end
 			self.Holders[Unit] = {}
 		end
 		
-		table.insert(self.Holders[Unit], Holder)
+		tinsert(self.Holders[Unit], Holder)
 	end
 
-	function Module:SetHolderEvent(Holder, Unit)
-		Holder:RegisterEvent("PLAYER_ENTERING_WORLD")
-		Holder:RegisterUnitEvent("UNIT_AURA", Unit)
-		
-		Holder:SetScript("OnEvent", Module.Holder_OnEvent)
+	function Module:SetFrameEvent(Frame)
+		Frame.AuraEventHandler = CreateFrame('Frame')
+		Frame.AuraEventHandler.Owner = Frame
 	end
 
 	function Module:CreateHolder(Frame, Type)
 		if not Frame[Type] then
-			-- Profile unit holds the unit + index for raid40. Name is not really needed, but why not
-			Frame[Type] = CreateFrame("Frame", format("%s%sHolder", Frame.ProfileUnit, Type), Frame)
-			Frame[Type]:SetFrameStrata("LOW")
-			Frame[Type].Parent = Frame
-			Frame[Type].Unit = Frame.Unit
-			Frame[Type].ProfileUnit = Frame.ProfileUnit
+			-- Profile unit holds the unit + index for raid40. Name is required, so the user can attach stuff to this holder
+			Frame[Type] = CreateFrame("Frame", format("%s%sHolder", Frame.ConfigKey, Type), Frame.Overlay)
+			Frame[Type]:SetFrameStrata("MEDIUM")
+			Frame[Type].Owner = Frame
+			Frame[Type].unit = Frame.unit
+			Frame[Type].ConfigKey = Frame.ConfigKey
 			Frame[Type].Type = Type
+			Frame[Type].ActiveSlots = 0
 			Frame[Type].AuraSlot = {}
 			
-			self:SetHolderEvent(Frame[Type], Frame.Unit)
+			if not Frame.AuraHolders then Frame.AuraHolders = {} end
+			tinsert(Frame.AuraHolders, Frame[Type])
 		end
 	end
 	
@@ -663,9 +731,10 @@ end
 			for _, Type in pairs(Module.HOLDER_TYPES) do
 				Module:CreateHolder(Frame, Type)
 			end
+			self:SetFrameEvent(Frame)
 			
-			self:RegisterHolder(Frame, Frame.Unit)
-			self:LoadProfile(Frame) -- Initial update
+			self:RegisterHolder(Frame, Frame.unit)
+			self:LoadConfig(Frame) -- Initial update
 		end
 	end
 
@@ -673,135 +742,127 @@ end
 -- HOLDER END
 ----------------------------------
 
-local Concat
 function Module:IsUnitFromType(Unit, Compare)
 	if not Compare then return false end
+	local Concat
 	
-	if UF.ToCreate[Unit] then
-		for i = 1, UF.ToCreate[Unit] do
-			Concat = Compare .. i
-			if Concat == Unit then
-				return true
-			end
-		end
+	-- if UF.ToCreate[Unit] then
+		-- for i = 1, UF.ToCreate[Unit] do
+			-- Concat = Compare .. i
+			-- if Concat == Unit then
+				-- return true
+			-- end
+		-- end
+	-- end
+	
+	return Compare:find(Unit)
+	
+	--return UnitIsUnit(Unit, Compare)
+end
+
+function Module:Auras_OnEvent(event, unit)
+	if not UnitExists(self.Owner.unit) or (event == 'UNIT_AURA' and not UnitIsUnit(self.Owner.unit, unit)) then return end	
+	
+	Module:UpdateIcons(self.Owner)
+end
+
+function Module:ShouldShowAura(Holder, Type, AuraUnitFaction, AuraName, AuraDuration, SpellID, AuraCaster, IsBossDebuff, IsCastByPlayer)
+	local Filtered, FilterType = FI:IsFiltered(Holder.FilterType, SpellID)
+	--print("SPELL ID: "..SpellID)
+	-- If Blacklisted
+	if Filtered then
+		return false
+	-- If Whitelisted
+	elseif not Filtered and FilterType == 'Whitelist' then
+		return true
 	end
 	
-	return false
-end
-
-function Module:Holder_OnEvent(event, unit)
-	if not UnitExists(self.Unit) or (event == 'UNIT_AURA' and not UnitIsUnit(self.Unit, unit)) then return end
-	
-	Module:UpdateIcons(self.Unit)
-end
-
-function Module:ShouldShowAura(AuraName, SpellID, AuraCaster, IsBossDebuff, IsCastByPlayer)
+	-- If is Debuff from Boss
 	if IsBossDebuff then
 		return true
-	elseif IsCastByPlayer then
+	-- If is below min duration
+	elseif Holder.MinDuration > AuraDuration then
+		return false
+	-- If was cast by player
+	elseif AuraCaster == "player" then
 		return true
 	end
 
-	if AuraCaster ~= "" and (not self:IsUnitFromType("raid", AuraCaster) and not self:IsUnitFromType("party", AuraCaster)) then
+	-- If is debuff that is NOT from a group member
+	if Type == 'HARMFUL' and (AuraCaster ~= "" and (not self:IsUnitFromType("raid", AuraCaster) and not self:IsUnitFromType("party", AuraCaster))) then
 		return true
 	end
 	
-	return false
+	return true
 end
 
-local CurrentHolder, CurrentSlot, AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraType, CurrentAuraIndex, IterationIndex, IsBossDebuff, IsCastByPlayer, AuraCaster, RealIndex, SpellID
-function Module:UpdateIcons(Unit)
-	
-	UnitAuraClass = UnitCanAttack(Unit, E.STR.player) and E.STR.HARMFUL or E.STR.HELPFUL
-	
-	
-	-- Buffs
-	for i=1, #self.Holders[Unit] do
-		CurrentHolder = self.Holders[Unit][i].Buffs
+function Module:UpdateHolderIcons(Holder, Type, AuraUnitFaction)
+	if Holder.Enabled then
+		local FrameIndex, CurrentAuraIndex = 1, 1
+		local AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, SpellID, IsBossDebuff, IsCastByPlayer
+		local Data
 		
-			if CurrentHolder.Enabled then
-				IterationIndex = 0
-				CurrentAuraIndex = 1
+		-- Iterate until we reach the last auraID of the unit
+		-- We do not stop after N auras, as there could be auras that are whitelisted by the user and would risk losing them
+		while true do
+			--AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, _, _, SpellID, _, IsBossDebuff, IsCastByPlayer = UnpackAuraData(GetAuraDataByIndex(Holder.Owner.unit, CurrentAuraIndex, Type))
+			
+			Data = GetAuraDataByIndex(Holder.Owner.unit, CurrentAuraIndex, Type)
+			--self.AuraName, self.AuraTexture, self.AuraCount, self.AuraDType, self.AuraDuration, self.AuraExpirationTime, self.AuraSpellID = 
+			--local Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.sourceUnit, Data.isStealable, Data.nameplateShowPersonal, Data.spellId, Data.canApplyAura, Data.isBossAura, Data.isFromPlayerOrPlayerPet, Data.nameplateShowAll, Data.timeMod
+			
+			if Data then
+				AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, SpellID, IsBossDebuff, IsCastByPlayer = Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.sourceUnit, Data.spellId, Data.isBossAura, Data.isFromPlayerOrPlayerPet
 				
-				-- Iterate until we reach the last auraID of the unit
-				for i = 1, CurrentHolder.Num_Auras do
-					AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, _, _, SpellID, _, IsBossDebuff, IsCastByPlayer = UnitBuff(Unit, CurrentAuraIndex)
+				if AuraName and FrameIndex <= Holder.Num_Auras then
 					
-					if AuraName then
-						CurrentHolder.AuraSlot[i] = (CurrentHolder.AuraSlot[i] or self:CreateSlot(CurrentHolder, i))
+					--if self:ShouldShowAura(Holder, Type, AuraUnitFaction, AuraName, AuraDuration, SpellID, AuraCaster, IsBossDebuff, IsCastByPlayer) then
+					if true then
+						Holder.AuraSlot[FrameIndex] = (Holder.AuraSlot[FrameIndex] or self:CreateSlot(Holder, FrameIndex))
 						
-						-- Used for tooltips
-						RealIndex = CurrentAuraIndex
-						AuraType = "HELPFUL"
+						self:PopulateSlot(Holder.AuraSlot[FrameIndex], Holder.Owner.unit, CurrentAuraIndex, Type, AuraUnitFaction, AuraTexture, AuraCount, AuraDType, AuraExpirationTime, AuraCaster, AuraDuration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID, Data.auraInstanceID)
 						
-						self:PopulateSlot(CurrentHolder.AuraSlot[i], Unit, RealIndex, AuraType, UnitAuraClass, AuraTexture, AuraCount, AuraDType, AuraExpirationTime, AuraDuration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID)
+						Holder.AuraSlot[FrameIndex]:Show()
 						
-						IterationIndex = IterationIndex + 1
-						CurrentAuraIndex = CurrentAuraIndex + 1
-						
-						CurrentHolder.AuraSlot[i]:Show()
+						FrameIndex = FrameIndex + 1
 					end
+					
+					CurrentAuraIndex = CurrentAuraIndex + 1
+				else
+					break
 				end
-				
-				CurrentHolder.ActiveSlots = IterationIndex
-				self:UpdateHolderSize(CurrentHolder)
+			
 			else
-				CurrentHolder.ActiveSlots = 0
-			end
-		
-		for i = (CurrentHolder.ActiveSlots + 1), (CurrentHolder.Num_Auras or 0) do
-			if CurrentHolder.AuraSlot[i] then
-				CurrentHolder.AuraSlot[i]:Hide()
+				break
 			end
 		end
 		
-		self:UpdateSlotPositions(CurrentHolder)
-		
-		
-		-- Debuffs
-		CurrentHolder = self.Holders[Unit][i].Debuffs
-			if CurrentHolder.Enabled then
-				FrameIndex = 1
-				CurrentAuraIndex = 1
-				
-				-- Iterate until we reach the last aura of the unit
-				while true do
-					
-					AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, _, _, SpellID, _, IsBossDebuff, IsCastByPlayer = UnitDebuff(Unit, CurrentAuraIndex)
-					
-					if AuraName and FrameIndex <= CurrentHolder.Num_Auras then
-						if self:ShouldShowAura(AuraName, SpellID, AuraCaster, IsBossDebuff, IsCastByPlayer) then
-							CurrentHolder.AuraSlot[FrameIndex] = (CurrentHolder.AuraSlot[FrameIndex] or self:CreateSlot(CurrentHolder, FrameIndex))
-							
-							-- Used for tooltips
-							RealIndex = CurrentAuraIndex
-							AuraType = "HARMFUL"
-							
-							self:PopulateSlot(CurrentHolder.AuraSlot[FrameIndex], Unit, RealIndex, AuraType, UnitAuraClass, AuraTexture, AuraCount, AuraDType, AuraExpirationTime, AuraDuration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID)
-							CurrentHolder.AuraSlot[FrameIndex]:Show()
-							
-							FrameIndex = FrameIndex + 1
-							CurrentAuraIndex = CurrentAuraIndex + 1
-						end
-					else
-						break
-					end
-				end
-				
-				CurrentHolder.ActiveSlots = FrameIndex - 1
-				self:UpdateHolderSize(CurrentHolder)
-			else
-				CurrentHolder.ActiveSlots = 0
-			end
-		
-		for i = (CurrentHolder.ActiveSlots + 1), (CurrentHolder.Num_Auras or 0) do
-			if CurrentHolder.AuraSlot[i] then
-				CurrentHolder.AuraSlot[i]:Hide()
-			end
-		end
-		
-		self:UpdateSlotPositions(CurrentHolder)
+		Holder.ActiveSlots = FrameIndex - 1
+		self:UpdateHolderSize(Holder)
+	else
+		Holder.ActiveSlots = 0
 	end
+		
+	for i = (Holder.ActiveSlots + 1), (Holder.Num_Auras or 0) do
+		if Holder.AuraSlot[i] then
+			Holder.AuraSlot[i]:Hide()
+		end
+	end
+	
+	self:UpdateSlotPositions(Holder)
+end
+
+function Module:UpdateIcons(Frame)
+	if not Frame.Auras then return end
+	
+	AuraUnitFaction = UnitCanAttack(Frame.unit, E.STR.player) and E.STR.HARMFUL or E.STR.HELPFUL
+	
+	Module:UpdateHolderIcons(Frame.Buffs, 'HELPFUL', AuraUnitFaction)
+	Module:UpdateHolderIcons(Frame.Debuffs, 'HARMFUL', AuraUnitFaction)
+end
+
+function Module:ForceUpdate()
+	Module:UpdateIcons(self.Frame)
 end
 
 function Module:UpdateAll()
@@ -822,12 +883,13 @@ function Module:Create(F)
 	self:BuildAuras(F)
 	F.Auras = {}
 	F.Auras.Frame = F
-	F.Auras.Unit = F.Unit
+	F.Auras.unit = F.unit
 	F.Auras.Enable = self.Enable
 	F.Auras.Disable = self.Disable
-	F.Auras.ForceUpdate = self.Holder_OnEvent
+	F.Auras.ForceUpdate = self.ForceUpdate
+	F.Auras.UpdateUnit = UpdateUnit
 	
-	table.insert(Module.Frames, F)
+	tinsert(Module.Frames, F)
 end
 
 ---------- Add Module

@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="ClassNames.lua"/>
 	<Script File="ClassColors.lua"/>
 	<Script File="ClassPowers.lua"/>
 	
@@ -8,7 +9,10 @@
 	
 	<Script File="ReactionColors.lua"/>
 	
+	<Script File="FilterExtraData.lua"/>
+	
 	<Script File="RangeSpells.lua"/>
+	<Script File="SpecializationIDs.lua"/>
 	
 	<Include file="Globals\__load.xml"/>
 </Ui>

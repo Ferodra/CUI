@@ -1,9 +1,9 @@
 local E, L = unpack(CUI) -- Engine
-local CD, L = E:LoadModules("Config_Dialog", "Locale")
+local CD = E:LoadModules("Config_Dialog")
 
 CD.Options.args.credits = {
 	type = "group",
-	name = "Credits",
+	name = '|cff1784d1' .. 'Credits' .. '|r',
 	order = -2,
 	args = {
 		Banner = {
@@ -33,9 +33,16 @@ CD.Options.args.credits = {
 			order = 4,
 		},
 		Discord = {
-			type = "description",
-			name = "|cff1784d1\n\n\nWe now got an official Discord Server!|r\nhttps://discord.gg/6RN8Qt7|r",
-			fontSize = "small",
+			type = "execute",
+			name = "|cff1784d1We not got an official Discord Server!\nClick the Logo to show the invite Link!\n\nThe Discord Logo is courtesy of Discord inc.|r",
+			width = 1.2,
+			func = function()
+				E:LoadModule('Chat'):ShowLink("https://discord.gg/6RN8Qt7|r")
+			end,
+			image = function()
+				return [[Interface\AddOns\CUI\Textures\Discord]], 200, 50
+			end,
+			--fontSize = "small",
 			order = 5,
 		},
 	},

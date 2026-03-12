@@ -2,7 +2,7 @@ local E, L = unpack(select(2, ...)) -- Engine, Locale
 
 -- Global strings
 -- We define them as "globals" here, since Lua would otherwise create and hash new strings over and over again.
--- This method should save a bit of memory and probably speed things up by a few nanoseconds
+-- This method should save a bit of memory and probably speed things up by a few nanoseconds or something
 -- ... Yep, this is overkill, but idc
 E.STR = {}
 

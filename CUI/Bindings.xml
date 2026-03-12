@@ -1,0 +1,8 @@
+<Bindings>
+	<!--<Binding name="CLICK CUIZONEABILITYBUTTON:LeftButton" header="CUI" Category="BINDING_HEADER_ACTIONBAR" runOnUp="false">
+		Uses a virtual button to leftclick the Zone Ability
+	</Binding>-->
+	<Binding name="CLICK ExtraActionButton1:LeftButton" Category="CUI" runOnUp="false">
+		<!--Uses a virtual button to leftclick the Extra Ability-->
+	</Binding>
+</Bindings>

@@ -1,96 +1,78 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, L, LT, TT = E:LoadModules("Config", "Locale", "Layout", "Tooltip")
+local CO, Module, TT = E:LoadModules("Config", "Layout", "Tooltip")
 local HBD = LibStub("HereBeDragons-2.0") -- Using HereBeDragons to handle the coords
+
+--[[
+	This module abomination needs a complete rewrite, omg
+	I didn't know any better before, okay?
+]]--
 
 local _
 local CreateFrame		= CreateFrame
 local format			= string.format
 
-LT.F = CreateFrame("Frame", "LT", E.Parent, "SecureHandlerStateTemplate")
-LT.F.Overlay = CreateFrame("Frame", nil, LT.F)
-local Location = CreateFrame("Frame", "Location", LT.F)
-local EdgeBottom = CreateFrame("Frame", "EdgeBottom", LT.F)
-local Fps = CreateFrame("Frame", "Fps", LT.F)
-local Ping = CreateFrame("Frame", "Ping", LT.F)
-local LocationInit, LocationFonts, FontInit, DataFonts
-local ClassColor, LastPlayerCoordinates
-local EDGETILE_BOTTOM_TEXTURE, STATICON_TEXTURE, EDGETILE_BOTTOM_TEXTURE_MODERN, LOCATIONPANEL_EDGE_TEXTURE, BAR_TEXTURE, BAR_SMALL_TEXTURE
+-------------------------------------------------------
 
-	STATICON_TEXTURE					= [[Interface\AddOns\CUI\Textures\layout\StatIconOuter]]
-	
-	LOCATIONPANEL_EDGE_TEXTURE				= [[Interface\AddOns\CUI\Textures\layout\modern\LayoutBarEdge]]
-	BAR_TEXTURE								= [[Interface\AddOns\CUI\Textures\layout\modern\LayoutBar]]
-	BAR_SMALL_TEXTURE						= [[Interface\AddOns\CUI\Textures\layout\modern\LayoutBarSmall]]
-	EDGETILE_BOTTOM_TEXTURE					= [[Interface\AddOns\CUI\Textures\layout\modern\LayoutBottomBarEdge]]
-	
-	LT.F.RangeTimer = 0
-	LT.F.CoordsTimer = 0
-	LastPlayerCoordinates = {["x"] = 0, ["y"] = 0}
-	DataFonts = {
-		["CoordX"] 		= {"Location", "", 13, "LEFT", {80,-2}},
-		["CoordY"] 		= {"Location", "", 13, "RIGHT", {-80,-2}},
-		["Zone"] 		= {"Location", "", 14, "CENTER", {0,-2}},
-		["Fps"] 		= {"EdgeBottom", "Left", 14, "BOTTOMLEFT", {10,10}},
-		["Ping"] 		= {"EdgeBottom", "Right", 14, "BOTTOMRIGHT", {-10,10}},
-	}
+local ClassColor
 
-do
-	E:SetVisibilityHandler(LT.F)
-	
-	RegisterStateDriver(LT.F, "visible", "[petbattle] 0;1")
-end
+local TextureDir = "Interface/AddOns/CUI/Textures/"
+local Textures = {
+	--['StatIcon'] 	= [[Interface\AddOns\CUI\Textures\layout\StatIconOuter]], -- I don't even remember what this was for
+	['EdgeSmall'] 	= TextureDir .. "layout/modern/LayoutBarEdge",
+	['Bar'] 		= TextureDir .. "layout/modern/LayoutBar",
+	['BarSmall'] 	= TextureDir .. "layout/modern/LayoutBarSmall",
+	['EdgeBig'] 	= TextureDir .. "layout/modern/LayoutBottomBarEdge",
+}
+local Fonts = {"CoordX", "CoordY", "Zone", "Fps", "Ping"}
 
-function LT:LoadProfile()
+function Module:LoadConfig()
 	
-	self.db = CO.db.profile.layout
-	self.sysdb = CO.db.profile.system
+	local Config = CO.db.profile.layout
+	self.db = Config
+	
 	ClassColor = E:GetUnitClassColor("player")
 	
-	local disabled = {}
-	
-	for k, v in pairs(self.Frames) do
-		for _, frame in pairs(v) do
-			if self.sysdb[k] then
-				frame:Show()
-			else
-				frame:Hide()
-				disabled[k] = true
-			end
-		end
+	local state = Config.stateControl.textures	
+	if not state["enableTop"] then
+		self.TopPanel:Hide()
+	else
+		self.TopPanel:Show()
 	end
 	
-	self.EdgeBottom.Center:ClearAllPoints()
-	
+	self.BottomPanel.Center:ClearAllPoints()
+	-- For those, we just leave the edges shown, as they're pushed off-screen anyway when we adjust the width
 	-- Both
-		if disabled["enableBottomLeft"] and disabled["enableBottomRight"] then
-			self.EdgeBottom.Center:SetWidth(GetScreenWidth())
-			self.EdgeBottom.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
-		elseif disabled["enableBottomLeft"] then
-			self.EdgeBottom.Center:SetWidth(GetScreenWidth() - 140)
-			self.EdgeBottom.Center:SetPoint("BOTTOMLEFT", self.F, "BOTTOMLEFT")
-		elseif disabled["enableBottomRight"] then
-			self.EdgeBottom.Center:SetWidth(GetScreenWidth() - 140)
-			self.EdgeBottom.Center:SetPoint("BOTTOMRIGHT", self.F, "BOTTOMRIGHT")
+	if not state["enableBottomLeft"] and not state["enableBottomRight"] then
+		self.BottomPanel.Center:SetWidth(GetScreenWidth())
+		self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+	elseif not state["enableBottomLeft"] then
+		self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
+		self.BottomPanel.Center:SetPoint("BOTTOMLEFT", self.F, "BOTTOMLEFT")
+	elseif not state["enableBottomRight"] then
+		self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
+		self.BottomPanel.Center:SetPoint("BOTTOMRIGHT", self.F, "BOTTOMRIGHT")
 	-- None
-		else
-			self.EdgeBottom.Center:SetWidth(GetScreenWidth() - (140 * 2))
-			self.EdgeBottom.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
-		end
+	else
+		self.BottomPanel.Center:SetWidth(GetScreenWidth() - (140 * 2))
+		self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+	end
 	
 	-- Disable OnUpdate
-	if not self.db.fps.enable and
-		not self.db.ping.enable and
-		not self.db.zone.enable and
-		not self.db.coordx.enable and
-		not self.db.coordy.enable then
-			print("Disable")
+	if not Config.fps.enable and
+		not Config.ping.enable and
+		not Config.zone.enable and
+		not Config.coordx.enable and
+		not Config.coordy.enable then
 			self.F:SetScript("OnUpdate", nil)
 	else
 			self.F:SetScript("OnUpdate", self.FontFrames_OnUpdate)
 	end
+	
+	UnregisterStateDriver(Module.F, "visible")
+	RegisterStateDriver(Module.F, "visible", format("[petbattle]%s 0;1", Config.stateControl.additionalHideConditions or ""))
 end
 
-function LT:SetZoneTooltipData()
+function Module:SetZoneTooltipData()
 
 	local pvpType, _, factionName = GetZonePVPInfo();
 	local zoneName = GetZoneText();
@@ -126,147 +108,98 @@ function LT:SetZoneTooltipData()
 	end
 end
 
-function LT:FontFrames_OnUpdate(elapsed)
-	if ( self.RangeTimer ) then
-		self.RangeTimer = self.RangeTimer + elapsed;
-		if ( self.RangeTimer >= CO.db.profile.system.layoutUpdateFrequency ) then
-			LT:UpdateSystemValues()
-			
-			self.RangeTimer = 0
-		end
+function Module:FontFrames_OnUpdate(elapsed)
+	self.SystemTimer = (self.SystemTimer or 0) + elapsed;
+	self.CoordsTimer = (self.CoordsTimer or 0) + elapsed;
+	
+	
+	if ( self.SystemTimer >= CO.db.profile.layout.stateControl.layoutUpdateFrequency ) then
+		Module:UpdateSystemValues()
+		
+		self.SystemTimer = 0
 	end
-	if ( self.CoordsTimer ) then
-		self.CoordsTimer = self.CoordsTimer + elapsed;
+	
 
-		if ( self.CoordsTimer >= CO.db.profile.system.coordsUpdateFrequency ) then
-			LT:UpdateLocationCoords()
-			
-			self.CoordsTimer = 0
-		end
+	if ( self.CoordsTimer >= CO.db.profile.layout.stateControl.coordsUpdateFrequency ) then
+		Module:UpdateLocationCoords()
+		
+		self.CoordsTimer = 0
 	end
 end
+
+local function FontInit(Name)
+	local Font = E:NewFontObject(nil, "ARTWORK", Module.F.Overlay, 10)
 	
-function LT:InitDataPanels()
+	if Name == "Zone" then
+		E:RegisterAutoFont(Font, "db.profile.layout." .. string.lower(Name), {["fontColor"] = true})
+	else
+		E:RegisterAutoFont(Font, "db.profile.layout." .. string.lower(Name))
+	end
 	
-	Location:ClearAllPoints()
-	Location:SetPoint("CENTER", self.F, "CENTER")
+	Module.Fonts[Name] = Font
+end
 	
-	-- Path, Appendix, CreationFrame, SizeX, SizeY, Position, Parent, RelativePosition, OffsetX, OffsetY, Texture, TexCoord1, TexCoord2, TexCoord3, TexCoord4
-	-- @TODO: Heck, re-do this monstrosity
-	local Textures = {
-		[1] = {"Tex", "", Location, 750, 30, "TOP", self.F, "TOP", 0, 0, BAR_TEXTURE, 0, 1, 0, 1},
-		[2] = {"Tex", "Left", Location, 60, 60, "TOPLEFT", "Location.Tex", "TOPLEFT", -60, 0, LOCATIONPANEL_EDGE_TEXTURE, 0, 1, 0, 1},
-		[3] = {"Tex", "Right", Location, 60, 60, "TOPRIGHT", "Location.Tex", "TOPRIGHT", 60, 0, LOCATIONPANEL_EDGE_TEXTURE, 1, 0, 0, 1},
+function Module:InitDataPanels()
+	local TopPanel = CreateFrame("Frame", "CUI_LayoutTopPanel", self.F)
+	local BottomPanel = CreateFrame("Frame", "CUI_LayoutBottomPanel", self.F)
+	self.TopPanel = TopPanel
+	self.BottomPanel = BottomPanel
+	
+	-- Path, Suffix, ReferenceFrame, SizeX, SizeY, Position, Parent, RelativePosition, OffsetX, OffsetY, Texture, TexCoord1, TexCoord2, TexCoord3, TexCoord4
+	local Data = {
+		[1] = {"Center", TopPanel, 750, 30, "TOP", self.F, "TOP", 0, 0, Textures.Bar, 0, 1, 0, 1},
+		[2] = {"Left", TopPanel, 60, 60, "TOPRIGHT", function() return TopPanel.Center end, "TOPLEFT", 0, 0, Textures.EdgeSmall, 0, 1, 0, 1},
+		[3] = {"Right", TopPanel, 60, 60, "TOPLEFT", function() return TopPanel.Center end, "TOPRIGHT", 0, 0, Textures.EdgeSmall, 1, 0, 0, 1},
+		--[2] = {"Tex", "Left", TopPanel, 60, 60, "TOPLEFT", "Location.Tex", "TOPLEFT", -60, 0, Textures.EdgeSmall, 0, 1, 0, 1},
+		--[3] = {"Tex", "Right", TopPanel, 60, 60, "TOPRIGHT", "Location.Tex", "TOPRIGHT", 60, 0, Textures.EdgeSmall, 1, 0, 0, 1},
 		
-		[4] = {"", "Center", EdgeBottom, GetScreenWidth() - (140 * 2), 15, "BOTTOM", self.F, "BOTTOM", 0, 0, BAR_SMALL_TEXTURE, 0, 1, 0, 1},
-		[5] = {"", "Left", EdgeBottom, 140, 200, "BOTTOMLEFT", self.F, "BOTTOMLEFT", 0, -1, EDGETILE_BOTTOM_TEXTURE, 0, 1, 0, 1},
-		[6] = {"", "Right", EdgeBottom, 140, 200, "BOTTOMRIGHT", self.F, "BOTTOMRIGHT", 0, -1, EDGETILE_BOTTOM_TEXTURE, 1, 0, 0, 1},
+		[4] = {"Center", BottomPanel, GetScreenWidth() - (140 * 2), 15, "BOTTOM", self.F, "BOTTOM", 0, 0, Textures.BarSmall, 0, 1, 0, 1},
+		[5] = {"Left", BottomPanel, 140, 200, "BOTTOMRIGHT", function() return BottomPanel.Center end, "BOTTOMLEFT", 0, -1, Textures.EdgeBig, 0, 1, 0, 1},
+		[6] = {"Right", BottomPanel, 140, 200, "BOTTOMLEFT", function() return BottomPanel.Center end, "BOTTOMRIGHT", 0, -1, Textures.EdgeBig, 1, 0, 0, 1},
 	}
 	
+	-- ipairs, since we have to reference the center frame(s) for the edges
+	for k, v in ipairs(Data) do
+		local Texture = v[2]:CreateTexture(nil, "BACKGROUND")
 	
-	for k, v in ipairs(Textures) do
-		local Path
-		local Next = ""
+		Texture:SetTexture(v[10])
+		Texture:SetSize(v[3], v[4])
 		
-		if v[1] ~= "" then
-			if v[2] ~= "" then
-				Path = v[3][v[1]]
-				Next = v[2]
-			else
-				Path = v[3]
-				Next = v[1]
-			end
-		else
-			if v[2] ~= "" then
-				Path = v[3]
-				Next = v[2]
-			else
-				Path = v[3]
-			end
+		local Parent = v[6]
+		if type(Parent) == 'function' then
+			Parent = v[6]()
 		end
+		Texture:SetPoint(v[5], Parent, v[7], v[8], v[9])
+		Texture:SetTexCoord(v[11], v[12], v[13], v[14])
+		Texture:SetVertexColor(0.8, 0.8, 0.8)
+		Texture:SetBlendMode("Blend")
+		Texture:SetAlpha(1)
 		
-		if Next ~= "" then
-			Path[Next] = v[3]:CreateTexture(nil, "BACKGROUND")
-			Path = Path[Next]
-		else
-			Path = v[3]:CreateTexture(nil, "BACKGROUND")
-		end
-		
-		if type(v[7]) == "string" then
-			local Parts
-			for _, part in ipairs(E:FullSplit(v[7], ".")) do
-				if not Parts then
-					Parts = _G[part]
-				else
-					Parts = Parts[part]
-				end
-			end
-			
-			v[7] = Parts
-		end
-		
-		Path:SetTexture(v[11])
-		Path:SetSize(v[4], v[5])
-		Path:SetPoint(v[6], v[7], v[8], v[9], v[10])
-		Path:SetTexCoord(v[12], v[13], v[14], v[15])
-		Path:SetVertexColor(0.8, 0.8, 0.8)
-		Path:SetBlendMode("Blend")
-		Path:SetAlpha(1)
+		v[2][v[1]] = Texture
 	end
 	
-	self.EdgeBottom = EdgeBottom
-	self.Location = Location
-	
-	FontInit = function(Object, Parent, SubParent, FontSize, Point, Offset)
-		local Instance = LT[Parent]
-		if SubParent ~= "" then
-			Instance = LT[Parent][SubParent]
-		end
-		
-		Instance[Object] = LT.F.Overlay:CreateFontString(nil, "ARTWORK")
-		E:InitializeFontFrame(Instance[Object], "ARTWORK", nil, FontSize, {0.8,0.8,0.8}, 1, {0,0}, "", 0, 0, LT.F.Overlay, Point, {1,1})
-		Instance[Object]:ClearAllPoints()
-		if Parent == "Location" then
-			Instance[Object]:SetPoint(Point, LT.F.Overlay, Point, Offset[1], Offset[2])
-		elseif Parent == "EdgeBottom" then
-			Instance[Object]:SetPoint(Point, LT.F.Overlay, Point, Offset[1], Offset[2])
-			if SubParent == "Left" then
-				Instance[Object]:SetJustifyH("LEFT")
-			else
-				Instance[Object]:SetJustifyH("RIGHT")
-			end
-		end
-		
-		if Object == "Zone" then
-			E:RegisterPathFont(Instance[Object], "db.profile.layout." .. string.lower(Object), {["fontColor"] = true})
-		else
-			E:RegisterPathFont(Instance[Object], "db.profile.layout." .. string.lower(Object))
-		end
-	end
-	for k,v in pairs(DataFonts) do
-		FontInit(k, v[1],v[2],v[3],v[4],v[5])
+	for k,v in pairs(Fonts) do
+		FontInit(v)
 	end
 	
-	Location:RegisterEvent("ZONE_CHANGED")
-	Location:RegisterEvent("ZONE_CHANGED_INDOORS")
-	Location:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-	Location:SetScript("OnEvent", function(self, event, ...)
-		LT:UpdateLocationZone()
+	TopPanel:RegisterEvent("ZONE_CHANGED")
+	TopPanel:RegisterEvent("ZONE_CHANGED_INDOORS")
+	TopPanel:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+	TopPanel:SetScript("OnEvent", function(self, event, ...)
+		Module:UpdateLocationZone()
 	end)
 	self.F:SetScript("OnUpdate", self.FontFrames_OnUpdate)
 	
-	self.Location.Zone.Button = CreateFrame("Button")
-	self.Location.Zone.Button:SetAllPoints(self.Location.Zone)
-	self.Location.Zone.Button:SetScript("OnEnter", function(self)
+	self.Fonts.Zone.Button = CreateFrame("Button")
+	self.Fonts.Zone.Button:SetAllPoints(self.Fonts.Zone)
+	self.Fonts.Zone.Button:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-		
-		LT:SetZoneTooltipData()
-		
+		Module:SetZoneTooltipData()
 		GameTooltip:Show()
 		
 		TT:UpdateStyle()
 	end)
-	self.Location.Zone.Button:SetScript("OnLeave", function(self)
+	self.Fonts.Zone.Button:SetScript("OnLeave", function(self)
 		GameTooltip:Hide()
 	end)
 	
@@ -277,7 +210,7 @@ end
 local ColorizedReturn = 0
 local ColorizedPing = {[0] = "FF2ded4d", [75] = "FFe3b034", [150] = "FFea2020"}
 local ColorizedFPS = {[0] = "FFea2020", [25] = "FFe3b034", [45] = "FF2ded4d"}
-function LT:GetColorized(type, value)
+function Module:GetColorized(type, value)
 	if type == "ping" then
 		for k,v in pairs(ColorizedPing) do
 			if k <= value then
@@ -295,19 +228,22 @@ function LT:GetColorized(type, value)
 	return ColorizedReturn
 end
 
-function LT:UpdateSystemValues()
+function Module:UpdateSystemValues()
+	if not self.db or not self.db.fps then return end
+	
 	if self.db.fps.enable then
-		self.EdgeBottom.Left.Fps:SetText("FPS: " .. self:GetColorized("fps", GetFramerate()))
+		self.Fonts.Fps:SetText("FPS: " .. self:GetColorized("fps", GetFramerate()))
 	end
 	
 	if self.db.ping.enable then
-		self.EdgeBottom.Right.Ping:SetText("Ping: " .. self:GetColorized("ping", select(3, GetNetStats())))
+		self.Fonts.Ping:SetText("Ping: " .. self:GetColorized("ping", select(3, GetNetStats())))
 	end
 end
 
 local LocationCoordPosX, LocationCoordPosY
-function LT:UpdateLocationCoords()
-	if not self.db.coordx.enable and not self.db.coordy.enable then return end
+local LastPlayerCoordinates = {["x"] = 0, ["y"] = 0}
+function Module:UpdateLocationCoords()
+	if not self.db.coordx or not self.db.coordx.enable and not self.db.coordy.enable then return end
 	
 	LocationCoordPosX, LocationCoordPosY = HBD:GetPlayerZonePosition()
 	
@@ -315,19 +251,19 @@ function LT:UpdateLocationCoords()
 		
 		if (LocationCoordPosX and LocationCoordPosY) and LocationCoordPosX ~= LastPlayerCoordinates["x"] or LocationCoordPosY ~= LastPlayerCoordinates["y"] then
 		
-			self.Location.CoordX:SetText(format("%.2f",	LocationCoordPosX * 100))
-			self.Location.CoordY:SetText(format("%.2f",	LocationCoordPosY * 100))
+			self.Fonts.CoordX:SetText(format("%.2f",	LocationCoordPosX * 100))
+			self.Fonts.CoordY:SetText(format("%.2f",	LocationCoordPosY * 100))
 			
 			LastPlayerCoordinates["x"] = LocationCoordPosX
 			LastPlayerCoordinates["y"] = LocationCoordPosY
 		end
 	else
-		self.Location.CoordX:SetText("")
-		self.Location.CoordY:SetText("")
+		self.Fonts.CoordX:SetText("")
+		self.Fonts.CoordY:SetText("")
 	end
 end
 
-function LT:UpdateLocationZone()
+function Module:UpdateLocationZone()
 	local pvpType, isSubZonePvP, factionName = GetZonePVPInfo();
 	
 	self.zoneColors = CO.db.profile.colors.zones
@@ -352,46 +288,43 @@ function LT:UpdateLocationZone()
 	self.CurrentZone 	= GetZoneText()
 	self.CurrentSubZone = GetSubZoneText()
 	
-	self.Location.Zone:SetTextColor(unpack(Color))
+	local Font = self.Fonts.Zone
+	Font:SetTextColor(unpack(Color))
 	
 	if self.CurrentZone == self.CurrentSubZone or self.CurrentSubZone == "" then
-		self.Location.Zone:SetText(format("%s",self.CurrentZone))
+		Font:SetText(format("%s", self.CurrentZone))
 	else
-		self.Location.Zone:SetText(format("%s, %s",self.CurrentZone, self.CurrentSubZone))
+		Font:SetText(format("%s, %s", self.CurrentZone, self.CurrentSubZone))
 	end
 end
 
-function LT:UpdateDB()
-	self.db = E.db.layout
-	self.sysdb = E.db.system
+function Module:UpdateDB()
+	self.db = CO.db.profile.layout
+	self.statedb = self.db.stateControl
 end
-function LT:Init()
+function Module:Init()
+	self.Frames = {}
+	self.Fonts = {}
 	
 	self:UpdateDB()
-	ClassColor = E:GetUnitClassColor("player")
 	
+	self.F = CreateFrame("Frame", "CUI_LayoutStateFrame", E.Parent, "SecureHandlerStateTemplate")
+	self.F.Overlay = CreateFrame("Frame", nil, self.F)
+	self.VisibilityHandler = CreateFrame("Frame", "CUI_LayoutVisibilityHandlerFrame", self.F, "SecureHandlerStateTemplate")
+	self.VisibilityHandler:SetAllPoints(Module.F)
+	
+	E:SetVisibilityHandler(self.F)
+	E:SetVisibilityHandler(self.VisibilityHandler)
+	RegisterStateDriver(self.F, "visible", "[petbattle] 0;1")
+	
+	ClassColor = E:GetUnitClassColor("player")
 	
 	self.F:SetAllPoints(E.Parent)
 	self.F.Overlay:SetAllPoints(self.F)
 	
 	self:InitDataPanels()
 	
-	self.Frames = {
-		["enableTop"] = {
-			Location,
-		},
-		["enableBottom"] = {
-			self.EdgeBottom.Center,
-		},
-		["enableBottomLeft"] = {
-			self.EdgeBottom.Left,
-		},
-		["enableBottomRight"] = {
-			self.EdgeBottom.Right,
-		},
-	}
-	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-E:AddModule("Layout", LT)
+E:AddModule("Layout", Module)

@@ -3,9 +3,9 @@ local CO = E:LoadModules("Config")
 
 --[[----------------------------------------------------
 
-	This CUI Library provides a powerful toolset
-	that is designed to update registered fonts
-	through a database path.
+	This library provides a powerful toolset
+	that is designed to automatically update registered
+	fonts through a database path.
 	
 	You may use this Code in your own projects,
 	as long as there is at least any credit given.
@@ -20,119 +20,166 @@ local tinsert					= table.insert
 local wipe						= wipe
 ---------------------------------------------------
 
-E.PathFonts = {}
+E.AutoFonts = {}
+local GlobalExclusions = {} -- Used to automate the font config process
+local EmptyExclusions = {}
+
+local function UpdateFont(Object, Config, Path)
+	Config = type(Config) == 'table' and Config or E:GetTableByPath(Object.ConfigPath or Path, CO)
+	
+	if not Config then
+		Config = E:TableDeepCopy(CO.Template_Object)
+	end
+	
+	local Exclusions = E:GetFontExclusions(Object.ConfigPath or Path) or Object.Exclusions
+	
+	if not Config.enable then if not Exclusions.enable then Object:Hide() end	else
+		
+		-- Font Shadow
+			if Config.fontShadowColor and not Exclusions.fontShadowColor then
+				Object:SetShadowColor(Config.fontShadowColor[1], Config.fontShadowColor[2], Config.fontShadowColor[3], Config.fontShadowColor[4] or 1)
+				Object:SetShadowOffset(Config.xFontShadowOffset, Config.yFontShadowOffset)
+			end
+		-- Alignment
+			if Config.horizontalAlign and not Exclusions.horizontalAlign then
+				Object:SetJustifyH(Config.horizontalAlign)
+			end
+			if Config.verticalAlign and not Exclusions.verticalAlign then
+				Object:SetJustifyV(Config.verticalAlign)
+			end
+			
+		-- Repositioning
+			if not Exclusions.position then
+				Object:ClearAllPoints()
+				
+				if Config.positionOuter then
+					Object:SetPoint(E:InversePosition(Config.position), Object:GetParent() or E.Parent, Config.position, Config.xOffset, Config.yOffset)
+				else
+					Object:SetPoint(Config.position, Object:GetParent() or E.Parent, Config.position, Config.xOffset, Config.yOffset)
+				end
+			end
+		
+		-- Level hide
+			if Config.doNotShowOnMaxLevel then
+				Object.ShowAtMax = Config.doNotShowOnMaxLevel
+			end
+		-- Font Color
+			if Config.fontColor and not Exclusions.fontColor then
+				-- Upgrade to classcolor system
+				if Config.fontColor.useClassColor == nil then
+					Config.fontColor.useClassColor = false
+				end
+				
+				local Color = E:ParseDBColor(Config.fontColor, "player")
+				Object.DBColor = Color
+				Object:SetTextColor(Color[1], Color[2], Color[3], Color[4])
+			end
+		-- Width
+			if Config.width and not Exclusions.width then
+				Object:SetWidth(Config.width)
+			end
+		-- Height
+			if Config.height and not Exclusions.height then
+				Object:SetHeight(Config.height)
+			end
+		
+		-- Flags
+			if not Exclusions.general then
+				if Config.fontFlags == "None" then Object.Flags = E.TBL.EMPTY else Object.Flags = Config.fontFlags end
+				
+			-- General
+				-- (Frame, fontName, fontFlags, fontHeight, fontColor)
+				E:SetFontInfo(Object, E.Media:Fetch("font", Config.fontType), Object.Flags, Config.fontHeight, nil)
+				E:UpdateFont(Object)
+				Object:SetDrawLayer("OVERLAY")
+			end
+			
+			if not Exclusions.enable and not issecretvalue(Object:GetText()) then
+				if Object:GetText() == RANGE_INDICATOR then Object:Hide() else Object:Show() end
+			end
+		end
+	
+	--if #Exclusions > 0 then
+	--E:print_r(Exclusions)
+	--end
+	--print(GetTime())
+	
+	--E:print_r(Exclusions)
+	
+	-- Call overridden functions
+	if Exclusions then
+		for k, v in pairs(Exclusions) do
+			if type(v) == "function" then
+				v()
+			end
+		end
+	end
+end
 
 -- Exclusion Format:
 -- {type = funcRef or boolean}
-function E:RegisterPathFont(Object, Path, Exclusions)
-	if not self.PathFonts[Path] then
-		self.PathFonts[Path] = {}
+function E:RegisterAutoFont(Object, Path, Exclusions)
+	if not self.AutoFonts[Path] then
+		self.AutoFonts[Path] = {}
 	end
-	if not Object.Exclusions then
-		Object.Exclusions = {}
-	end
+	
+	Object.Exclusions = Object.Exclusions or Exclusions or {}
+	Exclusions = Object.Exclusions
+	
+	self:RegisterFontExclusions(Path, Exclusions)
+	
 	if Exclusions then
 		for k,v in pairs(Exclusions) do
 			Object.Exclusions[k] = v
 		end
 	end
 	
-	tinsert(self.PathFonts[Path], Object)
+	Object.ConfigPath = Path
+	
+	tinsert(self.AutoFonts[Path], Object)
+	UpdateFont(Object, nil, Path)
 end
 
-function E:UnregisterPathFont(Path)
-	if self.PathFonts[Path] then
-		wipe(self.PathFonts[Path])
+function E:UnregisterAutoFont(Path)
+	if self.AutoFonts[Path] then
+		wipe(self.AutoFonts[Path])
 	end
 end
 
 -- Path[String] targets a specific font
-function E:UpdatePathFont(Path)
+function E:UpdateAutoFont(Path)
+	local Config =  self:GetTableByPath(Path, CO)
 	
-	local DBTarget =  self:GetTablePath(Path, CO)
-	
-	if not DBTarget then
-		DBTarget = E:TableDeepCopy(CO.Template_Font)
+	if not Config then
+		Config = E:TableDeepCopy(CO.Template_Font)
 	end
 	
-	if not DBTarget then error("Database Font Path does not exist\nPath: CO." .. Path); return; end
+	if not Config then error("Database Font Path does not exist\nPath: CO." .. Path); return; end
 	
-	if not self.PathFonts[Path] then return end
-	for k, font in pairs(self.PathFonts[Path]) do
-		if not DBTarget.enable then if not font.Exclusions["enable"] then font:Hide() end	else
-		
-		-- Font Shadow
-			if DBTarget.fontShadowColor and not font.Exclusions["fontShadowColor"] then
-				font:SetShadowColor(DBTarget.fontShadowColor[1], DBTarget.fontShadowColor[2], DBTarget.fontShadowColor[3], DBTarget.fontShadowColor[4] or 1)
-				font:SetShadowOffset(DBTarget.xFontShadowOffset, DBTarget.yFontShadowOffset)
-			end
-		-- Alignment
-			if DBTarget.horizontalAlign and not font.Exclusions["fontShadowColor"] then
-				font:SetJustifyH(DBTarget.horizontalAlign)
-			end
-			
-		-- Repositioning
-			if not font.Exclusions["position"] then
-				font:ClearAllPoints()
-				
-				if DBTarget.positionOuter then
-					font:SetPoint(E:InversePosition(DBTarget.position), font:GetParent() or E.Parent, DBTarget.position, DBTarget.xOffset, DBTarget.yOffset)
-				else
-					font:SetPoint(DBTarget.position, font:GetParent() or E.Parent, DBTarget.position, DBTarget.xOffset, DBTarget.yOffset)
-				end
-				--font:SetPoint(DBTarget.position)
-				--self:MoveFrame(font, DBTarget.xOffset, DBTarget.yOffset)
-			end
-		
-		-- Level hide
-			if DBTarget.doNotShowOnMaxLevel then
-				font.ShowAtMax = DBTarget.doNotShowOnMaxLevel
-			end
-		-- Font Color
-			if DBTarget.fontColor and not font.Exclusions["fontColor"] then
-				font:SetTextColor(DBTarget.fontColor[1], DBTarget.fontColor[2], DBTarget.fontColor[3], DBTarget.fontColor[4] or 1)
-			end
-		-- Width
-			if DBTarget.width and not font.Exclusions["width"] then
-				font:SetWidth(DBTarget.width)
-			end
-		
-		-- Flags
-			if not font.Exclusions["general"] then
-				if DBTarget.fontFlags == "None" then font.Flags = self.TBL.EMPTY else font.Flags = DBTarget.fontFlags end
-				
-			-- General
-				-- (Frame, fontName, fontFlags, fontHeight, fontColor)
-				self:SetFontInfo(font, E.Media:Fetch("font", DBTarget.fontType), font.Flags, DBTarget.fontHeight, nil)
-				self:UpdateFont(font)
-				font:SetDrawLayer("OVERLAY")
-			end
-			
-			if not font.Exclusions["enable"] then
-				if font:GetText() == RANGE_INDICATOR then font:Hide() else font:Show() end
-			end
-		end
-		
-		--if #font.Exclusions > 0 then
-		--E:print_r(font.Exclusions)
-		--end
-		--print(GetTime())
-		
-		--E:print_r(font.Exclusions)
-		
-		-- Call overridden functions
-		if font.Exclusions then
-			for k, v in pairs(font.Exclusions) do
-				if type(v) == "function" then
-					v()
-				end
-			end
-		end
+	if not self.AutoFonts[Path] then return end
+	for k, font in pairs(self.AutoFonts[Path]) do
+		UpdateFont(font, Config, Path)
 	end
 end
 
 function E:UpdateAllFonts()
-	for path, group in pairs(self.PathFonts) do
-		self:UpdatePathFont(path)
+	for path, group in pairs(self.AutoFonts) do
+		self:UpdateAutoFont(path)
 	end
+end
+
+-- /dump CUI[1]:GetFontExclusions("db.profile.blizzard.chatBubbles.name")
+
+-- This is used to set exclusions in advance, to make sure the config will get the correct data from the get go
+function E:RegisterFontExclusions(Path, Exclusions)
+	if not GlobalExclusions[Path] then
+		GlobalExclusions[Path] = {}
+	end
+	
+	for k,v in pairs(Exclusions) do
+		GlobalExclusions[Path][k] = v
+	end
+end
+function E:GetFontExclusions(Path)
+	return GlobalExclusions[Path] or EmptyExclusions
 end

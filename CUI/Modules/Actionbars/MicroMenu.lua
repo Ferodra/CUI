@@ -1,5 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local L, CO, AB, UF = E:LoadModules("Locale", "Config", "Actionbars", "Unitframes")
+local CO, AB, UF = E:LoadModules("Config", "Actionbars", "Unitframes")
 
 
 local _G			= _G
@@ -9,59 +9,95 @@ local ipairs		= ipairs
 local alerts = {"StoreMicroButtonAlert","EJMicroButtonAlert","LFDMicroButtonAlert","CollectionsMicroButtonAlert","TalentMicroButtonAlert"}
 local MicroButtons = {"CharacterMicroButton", "SpellbookMicroButton", "TalentMicroButton", "AchievementMicroButton", "QuestLogMicroButton", "GuildMicroButton", "LFDMicroButton", "CollectionsMicroButton", "EJMicroButton", "StoreMicroButton", "MainMenuMicroButton"}
 
-
-function AB:InitMicroMenu()
-	local mover = CreateFrame("Frame", "MicroMenu", E.Parent)
-	self.MicroMenu = mover
-	mover:SetSize(308, 36)
-	local index = 0
+local function UpdateTooltipPosition(self)
+	GameTooltip:ClearAllPoints()
 	
-	for _, v in pairs(MicroButtons) do
-		_G[v]:ClearAllPoints()
-		_G[v]:SetParent(mover)
-		_G[v]:SetPoint("BOTTOMLEFT", mover, "BOTTOMLEFT", _G[v]:GetWidth() * index, 0)
-		
-		local normal = _G[v]:GetNormalTexture()
-		local pushed = _G[v]:GetPushedTexture()
-		local disabled = _G[v]:GetDisabledTexture()
-		local highlight = _G[v]:GetHighlightTexture()
-		
-		normal:SetTexCoord(0.22, 0.81, 0.21, 0.82)
-		pushed:SetTexCoord(0.22, 0.81, 0.21, 0.82)
-		highlight:SetTexCoord(0.22, 0.81, 0.21, 0.82)
-		if disabled then
-			disabled:SetTexCoord(0.22, 0.81, 0.21, 0.82)
-		end
-		
-		_G[v].Hover = _G[v]:CreateTexture(nil, "HIGHLIGHT")
-		_G[v].Hover:SetColorTexture(1, 1, 1, 0.45)
-		
-		index = index + 1
+	local Pos, RelPos
+	
+	if self:GetTop() > GameTooltip:GetHeight() then
+		Pos = "TOP"
+		RelPos = "BOTTOM"
+	else
+		Pos = "BOTTOM"
+		RelPos = "TOP"
+	end
+	if self:GetLeft() > GameTooltip:GetWidth() then
+		Pos = Pos .. "RIGHT"
+		RelPos = RelPos .. "LEFT"
+	else
+		Pos = Pos .. "LEFT"
+		RelPos = RelPos .. "RIGHT"
 	end
 	
-	MicroButtonPortrait:ClearAllPoints()
-	MicroButtonPortrait:SetAllPoints(_G["CharacterMicroButton"])
+	GameTooltip:SetPoint(Pos, self, RelPos)
+end
+
+function AB:InitMicroMenu()
+	local mover = CreateFrame("Frame", "MicroMenu_CUI", E.Parent)
+	local index = 0
+	self.MicroMenu = mover
 	
-	GuildMicroButtonTabard:ClearAllPoints()
-	GuildMicroButtonTabard:SetAllPoints(_G["GuildMicroButton"])
+	local ButtonOffset = 25
+	local ButtonInvisibleOffset = 4
+	for _, v in pairs(_G.MICRO_BUTTONS) do
+		local Button = _G[v]
+		
+		if Button:IsVisible() then
+			--Button:ClearAllPoints()
+			Button:SetParent(_G.MicroMenu)
+			Button:SetPoint("TOPLEFT", _G.MicroMenu, "TOPLEFT", (ButtonOffset * index) - ButtonInvisibleOffset, 0)
+			
+			--[[local normal = Button:GetNormalTexture()
+			local pushed = Button:GetPushedTexture()
+			local disabled = Button:GetDisabledTexture()
+			local highlight = Button:GetHighlightTexture()
+			
+			normal:SetTexCoord(0.22, 0.81, 0.21, 0.82)
+			pushed:SetTexCoord(0.22, 0.81, 0.21, 0.82)
+			highlight:SetTexCoord(0.22, 0.81, 0.21, 0.82)
+			if disabled then
+				disabled:SetTexCoord(0.22, 0.81, 0.21, 0.82)
+			end]]--
+			
+			Button.Hover = Button:CreateTexture(nil, "HIGHLIGHT")
+			Button.Hover:SetAllPoints(Button)
+			Button.Hover:SetColorTexture(1, 1, 1, 0.2)
+			
+			index = index + 1
+		end
+	end
 	
-	MainMenuBarPerformanceBar:Hide()
+	mover:SetSize(ButtonOffset*index, 36)
 	
-	mover.Border = E:CreateBorder(mover, nil, -1)
+	MainMenuMicroButton.MainMenuBarPerformanceBar:Hide()
 	
-	E:CreateMover(mover, L["micromenu"])
+	hooksecurefunc("MainMenuBarPerformanceBarFrame_OnEnter", UpdateTooltipPosition)
+	
+	mover.Overlay = CreateFrame("Frame", "CUI_MicroMenuMoverOverlayFrame", mover)
+	mover.Overlay:SetAllPoints(mover)
+	mover.Border = E:CreateBorder(mover.Overlay, nil, -1)
+	
+	_G.MicroMenu:SetParent(mover)
+	_G.MicroMenu:ClearAllPoints()
+	_G.MicroMenu:SetAllPoints(mover)
+	
+	
+	E:CreateMover(mover, L["micromenu"], nil, nil, nil, nil, "actionbars")
 	self:UpdateMicroMenu()
 end
 
 function AB:UpdateMicroMenu()
 	local db = CO.db.profile.actionbar["micromenu"]
 	
-	if db.enable ~= true then self.MicroMenu:Hide() return end
+	if db.enable ~= true then self.MicroMenu:Hide(); self.MicroMenu.ForceMoverEnabled = false; return end
 	if not self.MicroMenu:IsVisible() then self.MicroMenu:Show() end
 	
-	self:MainMenuMicroButton_RepositionAlerts()
-	E:LoadMoverPositions("MicroMenu")
-	E:GetMover(self.MicroMenu):SetScale(db.buttonSizeMultiplier)
+	self.MicroMenu.ForceMoverEnabled = nil
+	
+	--self:MainMenuMicroButton_RepositionAlerts()
+	E:LoadMoverPositions(self.MicroMenu)
+	
+	self.MicroMenu:SetScale(db.buttonSizeMultiplier)
 	
 	local MMDBColor = E:ParseDBColor(db.borderColor)
 	

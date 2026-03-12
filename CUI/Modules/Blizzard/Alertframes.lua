@@ -1,0 +1,1 @@
+local E, L = select(2, ...) -- Engine, Locale

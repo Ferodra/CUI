@@ -1,5 +1,5 @@
 local E, L = unpack(CUI) -- Engine
-local CD, L = E:LoadModules("Config_Dialog", "Locale")
+local CD = E:LoadModules("Config_Dialog")
 
 
 -- Static tables for various settings

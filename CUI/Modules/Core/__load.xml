@@ -3,12 +3,17 @@
 	<Script File="CVars.lua"/>
 	<Script File="Callbacks.lua"/>
 	<Script File="Colors.lua"/>
-	<Script File="Cooldowns.lua"/>
 	<Script File="Core.lua"/>
+	<Script File="Datatexts.lua"/>
+	<Script File="Filters.lua"/>
 	<Script File="Fonts.lua"/>
 	<Script File="Movers.lua"/>
-	<Script File="Statusbars.lua"/>
+	<Script File="NumberFormats.lua"/>
 	<Script File="SlashCmd.lua"/>
+	<Script File="Statusbars.lua"/>
+	<Script File="Tags.lua"/>
+	<Script File="TooltipScanning.lua"/>
 	
 	<Include file="Callbacks\__load.xml"/>
+	<Include file="Code\__load.xml"/>
 </Ui>

@@ -1,5 +1,8 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script File="Templates.lua"/>
+	<Script File="Global.lua"/>
+	<Script File="Character.lua"/>
 	<Script File="Defaults.lua"/>
+	<Script File="ItemDBDefaults.lua"/>
 	<Script File="Config.lua"/>
 </Ui>

@@ -67,7 +67,7 @@ local upgrades = lib.upgrades
 -- "Externals"
 local AceDB3 = LibStub('AceDB-3.0', true)
 local AceDBOptions3 = LibStub('AceDBOptions-3.0', true)
-local AceConfigRegistry3 = LibStub('AceConfigRegistry-3.0', true)
+local AceConfigRegistry3 = LibStub('AceConfigRegistry-3.0-CUI-3.0', true)
 
 -- classId specialization functions don't require player data to be loaded
 local _, _, classId = UnitClass("player")
@@ -332,7 +332,7 @@ end
 -- @param target (table) The AceDB-3.0 the options operate on.
 function lib:EnhanceOptions(optionTable, target)
 	AceDBOptions3 = AceDBOptions3 or LibStub('AceDBOptions-3.0', true)
-	AceConfigRegistry3 = AceConfigRegistry3 or LibStub('AceConfigRegistry-3.0', true)
+	AceConfigRegistry3 = AceConfigRegistry3 or LibStub('AceConfigRegistry-3.0-CUI-3.0', true)
 	if type(optionTable) ~= "table" then
 		error("Usage: LibDualSpec:EnhanceOptions(optionTable, target): optionTable should be a table.", 2)
 	elseif type(target) ~= "table" then

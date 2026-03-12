@@ -75,7 +75,7 @@ lib.MediaTable.background["Blizzard Parchment 2"]					= [[Interface\AchievementF
 lib.MediaTable.background["Blizzard Rock"]							= [[Interface\FrameGeneral\UI-Background-Rock]]
 lib.MediaTable.background["Blizzard Tabard Background"]				= [[Interface\TabardFrame\TabardFrameBackground]]
 lib.MediaTable.background["Blizzard Tooltip"]						= [[Interface\Tooltips\UI-Tooltip-Background]]
-lib.MediaTable.background["Solid"]									= [[Interface\Buttons\WHITE8X8]]
+lib.MediaTable.background["Solid"]									= [[Interface\AddOns\CUI\Textures\borders\WHITE8X8]]
 lib.DefaultMedia.background = "None"
 
 -- BORDER

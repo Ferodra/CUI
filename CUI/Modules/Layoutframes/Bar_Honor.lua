@@ -1,5 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, UF, TT, BH = E:LoadModules("Config", "Unitframes", "Tooltip", "Bar_Honor")
+local CO, UF, TT, Module = E:LoadModules("Config", "Unitframes", "Tooltip", "Bar_Honor")
 
 ---------------------------------------------------------
 local _
@@ -14,10 +14,10 @@ local TextureFlipped = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottom
 local TextureReversed = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomReversed]]
 local TextureReversedFlipped = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomReversedFlipped]]
 
-BH.E = CreateFrame("Frame")
-BH.UpdateData = {}
+Module.E = CreateFrame("Frame")
+Module.UpdateData = {}
 
-function BH:LoadProfile()	
+function Module:LoadConfig()	
 	if not self.db.enable then self.Bar:Hide(); return else
 	
 		self.Bar.Overlay:SetAttribute("ReceivesGlobalTexture", false)
@@ -52,8 +52,8 @@ function BH:LoadProfile()
 			self.Bar.Overlay:SetReverseFill(self.db.reverseFill)
 			self.Bar.Overlay:SetOrientation(self.db.fillOrientation)
 			
-			self.Bar:SetBorderColor(unpack(self.db.borderColor))
 			self.Bar:SetBorderSize(self.db.borderSize)
+			self.Bar:SetBorderColor(unpack(self.db.borderColor))
 			self.Bar.Border:Show()
 		end
 		
@@ -68,26 +68,26 @@ function BH:LoadProfile()
 	end
 end
 
-function BH:UpdateHonorData()
+function Module:UpdateHonorData()
 	self.UpdateData.CurrentHonor 	= UnitHonor("player")
 	self.UpdateData.MaxHonor 		= UnitHonorMax("player")
 end
 
-function BH:UpdateValue()
+function Module:UpdateValue()
 	self.Bar:SetMinMaxValues(0, self.UpdateData.MaxHonor)
 	self.Bar:SetValue(self.UpdateData.CurrentHonor)
 	
 	self.Bar.Font:SetText(string.format("%s / %s - %s %%", E:readableNumber(self.UpdateData.CurrentHonor, 2), E:readableNumber(self.UpdateData.MaxHonor, 2), E:Round(self.UpdateData.CurrentHonor / self.UpdateData.MaxHonor, 2) * 100))
 end
 
-function BH:Update()
+function Module:Update()
 	self:UpdateHonorData()
 	self:UpdateValue()
 end
 
-function BH:__Construct()
+function Module:__Construct()
 	self.Bar = E:CreateBar("CUI_HonorBar", "MEDIUM", 256, 32, nil, nil, true, false, false)
-	self.Bar:SetParent(E.Parent)
+	E:HandleFrameInPetBattles(self.Bar)
 	
 	self.Bar.Button = CreateFrame("Button", "CUI_HonorBarButton", self.Bar.Overlay)
 	self.Bar.Button:SetAllPoints(self.Bar.Overlay)
@@ -96,7 +96,7 @@ function BH:__Construct()
 		GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
 		
 		GameTooltip:AddLine(HONOR)
-		GameTooltip:AddLine(format("%s / %s", BH.UpdateData.CurrentHonor, BH.UpdateData.MaxHonor))
+		GameTooltip:AddLine(format("%s / %s", Module.UpdateData.CurrentHonor, Module.UpdateData.MaxHonor))
 		
 		TT:UpdateStyle(nil)
 		
@@ -111,24 +111,24 @@ function BH:__Construct()
 			E:InitializeFontFrame(self.Bar.Font, "OVERLAY", "FRIZQT__.TTF", 12, {0.933, 0.886, 0.125}, 0.9, {0,0}, "", 0, 0, self.Bar.Button, "CENTER", {1,1})
 		self.Bar.Font:SetParent(self.Bar.Button)
 			
-		E:RegisterPathFont(self.Bar.Font, "db.profile.layout.barHonor.font") -- Enable just through local loader
+		E:RegisterAutoFont(self.Bar.Font, "db.profile.layout.barHonor.font") -- Enable just through local loader
 	-------------------------------------------------
 	
 	self.E:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self.E:RegisterEvent("HONOR_XP_UPDATE")
 	self.E:SetScript("OnEvent", function(self, event, ...)		
-		BH:Update()
+		Module:Update()
 	end)
 end
 
 -- Those get called automatically by the module system
-function BH:UpdateDB()
-	self.db = E.db.layout.barHonor
+function Module:UpdateDB()
+	self.db = CO.db.profile.layout.barHonor
 end
-function BH:Init()
+function Module:Init()
 	self:__Construct()
 	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-E:AddModule("Bar_Honor", BH)
+E:AddModule("Bar_Honor", Module)

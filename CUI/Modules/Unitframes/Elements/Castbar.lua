@@ -1,9 +1,10 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local BC,L,UF,TT = E:LoadModules("Bar_Cast", "Locale", "Unitframes", "Tooltip")
+local CO, UF, TT = E:LoadModules("Config", "Unitframes", "Tooltip")
 
 local _
-	BC.Bars = {}
-	BC.DBColors = {}
+local Module = {}
+	Module.Bars = {}
+	Module.DBColors = {}
 	
 local pairs							= pairs
 local select						= select
@@ -18,133 +19,174 @@ local INTERRUPTED					= INTERRUPTED
 -- %s can be used an unlimited amount of times. Also do additional args
 local BarBaseName 			= "CUI_%sCastbar"
 local IconSize 				= 23
+local CASTING_BAR_HOLD_TIME = 0.75
 
-function BC:LoadProfile()
-	local ProfileTarget
+Module.IncludeUnits = {'player', 'target', 'targettarget', 'focus', 'focustarget', 'party', 'pet', 'boss', 'arena', 'maintank'}
+
+---------------------------------------
+
+
+
+function Module:LoadSingleBar(Frame, GlobalConfig, Config)
+	
+	-- Automatically creates the new bar when it doesn't exist
+	if not Frame.Castbar then
+		-- Check if this frame's unit should have this module
+		if not UF:IsKeyEligibleForModule(Frame.ConfigKey, Module.Name) then
+			return
+		end
+		
+		self:CreateBar(Frame, true)
+	end
+	
+	local Bar = Frame.Castbar
+	-- For edge cases where the bar failed to be created for some reason
+	if not Bar then return end
+	
+	GlobalConfig, Config = GlobalConfig or Module.db.unitframe.units.all.castbar, Config or Module.db.unitframe.units[Frame.ConfigKey].castbar
+	if not GlobalConfig or not Config then return end
+
+	if not Config.enable then
+		Bar:Hide()
+		Bar.MoverEnabled = false
+		Bar.ForceMoverEnabled = nil
+		Module:RemoveEventHandler(Bar)
+	else		
+		Bar.MoverEnabled = true
+		Module:AddEventHandler(Bar)
+		
+		if Bar.ForceToggle == true then
+			Bar:Show()
+		end
+	
+	-- Bar
+	-- CUI_party_1_HeaderUnitButton1
+		Bar:SetSize(Config.width, Config.height)
+		Bar.LagBar:SetSize(Config.width, Config.height) -- Set both as we just override one of them			
+		
+		-- Auto Handling for grouped frames
+		if Bar.attachToUnitframe then
+			local BarSmartPosition = E:InversePosition(Config.barPosition)
+			
+			Bar:ClearAllPoints()
+			Bar:SetParent(Bar.Owner)
+			Bar:SetPoint(BarSmartPosition, Bar.Owner, Config.barPosition, Config.barOffsetX, Config.barOffsetY)
+		end
+		
+		Bar.Overlay:SetReverseFill(Config.barInverseFill)
+		Bar.Overlay:SetOrientation(Config.barOrientation)
+		
+		Bar.Reverse = Config.barInverseFill
+		Bar.Vertical = (Config.barOrientation == "VERTICAL")
+		
+		Bar.ShowCastingTarget = Config.showCastingTarget
+		Bar.CastingTarget = nil
+		
+		Bar.LagBar:ClearAllPoints()
+		Bar.Spark:ClearAllPoints()
+		
+		local NewPosition
+		
+		if Bar.Vertical then
+			
+			Bar.LagBar:SetHeight(3)
+			
+			if Bar.Reverse then NewPosition = "BOTTOM" else NewPosition = "TOP" end
+			
+			Bar.Spark:SetRotation(1.5708)
+			Bar.Spark:SetSize(Config.sparkHeight, Config.sparkWidth) -- Also rotates the axis due to SetRotation
+		else
+			
+			Bar.LagBar:SetWidth(3)
+			
+			if Bar.Reverse then NewPosition = "LEFT" else NewPosition = "RIGHT" end
+			
+			Bar.Spark:SetRotation(0)
+			Bar.Spark:SetSize(Config.sparkWidth, Config.sparkHeight) -- Also rotates the axis due to SetRotation
+		end
+		
+		Bar.LagBar:SetPoint(NewPosition, Bar.Overlay, NewPosition)
+		Bar.Spark:SetPoint("CENTER", Bar.Overlay:GetStatusBarTexture(), NewPosition, 0, 0)
+		
+		Bar:SetBorderColor(unpack(Config.barBorderColor))
+		Bar:SetBorderSize(Config.barBorderSize)
+	
+	-- Texture
+		if not Config.enableIcon then
+			Bar.Icon:Hide()
+		else
+			Bar.Icon:SetSize(Config.iconSize, Config.iconSize)
+			
+			local SmartPosition = E:InversePosition(Config.iconPosition)
+			Bar.Icon:ClearAllPoints()
+			Bar.Icon:SetPoint(SmartPosition, Bar, Config.iconPosition, Config.iconOffsetX, Config.iconOffsetY)
+			
+			Bar.Icon:Show()
+		end
+		
+	-- Flash
+		if Bar.Flash then
+			Bar.Flash:Size(GlobalConfig.flashSize)
+			Bar.flashFadeInTime, Bar.flashFadeOutTime = GlobalConfig.flashFadeInTime, GlobalConfig.flashFadeOutTime
+		end
+		
+	-- Fonts
+		-- Those are being handled by the PathFonts system now
+		
+		
+		E:UpdateMoverDimensions(Bar)
+	end
+end
+
+function Module:LoadConfig()
+	local GlobalConfig, Config = Module.db.unitframe.units.all.castbar
 	
 	self.DBColors.Success = self.db.colors.castbar.success
 	self.DBColors.Failed = self.db.colors.castbar.failed
 	self.DBColors.Interruptible = self.db.colors.castbar.interruptible
 	self.DBColors.NotInterruptible = self.db.colors.castbar.notInterruptible
 	
-	for Name, Bar in pairs(BC.Bars) do
-		ProfileTarget = BC.db.unitframe.units[E:removeDigits(Bar.Unit)].castbar
-		
-		if not ProfileTarget.enable then
-			Bar:Hide()
-			Bar.MoverEnabled = false
-			Bar.ForceMoverEnabled = nil
-			BC:RemoveEventHandler(Bar)
-		else			
-			Bar.MoverEnabled = true
-			BC:AddEventHandler(Bar)
-			
-			if Bar.ForceToggle == true then
-				Bar:Show()
-			end
-		
-		-- Bar
-			Bar:SetSize(ProfileTarget.width, ProfileTarget.height)
-			Bar.LagBar:SetSize(ProfileTarget.width, ProfileTarget.height) -- Set both as we just override one of them			
-			
-			if ProfileTarget.attachToUnitframe then
-				local BarSmartPosition = E:InversePosition(ProfileTarget.barPosition)
-				
-				Bar:ClearAllPoints()
-				Bar:SetParent(UF:GetUnitframe(Bar.Unit))
-				Bar:SetPoint(BarSmartPosition, UF:GetUnitframe(Bar.Unit), ProfileTarget.barPosition, ProfileTarget.barOffsetX, ProfileTarget.barOffsetY)
-			end
-			
-			Bar.Overlay:SetReverseFill(ProfileTarget.barInverseFill)
-			Bar.Overlay:SetOrientation(ProfileTarget.barOrientation)
-			
-			Bar.Reverse = ProfileTarget.barInverseFill
-			Bar.Vertical = (ProfileTarget.barOrientation == "VERTICAL")
-			
-			Bar.LagBar:ClearAllPoints()
-			Bar.Spark:ClearAllPoints()
-			
-			local NewPosition
-			
-			if Bar.Vertical then
-				
-				Bar.LagBar:SetHeight(3)
-				
-				if Bar.Reverse then NewPosition = "BOTTOM" else NewPosition = "TOP" end
-				
-				Bar.Spark:SetRotation(1.5708)
-				Bar.Spark:SetSize(ProfileTarget.sparkHeight, ProfileTarget.sparkWidth) -- Also rotates the axis due to SetRotation
-			else
-				
-				Bar.LagBar:SetWidth(3)
-				
-				if Bar.Reverse then NewPosition = "LEFT" else NewPosition = "RIGHT" end
-				
-				Bar.Spark:SetRotation(0)
-				Bar.Spark:SetSize(ProfileTarget.sparkWidth, ProfileTarget.sparkHeight) -- Also rotates the axis due to SetRotation
-			end
-			
-			Bar.LagBar:SetPoint(NewPosition, Bar.Overlay, NewPosition)
-			Bar.Spark:SetPoint("CENTER", Bar.Overlay:GetStatusBarTexture(), NewPosition, 0, 0)
-			
-			Bar:SetBorderColor(unpack(ProfileTarget.barBorderColor))
-			Bar:SetBorderSize(ProfileTarget.barBorderSize)
-		
-		-- Texture
-			if not ProfileTarget.enableIcon then
-				Bar.Icon:Hide()
-			else
-				Bar.Icon:SetSize(ProfileTarget.iconSize, ProfileTarget.iconSize)
-				
-				local SmartPosition = E:InversePosition(ProfileTarget.iconPosition)
-				Bar.Icon:ClearAllPoints()
-				Bar.Icon:SetPoint(SmartPosition, Bar, ProfileTarget.iconPosition, ProfileTarget.iconOffsetX, ProfileTarget.iconOffsetY)
-				
-				Bar.Icon:Show()
-			end
-			
-		-- Fonts
-			-- Those are being handled by the PathFonts system now
-			
-			
-			E:UpdateMoverDimensions(Bar)
+	for _, Bar in pairs(self.Bars) do
+		self:LoadSingleBar(Bar.Owner, GlobalConfig, Module.db.unitframe.units[Bar.Owner.ConfigKey].castbar)
+	end
+end
+
+function Module:Toggle(Unitframe)
+	local Bar = Unitframe.Castbar
+	if not Bar then return end
+	
+	if Bar:IsVisible() then
+		if Bar.Flash then
+			Bar.Flash:SetAlpha(0)
 		end
-	end
-end
-
-function BC:Toggle(Unit)
-	
-	if type(self) == "string" then Unit = self end
-	
-	if not BC.Bars[Unit] then return end
-	
-	if BC.Bars[Unit]:IsVisible() then
-		BC.Bars[Unit].ForceMoverEnabled = nil
 		
-		BC.Bars[Unit]:Hide()
-		BC.Bars[Unit].ForceToggle = false
+		Bar:Hide()
+		Bar.ForceToggle = false
 	else
-		BC.Bars[Unit].ForceMoverEnabled = true
-		BC.Bars[Unit].Icon.Tex:SetTexture(136235)
-		BC.Bars[Unit]:SetMinMaxValues(0, 100)
-		BC.Bars[Unit]:SetValue(50)
-		BC.Bars[Unit].Name:SetText("Long Spell Name")
-		BC.Bars[Unit].Time:SetText("3.4")
+		Bar.Icon.Tex:SetTexture(136235)
+		Bar:SetMinMaxValues(0, 100)
+		Bar:SetValue(50)
+		Bar.Name:SetText("Long Long Long Long Long Chonk Cat")
+		Bar.Time:SetText("3.4")
 		
-		BC.Bars[Unit]:Show()
-		BC.Bars[Unit]:SetAlpha(1)
-		BC.Bars[Unit].ForceToggle = true
+		if Bar.Flash then
+			Bar.Flash:SetAlpha(1)
+			Bar.Flash:Show()
+		end
+		
+		Bar:Show()
+		Bar:SetAlpha(1)
+		Bar.ForceToggle = true
 	end
 end
 
-function BC:Get(BName)
-	return self.Bars[BName]
-end
-
-function BC:GetIndex(unit)
+function Module:GetIndex(unit)
 	local i = 1
-	for k, v in pairs(self.Bars) do
-		if v.unit == unit then
+	
+	for _, Bar in pairs(self.Bars) do
+		-- Only count created bars that are NOT part of grouped unitframes
+		-- This is because we only need the exact identifier for movers, as their config relies on it
+		if Bar.Owner.unit == unit and not Bar.attachToUnitframe then
 			i = i + 1
 		end
 	end
@@ -152,27 +194,38 @@ function BC:GetIndex(unit)
 	return i
 end
 
-function BC:AddText(b, n, a, x, y)
-	b[n] = b.Overlay:CreateFontString(nil, "ARTWORK")
-	local f = b[n]
+local function Flash_SetSize(self, size)
+	if not self then return false end
 	
-	E:InitializeFontFrame(b[n], "ARTWORK", E.Media:Fetch("font", "FRIZQT__.TTF"), 11, {0.8,0.8,0.8}, 1, {0,0}, "", 0, 0, b.Overlay, "RIGHT", {1,1})
-	f:SetFont(E.Media:Fetch("font", "FRIZQT__.TTF"), 11, "")
-	f:ClearAllPoints()
-	f:SetPoint(a, b, a)
-	f:SetJustifyH(a)
-	f:SetJustifyV("MIDDLE")
-	
-	if x and y then E:PushFrame(f, x, y) end
-	
-	return f
+	self:SetPoint('TOPLEFT', self.BarParent, 'TOPLEFT', -size, size)
+	self:SetPoint('BOTTOMRIGHT', self.BarParent, 'BOTTOMRIGHT', size, -size)
 end
 
-function BC:ToggleMovers(s)
+function Module:AddFlash(b)
+	b.Flash = b:CreateTexture(nil, 'OVERLAY')
+	local Flash = b.Flash
+	
+	Flash.Size = Flash_SetSize
+	Flash.BarParent = b
+	
+	Flash:Size(6)
+	Flash:SetTexture([[Interface\AddOns\CUI\Textures\castingbar\flash]])
+	Flash:SetBlendMode('ADD')
+	Flash:SetAlpha(0)
+end
+
+function Module:AddText(Bar, Name)
+	local Font = E:NewFontObject(nil, "OVERLAY", Bar.Overlay, 10)
+	Bar[Name] = Font
+	
+	return Font
+end
+
+function Module:ToggleMovers(state)
 	for k, v in pairs(self.Bars) do
-		self.Bars[k].ForceMoverEnabled = s
+		self.Bars[k].ForceMoverEnabled = state
 		
-		if s == true then
+		if state == true then
 			self.Bars[k]:Show()
 			self.Bars[k]:SetAlpha(1)
 		else
@@ -181,8 +234,8 @@ function BC:ToggleMovers(s)
 	end
 end
 
-function BC:AddLagBar(o)
-	o.LagBar = CreateFrame("Frame", nil, o.Overlay)
+function Module:AddLagBar(o)
+	o.LagBar = CreateFrame("Frame", "CUI_CastbarLagBar", o.Overlay)
 	o.LagBar:SetSize(o.Overlay:GetWidth(), o.Overlay:GetHeight()) -- Set both as we just override one of them
 	o.LagBar:SetPoint("RIGHT", o.Overlay, "RIGHT")
 	o.LagBarTex = o.LagBar:CreateTexture(nil)
@@ -192,7 +245,7 @@ function BC:AddLagBar(o)
 	self:UpdateLagBar(o, false)
 end
 
-function BC:UpdateLagBar(o, s)
+function Module:UpdateLagBar(o, s)
 	if s == false then
 		o.LagBar:Hide()
 		return
@@ -202,7 +255,7 @@ function BC:UpdateLagBar(o, s)
 	
 	local min, max = o:GetMinMaxValues()
 	-- We always assume the min max values are timings
-	-- We use the delta value to determine the required dimension of the LagBar
+	-- We use the delta value to determine the required dimensions of the LagBar
 	local delta = max - min
 	
 	local timePerPixel = (o.Vertical and o.Overlay:GetHeight() or o.Overlay:GetWidth()) / delta
@@ -215,18 +268,19 @@ function BC:UpdateLagBar(o, s)
 	end
 end
 
-function BC:AddSpark(o)
+function Module:AddSpark(o)
 	o.Spark = o.Overlay:CreateTexture(nil, "OVERLAY")
 	o.Spark:SetTexture([[Interface\CastingBar\UI-CastingBar-Spark]])
 	o.Spark:SetBlendMode("ADD")
+	
 end
 
-function BC:SetSparkPosition(o, isChanneling)
+function Module:SetSparkPosition(o, isChanneling)
 	if not o.Vertical then
 		if isChanneling then
 			o.sparkPositionX = ((o.value / o.maxValue) * o.Overlay:GetWidth()) + 1
 		else
-			o.sparkPositionX = ((o.currentTime / o.endTime) * o.Overlay:GetWidth()) - 1
+			o.sparkPositionX = ((o.value / o.endTime) * o.Overlay:GetWidth()) - 1
 		end
 		
 		if not o.Reverse then
@@ -244,7 +298,7 @@ function BC:SetSparkPosition(o, isChanneling)
 		if isChanneling then
 			o.sparkPositionY = ((o.value / o.maxValue) * o.Overlay:GetHeight()) + 1
 		else
-			o.sparkPositionY = ((o.currentTime / o.endTime) * o.Overlay:GetHeight()) - 1
+			o.sparkPositionY = ((o.value / o.endTime) * o.Overlay:GetHeight()) - 1
 		end
 		
 		if not o.Reverse then
@@ -261,19 +315,56 @@ function BC:SetSparkPosition(o, isChanneling)
 	end
 end
 
-function BC:SetInterruptible(bar, notInterruptible)
+function Module:SetInterruptible(bar, notInterruptible)
 	if bar.casting or bar.channeling then
 		if notInterruptible then
-			bar:SetOverlayColor(unpack(BC.DBColors.NotInterruptible))
-			E:SkinButtonIcon(bar.Icon, BC.DBColors.NotInterruptible)
+			bar:SetOverlayColor(unpack(Module.DBColors.NotInterruptible))
+			E:SkinButtonIcon(bar.Icon, Module.DBColors.NotInterruptible)
 		else
-			bar:SetOverlayColor(unpack(BC.DBColors.Interruptible))
-			E:SkinButtonIcon(bar.Icon, BC.DBColors.Interruptible)
+			bar:SetOverlayColor(unpack(Module.DBColors.Interruptible))
+			E:SkinButtonIcon(bar.Icon, Module.DBColors.Interruptible)
 		end
 	end
 end
 
-function BC:RemoveEventHandler(bar)
+local function Castingbar_ResetFlash(self)
+	if self.Flash then
+		self.Flash:SetAlpha(0)
+		self.Flash:Show()
+	end
+end
+
+local function Castingbar_FinishCast(self, state, holdTime)
+	
+	local Color = (state == true or state == nil) and Module.DBColors.Success or Module.DBColors.Failed
+	
+	self.Time:SetText('')
+	self:SetValue(select(2, self.Overlay:GetMinMaxValues()))
+	self:SetOverlayColor(unpack(Color))
+	
+	Castingbar_ResetFlash(self)	
+	if self.Flash then
+		self.Flash:SetVertexColor(Color[1], Color[2], Color[3])
+		
+		if E:UIFrameIsFlashing(self.Flash) then
+			E:UIFrameFlashStop(self.Flash)
+		end
+				
+		E:UIFrameFlash(self.Flash, self.flashFadeInTime, self.flashFadeOutTime, self.flashFadeInTime + self.flashFadeOutTime, false, 0, 0)
+	end
+	
+	if self.Spark then
+		self.Spark:Hide()
+	end
+	
+	self.flash = true
+	self.fadeOut = true
+	self.casting = nil
+	self.channeling = nil
+	self.holdTime = holdTime or 0
+end
+
+function Module:RemoveEventHandler(bar)
 	if bar.active then
 		bar:UnregisterAllEvents()
 		bar:SetScript("OnEvent", nil)
@@ -283,7 +374,278 @@ function BC:RemoveEventHandler(bar)
 	bar.active = nil
 end
 
-function BC:AddEventHandler(bar)
+local InterruptStr = "%s [%s]"
+local function Bar_OnEvent(self, event, ...)
+	if not self.Owner:IsVisible() and event ~= "ForceUpdate" then return end
+	-- Probably the most efficient way we can go
+	
+	-- Interruptor handler START
+	----------------------------
+	if event == "COMBAT_LOG_EVENT_UNFILTERED" then		
+		_, self.combatLogInfoType, _, _, self.combatLogInfoName, _, _, self.combatLogInfoGUID = CombatLogGetCurrentEventInfo()
+		
+		if self.combatLogInfoType == "SPELL_INTERRUPT" and self.combatLogInfoGUID == UnitGUID(self.Owner.unit) then
+			-- Check if the interruptor name is valid. Environmental effects like quaking leave this at nil, a.e.
+			if self.combatLogInfoName then
+				self.Name:SetText(InterruptStr:format(INTERRUPTED, self.combatLogInfoName))
+			end
+		end
+		
+		-- End call directly, since we do not want the script to iterate through everything else. This does get fired REALLY rapidly in combat.
+		return
+	end
+	-- Interruptor handler END
+	----------------------------
+	
+	-- print(event)
+	
+	self.eventUnit = ...
+	
+	-- Hide when there is no such unit
+	--print(self.Owner.unit, self.eventUnit)
+	if not UnitExists(self.Owner.unit) then self:Hide(); return; end
+	if self.eventUnit ~= self.Owner.unit and not event == "PLAYER_TARGET_CHANGED" then return end
+	
+	if (event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED") and not (UnitCastingInfo(self.Owner.unit) or UnitChannelInfo(self.Owner.unit)) then
+		self.casting = nil
+		self.channeling = nil
+		self.fadeOut = true
+		self.holdTime = 0
+		
+		self:Hide()
+	end
+	
+	if event == "UNIT_SPELLCAST_SENT" and self.ShowCastingTarget then
+		
+		local target = select(2, ...)
+		self.CastingTarget = (target and target ~= "") and target or nil
+		self.CastingTargetGUID = select(3, ...)
+		
+		return
+	end
+	
+	if event == "UNIT_SPELLCAST_START" or ((event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED" or event == "ForceUpdate") and UnitCastingInfo(self.Owner.unit)) then
+		self.SpellName, _, self.SpellTexture, self.startTime, self.endTime, self.SpellIsTradeSkill, self.castID, self.notInterruptible  = UnitCastingInfo(self.Owner.unit)
+		if self.SpellName then
+			self:ApplyAlpha(1.0)
+			self.holdTime = 0
+			self.casting = true
+			self.channeling = nil
+			self.fadeOut = nil
+			
+			self.endTime = (self.endTime - self.startTime) / 1000
+			self.value = (GetTime() - (self.startTime / 1000))
+			self:SetMinMaxValues(0, self.endTime)
+			self:SetValue(self.value)
+			
+			if ( self.Spark ) then
+				self.Spark:Show()
+			end
+			self.Name:SetText((self.CastingTarget and self.CastingTargetGUID == self.castID) and (self.SpellName .. " -> " .. self.CastingTarget) or self.SpellName)
+			self.Icon.Tex:SetTexture(self.SpellTexture)
+			
+			
+			Module:SetInterruptible(self, self.notInterruptible)
+			
+			-- Keep lagbar enabled for non-player units, when the cast is interruptible to help with interrupting it on high latency
+			if self.Owner.unit ~= "player" and self.notInterruptible then Module:UpdateLagBar(self, false) else Module:UpdateLagBar(self, true) end
+			
+			self:Show()
+			self:SetAlpha(1)
+			
+			-- self.holdTime = GetTime() + CASTING_BAR_HOLD_TIME
+		else
+			self.casting = nil
+			self.channeling = nil
+			self.fadeOut = true
+			self.holdTime = 0
+			
+			self:Hide()
+		end
+		
+	
+		
+	elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" or event == "UNIT_SPELLCAST_EMPOWER_STOP" then
+		-- If still casting [Fix for passive auras that also trigger this event]
+		if not self.channeling or UnitChannelInfo(self.Owner.unit) then return end
+		if not self:IsVisible() then
+			self:Hide()
+		end
+		
+		Castingbar_FinishCast(self, true)
+		
+	elseif event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED" then
+		if ( self:IsShown() and
+		     (self.casting and select(2, ...) == self.castID) and not self.fadeOut ) then
+			if self.Name then
+				if event == "UNIT_SPELLCAST_FAILED" then
+					self.Name:SetText(FAILED);
+				else
+					self.Name:SetText(INTERRUPTED);
+				end
+			end
+			
+			Castingbar_FinishCast(self, false, GetTime() + CASTING_BAR_HOLD_TIME)
+			
+		end
+		
+	elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
+		Module:SetInterruptible(self, event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
+	elseif event == "UNIT_SPELLCAST_DELAYED" then
+		if ( self:IsShown() ) then
+			self.SpellName, _, _, self.startTime, self.endTime, _, _, _  = UnitCastingInfo(self.Owner.unit)
+			if not self.SpellName then
+				-- if there is no name, there is no bar
+				self:Hide();
+				return;
+			end
+			
+			self.flash = nil
+			
+			self.endTime = (self.endTime - self.startTime) / 1000
+			self.value = (GetTime() - (self.startTime / 1000))
+			self:SetMinMaxValues(0, self.endTime)
+		end
+		
+	-- Cast succeeded
+	elseif event == "UNIT_SPELLCAST_STOP" then
+		if not self:IsVisible() then
+			self:Hide()
+		end
+		if ( (self.casting and event == "UNIT_SPELLCAST_STOP") or
+		     (self.channeling and event == "UNIT_SPELLCAST_CHANNEL_STOP") ) then
+			Castingbar_FinishCast(self, true)		
+		end
+		
+	
+	elseif event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_EMPOWER_START" or ((event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED") and UnitChannelInfo(self.Owner.unit)) then
+		self.SpellName, _, self.SpellTexture, self.startTime, self.endTime, self.SpellIsTradeSkill, self.notInterruptible, _, _, self.SpellNumStages = UnitChannelInfo(self.Owner.unit)
+		
+		if not self.SpellName then
+			-- if there is no name, there is no bar
+			self:Hide()
+			return
+		end
+			
+		self:Show()
+		self:SetAlpha(1)
+		
+		local isChargeSpell = self.SpellNumStages > 0;
+
+		if isChargeSpell and not issecretvalue(self.endTime) then
+			self.endTime = self.endTime + GetUnitEmpowerHoldAtMaxTime(self.Owner.unit);
+		end
+
+		self.Name:SetText(self.CastingTarget and (self.SpellName .. " -> " .. self.CastingTarget) or self.SpellName)
+		self.Icon.Tex:SetTexture(self.SpellTexture)
+		self.maxValue = (self.endTime - self.startTime) / 1000
+		self.value = (self.endTime / 1000) - GetTime()
+		self.minValue = 0
+		self:SetMinMaxValues(0, self.maxValue)
+		self:SetValue(self.value)
+		self.casting = nil
+		self.channeling = true
+		
+		
+		Module:SetInterruptible(self, self.notInterruptible)
+		
+		if ( self.Spark ) then
+			self.Spark:Show()
+		end
+		
+		Module:UpdateLagBar(self, false)
+		
+		self.holdTime = GetTime() + CASTING_BAR_HOLD_TIME
+		
+	-- Channel delay
+	elseif event == "UNIT_SPELLCAST_CHANNEL_UPDATE" or event == "UNIT_SPELLCAST_EMPOWER_UPDATE" then
+		if ( self:IsShown() ) then
+			self.SpellName, _, self.SpellTexture, self.startTime, self.endTime, self.SpellIsTradeSkill, _, _ = UnitChannelInfo(self.Owner.unit)
+			if not self.SpellName then
+				-- if there is no name, there is no bar
+				self:Hide();
+				return;
+			end
+
+			self.value = ((self.endTime / 1000) - GetTime());
+			self.maxValue = (self.endTime - self.startTime) / 1000;
+			self:SetMinMaxValues(0, self.maxValue);
+			self:SetValue(self.value);
+		end
+		
+	end
+end
+
+local function Bar_ForceUpdate(self)
+	Module:UpdateEvents(self, true)
+	Bar_OnEvent(self, "ForceUpdate")
+end
+
+local function Bar_OnShow(self)
+	if self.casting then
+		local _, _, _, startTime = UnitCastingInfo(self.Owner.unit);
+		if startTime then
+			self.value = (GetTime() - (startTime / 1000));
+		end
+	else
+		local _, _, _, _, endTime = UnitChannelInfo(self.Owner.unit);
+		if endTime then
+			self.value = ((endTime / 1000) - GetTime());
+		end
+	end
+end
+
+function Module:UpdateBarUnit(Bar, Unit)
+	Bar.unit = Unit
+	Module:UpdateEvents(Bar)
+end
+
+-- For updating event units on the fly for grouped frames
+-- Without doing this for them, we won't get casts for those units
+function Module:UpdateEvents(Bar, SkipUpdate)
+	Bar:UnregisterAllEvents()
+	
+	-- Register a bunch (all) of spellcast events (all we need)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_START", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_STOP", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTIBLE", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_DELAYED", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_EMPOWER_START", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_EMPOWER_UPDATE", Bar.Owner.unit)
+	Bar:RegisterUnitEvent("UNIT_SPELLCAST_EMPOWER_STOP", Bar.Owner.unit)
+	--Bar:RegisterUnitEvent("UNIT_SPELLCAST_SENT", Bar.Owner.unit)
+	--Bar:RegisterUnitEvent("UNIT_TARGET", Bar.Owner.unit)
+	
+	if Bar.Owner.unit == "target" or Bar.Owner.unit == "targettarget" then
+		Bar:RegisterEvent("PLAYER_TARGET_CHANGED")
+		if Bar.Owner.unit == "targettarget" then
+			Bar:RegisterUnitEvent("UNIT_TARGET", "target")
+		end
+	elseif Bar.Owner.unit == "focus" or Bar.Owner.unit == "focustarget" then
+		Bar:RegisterEvent("PLAYER_FOCUS_CHANGED")
+		if Bar.Owner.unit == "focustarget" then
+			Bar:RegisterUnitEvent("UNIT_TARGET", "focus")
+		end
+	end
+	
+	if Bar.ForceUpdate and not SkipUpdate then
+		Bar:ForceUpdate()
+	end
+	-- Interruptor
+	--Bar:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+end
+
+local function Bar_UpdateEvents(self)
+	Module:UpdateEvents(self)
+end
+
+function Module:AddEventHandler(bar)
 	
 	if bar.active then return end
 	
@@ -292,295 +654,47 @@ function BC:AddEventHandler(bar)
 	bar.fadeOut = false
 	bar.holdTime = 0
 	
-	-- Register a bunch (all) of spellcast events (all we need)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_START", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_STOP", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTIBLE", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_DELAYED", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", bar.Unit)
-	bar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", bar.Unit)
-	bar:RegisterEvent("UNIT_TARGET")
-	if bar.Unit == "target" or bar.Unit == "targettarget" then
-		bar:RegisterEvent("PLAYER_TARGET_CHANGED")
-		if bar.Unit == "targettarget" then
-			bar:RegisterUnitEvent("UNIT_TARGET", "target")
-		end
-	elseif bar.Unit == "focus" or bar.Unit == "focustarget" then
-		bar:RegisterEvent("PLAYER_FOCUS_CHANGED")
-		if bar.Unit == "focustarget" then
-			bar:RegisterUnitEvent("UNIT_TARGET", "focus")
-		end
-	end
+	Module:UpdateEvents(bar)
 	
-	-- Interruptor
-	bar:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	
-	bar:SetScript("OnEvent", function(self, event, ...)
-		-- Interruptor handler START
-		----------------------------
-		if self:IsVisible() and event == "COMBAT_LOG_EVENT_UNFILTERED" then
-			-- Probably the most efficient way we can go
-			
-			_, self.combatLogInfoType, _, _, self.combatLogInfoName, _, _, self.combatLogInfoGUID = CombatLogGetCurrentEventInfo()
-			
-			if self.combatLogInfoType == "SPELL_INTERRUPT" and self.combatLogInfoGUID == UnitGUID(self.Unit) then
-				self.Interruptor = self.combatLogInfoName
-				
-				-- Check if the interruptor name is valid. Environmental effects like quaking leave this at nil, a.e.
-				if self.Interruptor then
-					self.Name:SetText(format("%s [%s]", INTERRUPTED, self.Interruptor))
-				end
-			end
-			
-			-- End call directly, since we do not want the script to iterate through everything else. This does get fired REALLY rapidly in combat.
-			return
-		end
-		-- Interruptor handler END
-		----------------------------
-		
-		-- print(event)
-		
-		self.eventUnit = ...
-		
-		-- Hide when there is no such unit
-		if not UnitExists(self.Unit) then self:Hide(); return; end
-		if self.eventUnit ~= self.Unit and not event == "PLAYER_TARGET_CHANGED" then return end
-		
-		if (event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED") and not (UnitCastingInfo(self.Unit) or UnitChannelInfo(self.Unit)) then
-			self.casting = nil
-			self.channeling = nil
-			self.fadeOut = true
-			self.holdTime = 0
-			
-			self:Hide()
-		end
-		
-		if event == "UNIT_SPELLCAST_START" or ((event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED") and UnitCastingInfo(self.Unit)) then
-			self.SpellName, _, self.SpellTexture, self.startTime, self.endTime, self.SpellIsTradeSkill, self.SpellCastID, self.notInterruptible  = UnitCastingInfo(self.Unit)
-			if self.SpellName then
-				CastingBarFrame_ApplyAlpha(self, 1.0)
-				self.holdTime = 0
-				self.casting = true
-				self.channeling = nil
-				self.fadeOut = nil
-				
-				self.endTime = (self.endTime - self.startTime) / 1000
-				self.currentTime = (GetTime() - (self.startTime / 1000))
-				self:SetMinMaxValues(0, self.endTime)
-				self:SetValue(self.currentTime)
-				
-				if ( self.Spark ) then
-					self.Spark:Show()
-				end
-				self.Name:SetText(self.SpellName)
-				self.Icon.Tex:SetTexture(self.SpellTexture)
-				
-				
-				BC:SetInterruptible(self, self.notInterruptible)
-				
-				-- Keep lagbar enabled for non-player units, when the cast is interruptible to help with interrupting it on high latency
-				if self.Unit ~= "player" and self.notInterruptible then BC:UpdateLagBar(self, false) else BC:UpdateLagBar(self, true) end
-				
-				self:Show()
-				self:SetAlpha(1)
-				
-				-- self.holdTime = GetTime() + CASTING_BAR_HOLD_TIME
-			else
-				self.casting = nil
-				self.channeling = nil
-				self.fadeOut = true
-				self.holdTime = 0
-				
-				self:Hide()
-			end
-			
-		
-			
-		elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-			if self.Name:GetText() == INTERRUPTED or self.channeling then return end
-			
-			-- If still casting [Fix for passive auras that also trigger this event]
-			if UnitCastingInfo(self.Unit) then return end
-			
-			self.casting = nil
-			self.channeling = nil
-			self.fadeOut = true
-			self.holdTime = CASTING_BAR_HOLD_TIME
-			
-			if ( self.Spark ) then
-				self.Spark:Hide()
-			end
-			self:SetValue(select(2, self.Overlay:GetMinMaxValues()))
-			self.Time:SetText("")
-			
-			self:SetOverlayColor(BC.DBColors.Success[1], BC.DBColors.Success[2], BC.DBColors.Success[3], 0.95)
-			--local name, rank, displayName, texture, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo(bar.Unit)
-			--if not name then
-								
-			--end
-
-		elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
-			-- If still casting [Fix for passive auras that also trigger this event]
-			if not self.channeling or UnitChannelInfo(self.Unit) then return end
-			
-			self.casting = nil
-			self.channeling = nil
-			self.fadeOut = true
-			self.holdTime = CASTING_BAR_HOLD_TIME
-			
-			if ( self.Spark ) then
-				self.Spark:Hide()
-			end
-			self:SetValue(select(2, self.Overlay:GetMinMaxValues()))
-			self.Time:SetText("")
-			
-			self:SetOverlayColor(BC.DBColors.Failed[1], BC.DBColors.Failed[2], BC.DBColors.Failed[3], 0.95)
-		elseif event == "UNIT_SPELLCAST_FAILED" then
-			if UnitCastingInfo(self.Unit) then return end
-			
-			if not self.casting then return end
-				self.casting = nil
-				self.channeling = nil
-				self.fadeOut = true
-				self.holdTime = 0
-				
-				self:Hide()
-			
-		elseif event == "UNIT_SPELLCAST_INTERRUPTED" then
-			if not self.casting then return end
-			-- If still casting [Fix for passive auras that also trigger this event]
-			--if UnitCastingInfo(bar.Unit) then return end
-			
-			if ( self.Spark ) then
-				self.Spark:Hide()
-			end
-			self:SetValue(select(2, self.Overlay:GetMinMaxValues()))
-			self.Time:SetText("")
-			
-			-- We set the interruptor name in the COMBAT_LOG_EVENT_UNFILTERED handler
-			self.Name:SetText(INTERRUPTED)
-			
-			self:SetOverlayColor(BC.DBColors.Failed[1], BC.DBColors.Failed[2], BC.DBColors.Failed[3], 0.95)
-		
-			self.casting = nil
-			self.channeling = nil
-			self.fadeOut = true
-			self.holdTime = GetTime() + CASTING_BAR_HOLD_TIME
-		elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" or event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
-			BC:SetInterruptible(self, event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
-		elseif event == "UNIT_SPELLCAST_DELAYED" then
-			if ( self:IsShown() ) then
-				self.SpellName, _, _, self.startTime, self.endTime, _, _, _  = UnitCastingInfo(self.Unit)
-				if not self.SpellName then
-					-- if there is no name, there is no bar
-					self:Hide();
-					return;
-				end
-				
-				self.endTime = (self.endTime - self.startTime) / 1000
-				self.currentTime = (GetTime() - (self.startTime / 1000))
-				self:SetMinMaxValues(0, self.endTime)
-			end
-			
-		-- Immediate interruption (Spellcast failed through movement or such)
-		elseif event == "UNIT_SPELLCAST_STOP" then
-			if not self.casting then return end
-			
-			self.casting = nil
-			self.channeling = nil
-			self.fadeOut = true
-			self.holdTime = 0
-			
-			self:Hide()
-		
-		elseif event == "UNIT_SPELLCAST_CHANNEL_START" or ((event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_FOCUS_CHANGED") and UnitChannelInfo(self.Unit)) then
-			self.SpellName, _, self.SpellTexture, self.startTime, self.endTime, self.SpellIsTradeSkill, self.notInterruptible = UnitChannelInfo(self.Unit)
-			
-			if not self.SpellName then
-				-- if there is no name, there is no bar
-				self:Hide()
-				return
-			end
-				
-			self:Show()
-			self:SetAlpha(1)
-
-			self.Name:SetText(self.SpellName)
-			self.Icon.Tex:SetTexture(self.SpellTexture)
-			self.maxValue = (self.endTime - self.startTime) / 1000
-			self.value = (self.endTime / 1000) - GetTime()
-			self.minValue = 0
-			self:SetMinMaxValues(0, self.maxValue)
-			self:SetValue(self.value)
-			self.casting = nil
-			self.channeling = true
-			
-			
-			BC:SetInterruptible(self, self.notInterruptible)
-			
-			if ( self.Spark ) then
-				self.Spark:Show()
-			end
-			
-			BC:UpdateLagBar(self, false)
-			
-			self.holdTime = GetTime() + CASTING_BAR_HOLD_TIME
-			
-		-- Channel delay
-		elseif event == "UNIT_SPELLCAST_CHANNEL_UPDATE" then
-			if ( self:IsShown() ) then
-				self.SpellName, _, self.SpellTexture, self.startTime, self.endTime, self.SpellIsTradeSkill, _, _ = UnitChannelInfo(self.Unit)
-				if not self.SpellName then
-					-- if there is no name, there is no bar
-					self:Hide();
-					return;
-				end
-
-				self.value = ((self.endTime / 1000) - GetTime());
-				self.maxValue = (self.endTime - self.startTime) / 1000;
-				self:SetMinMaxValues(0, self.maxValue);
-				self:SetValue(self.value);
-			end
-			
-		end
-	end)
+	bar:SetScript("OnShow", Bar_OnShow)
+	bar:SetScript("OnEvent", Bar_OnEvent)
 	
 	bar.OnUpdate = self.OnUpdate
 	bar:SetScript("OnUpdate", bar.OnUpdate)
 	
+	bar.ForceUpdate = Bar_ForceUpdate
+	
+	-- This is to mitigate our :IsVisible() condition in the OnEvent handler of a bar
+	-- We use it, since we want to reduce the event time to an absolute minimum
+	bar.Owner.Health:HookScript("OnShow", function()
+		bar:ForceUpdate()
+	end)
+	
 	bar.active = true
 end
 
-function BC:OnUpdate(elapsed)
+
+function Module:OnUpdate(elapsed)
 	if self.ForceMoverEnabled then return end
 	
 	if ( self.casting ) then
 		
-		self.currentTime = self.currentTime + elapsed;
-		if ( self.currentTime >= self.endTime ) then
+		self.value = self.value + elapsed;
+		if ( self.value >= self.endTime ) then
 			self:SetValue(self.endTime);
-			self.casting = nil;
-			self.fadeOut = true;
+			Castingbar_FinishCast(self)
 			return;
 		end
-		self:SetValue(self.currentTime)
-		self.Time:SetText(E:Round(self.endTime - self.currentTime, 1))
-		if ( self.Flash ) then
-			self.Flash:Hide();
-		end
-		if ( self.Spark ) then
-			--BC:SetSparkPosition(self, false)
-		end
+		self:SetValue(self.value)
+		self.Time:SetText(E:Round(self.endTime - self.value, 1))
+		-- if ( self.Flash ) then
+			-- self.Flash:Hide();
+		-- end
 		
 	elseif ( self.channeling ) then
 		self.value = self.value - elapsed;
 		if ( self.value <= self.minValue ) then
-			-- CastingBarFrame_FinishSpell(self, self.Spark, self.Flash);
+			Castingbar_FinishCast(self)
 			self.channeling = nil;
 			self.fadeOut = true;
 			return;
@@ -588,34 +702,34 @@ function BC:OnUpdate(elapsed)
 		
 		self:SetValue(self.value);
 		self.Time:SetText(E:Round(self.value, 1))
-		if ( self.Flash ) then
-			self.Flash:Hide();
-		end
-		if ( self.Spark ) then
-			--BC:SetSparkPosition(self, true)
-		end
+		-- if ( self.Flash ) then
+			-- self.Flash:Hide();
+		-- end
 	elseif ( GetTime() < self.holdTime ) then
 		return;
-	elseif ( self.flash ) then
-		local alpha = 0;
-		if ( self.Flash ) then
-			alpha = self.Flash:GetAlpha() + CASTING_BAR_FLASH_STEP;
-		end
-		if ( alpha < 1 ) then
-			if ( self.Flash ) then
-				self.Flash:SetAlpha(alpha);
-			end
-		else
-			if ( self.Flash ) then
-				self.Flash:SetAlpha(1.0);
-			end
-			self.flash = nil;
-		end
+	--elseif ( self.flash ) then
+		-- local alpha = 0;
+		-- if ( self.Flash ) then
+			-- alpha = self.Flash:GetAlpha() + 0.15;
+		-- end
+		-- if ( alpha < 1 ) then
+			-- if ( self.Flash ) then
+				-- self.Flash:SetAlpha(alpha);
+			-- end
+		-- else
+			-- if ( self.Flash ) then
+				-- self.Flash:SetAlpha(1.0);
+			-- end
+			-- self.flash = nil;
+		-- end
 	elseif ( self.fadeOut ) then
 		local alpha = self:GetAlpha() - 0.015;
 		if ( alpha > 0 ) then
-			-- CastingBarFrame_ApplyAlpha(self, alpha);
 			self:SetAlpha(alpha)
+			
+			-- if self.Flash then
+				-- self.Flash:SetAlpha(self.Flash:GetAlpha() - 0.125)
+			-- end
 		else
 			self.fadeOut = nil;
 			self:Hide();
@@ -623,82 +737,101 @@ function BC:OnUpdate(elapsed)
 	end
 end
 
-function BC:Create(unit)
-	local i = self:GetIndex(unit) -- Get index
-	local name = format("CUI_%sCastbar%s", unit, i)
+function Module:CreateBar(Frame, doNotLoad)
 	
-	local Bar = E:CreateBar(name, "LOW", 235, 25, {"CENTER", E.Parent, "CENTER"}, E.Parent)
+	if Frame.Castbar then return end
+	
+	local Unit = Frame.unit
+	if Unit == 'vehicle' or Unit == 'player' then
+		Unit = 'player'
+	end
+	
+	local Attach = UF:IsUnitGrouped(Unit) or (Frame.RealUnit and UF:IsUnitGrouped(Frame.RealUnit))
+	
+	-- CUI_party1Castbar1
+	local Bar = E:CreateBar(format("CUI_%sCastbar%s", Unit, Attach and "" or self:GetIndex(Unit)), "LOW", 235, 25, {"CENTER", E.Parent, "CENTER"}, E.Parent)
 	E.Libs.LibSmooth:ResetBar(Bar.Overlay) -- Leaving the smooth anim on somehow causes the bar to not go at a 100%. This results in the LagBar simply being useless and just looks weird
 	Bar:SetBackgroundColor(nil, nil, nil, 0.95)
+	Bar.Owner = Frame
 	
-	Bar.Unit = unit
-	Bar.RawUnit, Bar.UnitNum = E:ExtractDigits(unit)
+	Frame.Castbar = Bar
 	
-	Bar.Icon = CreateFrame("Frame", "CUI_CastbarIconHolder", Bar)
-	Bar.Icon:SetSize(IconSize, IconSize)
-	Bar.Icon:SetPoint("LEFT", Bar, "LEFT", -IconSize, 0)
+	Bar.unit = Unit
+	Bar.attachToUnitframe = Attach
+	--Bar.RealUnit = RealUnit
 	
-	Bar.Icon.Tex = Bar.Icon:CreateTexture(nil, "OVERLAY")
-	Bar.Icon.Tex:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-	Bar.Icon.Tex:SetParent(Bar.Icon)
-	Bar.Icon.Tex:SetAllPoints(Bar.Icon)
+	local Icon = CreateFrame("Frame", "CUI_CastbarIconHolder", Bar)
+	Bar.Icon = Icon
+	Icon:SetSize(IconSize, IconSize)
+	Icon:SetPoint("LEFT", Bar, "LEFT", -IconSize, 0)
+	
+	Icon.Tex = Icon:CreateTexture(nil, "OVERLAY")
+	Icon.Tex:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+	Icon.Tex:SetParent(Icon)
+	Icon.Tex:SetAllPoints(Icon)
+	
+	E:RegisterAutoFont(self:AddText(Bar, "Time", "RIGHT", -10, 0), "db.profile.unitframe.units." .. Frame.ConfigKey .. ".castbar.fonts.time")
+	E:RegisterAutoFont(self:AddText(Bar, "Name", "LEFT", 5, 0), "db.profile.unitframe.units." .. Frame.ConfigKey .. ".castbar.fonts.name")
 	
 	
+	if not Bar.ApplyAlpha then
+		_G.Mixin(Bar, _G.CastingBarMixin)
+	end
 	
-	
-	E:RegisterPathFont(self:AddText(Bar, "Time", "RIGHT", -10, 0), "db.profile.unitframe.units." .. Bar.RawUnit .. ".castbar.fonts.time")
-	E:RegisterPathFont(self:AddText(Bar, "Name", "LEFT", 5, 0), "db.profile.unitframe.units." .. Bar.RawUnit .. ".castbar.fonts.name")
+	-- Methods
+	Bar.UpdateEvents = Bar_UpdateEvents
+	Bar.UpdateUnit = Bar_UpdateEvents
 	
 	-- Lag Bar
 	self:AddLagBar(Bar)
 	-- Spark
 	self:AddSpark(Bar)
+	-- Flash
+	self:AddFlash(Bar)
 	-- Functionality
 	self:AddEventHandler(Bar)
 	-- Initial Hide
 	Bar:Hide()
 	-- Add mover
 		-- No mover for clustered units !
-	if Bar.UnitNum == "" then
-		E:CreateMover(Bar, format("%s - %s", L[Bar.RawUnit], L["castbar"]))
+	if not Bar.attachToUnitframe then
+		local MoverConfigOverride
+		if Frame == UF.Frames.player[1] then
+			MoverConfigOverride = "CUI_playerCastbar1Mover"
+		end
+		
+		E:CreateMover(Bar, format("%s - %s", L[Frame.ConfigKey], L["castbar"]), nil, nil, nil, nil, "unitframes", MoverConfigOverride)
 	end
-	-- Register castbar to engine
-	self.Bars[unit] = Bar
+	-- Register castbar to lib
+	tinsert(self.Bars, Bar)
 	
-	return Bar
+	if not doNotLoad then
+		self:LoadSingleBar(Frame)
+	end
 end
 
-function BC:UpdateDB()
-	self.db = E.db
-	self.moverdb = E.db.movers
+function Module:UpdateDB()
+	self.db = CO.db.profile
+	self.moverdb = CO.db.profile.movers
 end
-function BC:Init()
-	self:Create("player")
-	self:Create("target")
-	self:Create("targettarget")
-	self:Create("focus")
-	self:Create("focustarget")
-	self:Create("pet")
-	self:Create("boss1")
-	self:Create("boss2")
-	self:Create("boss3")
-	self:Create("boss4")
-	self:Create("boss5")
+function Module:Init()
+	--if not CO.db.char.unitframe.enable then return end
 	
-	self:Create("party1")
-	self:Create("party2")
-	self:Create("party3")
-	self:Create("party4")
-	self:Create("party5")
-	
-	self:Create("arena1")
-	self:Create("arena2")
-	self:Create("arena3")
-	self:Create("arena4")
-	self:Create("arena5")
+	for k,v in pairs(BarUnits) do
+		self:CreateBar(UF:GetUnitframe(v))
+	end
 	
 	-- Load castbars
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-E:AddModule("Bar_Cast", BC)
+function Module:Create(F)
+	if not self.DBInit then
+		self:UpdateDB()
+		self.DBInit = true
+	end
+	self:CreateBar(F)
+end
+
+UF:RegisterModule('Castbar', Module)
+--UF.Modules["Castbar"] = Module

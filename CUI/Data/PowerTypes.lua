@@ -25,4 +25,5 @@ E.PowerTypes = {
 	[30]	=	"STAGGER",
 	[31]	=	"RUNE_READY",
 	[32]	=	"RUNE_NOT_READY",
+	[33]	=	"MAGE_ICICLES",
 }

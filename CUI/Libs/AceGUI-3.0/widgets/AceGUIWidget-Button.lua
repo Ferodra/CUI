@@ -18,7 +18,9 @@ Scripts
 -------------------------------------------------------------------------------]]
 local function Button_OnClick(frame, ...)
 	AceGUI:ClearFocus()
-	PlaySound(852) -- SOUNDKIT.IG_MAINMENU_OPTION
+	if not frame.silentClick then
+		PlaySound(852) -- SOUNDKIT.IG_MAINMENU_OPTION
+	end
 	frame.obj:Fire("OnClick", ...)
 end
 
@@ -51,7 +53,7 @@ local methods = {
 			self:SetWidth(self.text:GetStringWidth() + 30)
 		end
 	end,
-	
+
 	["SetAutoWidth"] = function(self, autoWidth)
 		self.autoWidth = autoWidth
 		if self.autoWidth then

@@ -10,7 +10,9 @@ local WMM = select(2, ...)
 --	}
 -- }
 
-WMM.Markers = {
+-- All coordinates were collected by Runorios @ Alleria EU, huge thanks again!
+
+WMM.Markers.Instances = {
 	-- Kalimdor
 	--[1] = {
 		-- Wastelands
@@ -97,7 +99,7 @@ WMM.Markers = {
 		},
 		-- Desolace
 		[66] = {
-			[1] = {"floorLeft", DUNGEON_FLOOR_DESOLACE21, 29.18, 62.57, 67}, -- Navigation to Maraudon Caverns
+			[1] = {"floorDown", DUNGEON_FLOOR_DESOLACE21, 30.5, 62.57, 67}, -- Navigation to Maraudon Caverns
 		},
 		-- Maraudon Entrance Cave
 		[67] = {
@@ -246,7 +248,7 @@ WMM.Markers = {
 			[6] = {185, false, 22.66, 64.27}, -- Well of Eternity
 			[7] = {255, false, 36.76, 83.44}, -- Opening of the Dark Portal
 			[8] = {279, false, 57.13, 82.63}, -- The Culling of Stratholme
-			[9] = {184, true, 57.46, 29.51}, -- End Time
+			[9] = {184, false, 57.46, 29.51}, -- End Time
 			[10] = {"floorUp", DUNGEON_FLOOR_TANARIS17, 62.53, 53.07, 74}, -- Navigation to Timeless Tunnels
 		},
 		-- Thousand Needles
@@ -259,6 +261,13 @@ WMM.Markers = {
 		},
 		-- Uldum
 		[249] = {
+			[1] = {74, true, 38.49, 80.56}, -- Throne of the Four Winds
+			[2] = {68, false, 76.71, 84.37}, -- The Vortex Pinnacle
+			[3] = {69, false, 60.51, 64.10}, -- Lost City of Tol'Vir
+			[4] = {70, false, 71.88, 52.17}, -- Halls of Origination
+		},
+		-- Uldum (N'Zoth Assault)
+		[1527] = {
 			[1] = {74, true, 38.49, 80.56}, -- Throne of the Four Winds
 			[2] = {68, false, 76.71, 84.37}, -- The Vortex Pinnacle
 			[3] = {69, false, 60.51, 64.10}, -- Lost City of Tol'Vir
@@ -334,8 +343,14 @@ WMM.Markers = {
 	--},
 	-- Pandaria
 	--[6] = {
-		-- Everblossom
+		-- Everblossom Valley
 		[390] = {
+			[1] = {369, true, 72.52, 44.14}, -- Siege of Orgrimmar
+			[2] = {303, false, 15.85, 74.34}, -- Gate of the Setting Sun
+			[3] = {321, false, 80.74, 32.86}, -- Mogu'shan Palace
+		},
+		-- Everblossom Valley (N'Zoth Assault)
+		[1530] = {
 			[1] = {369, true, 72.52, 44.14}, -- Siege of Orgrimmar
 			[2] = {303, false, 15.85, 74.34}, -- Gate of the Setting Sun
 			[3] = {321, false, 80.74, 32.86}, -- Mogu'shan Palace
@@ -410,5 +425,4 @@ WMM.Markers = {
 	--[9] = {
 		
 	--},
-	
 }

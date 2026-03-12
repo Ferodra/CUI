@@ -1,12 +1,12 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, L, PO = E:LoadModules("Config", "Locale", "PerformanceOptimizer")
+local CO, PO = E:LoadModules("Config", "PerformanceOptimizer")
 
 local _
 
 PO.Autoload = true
 
-PO.E = CreateFrame("Frame")
-PO.RangeTimer = 0
+PO.E = CreateFrame("Frame", "CUI_PerformanceOptimizer")
+PO.Timer = 0
 local CurrentValue
 local LastAverageValue = 0
 local AverageValue = 0 -- Current average framerate
@@ -97,12 +97,12 @@ function PO:Init()
 		
 		PO:ComputeAveragePerformance(elapsed) -- Fill data each frame
 		
-		if ( self.RangeTimer >= UPDATE_FREQUENCY ) then
+		if ( self.Timer >= UPDATE_FREQUENCY ) then
 			PO:Optimize()
 			
 			wipe(AverageTicks)
 			
-			RangeTimer = 0;
+			Timer = 0;
 		end
 
 	end)

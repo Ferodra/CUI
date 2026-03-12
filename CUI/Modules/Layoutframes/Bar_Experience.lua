@@ -1,5 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
-local CO, UF, TT, BE = E:LoadModules("Config", "Unitframes", "Tooltip", "Bar_Experience")
+local CO, UF, TT, Module = E:LoadModules("Config", "Unitframes", "Tooltip", "Bar_Experience")
 
 local _
 
@@ -12,8 +12,8 @@ local TextureReversed = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBotto
 local TextureReversedFlipped = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomReversedFlipped]]
 
 --------------------------------------------------------
-function BE:LoadProfile()
-	self = BE -- Set for external calls
+function Module:LoadConfig()
+	self = Module -- Set for external calls
 	
 	self.db = CO.db.profile.layout.barExperience
 	
@@ -30,7 +30,7 @@ function BE:LoadProfile()
 		self.Bar.Rested:SetAttribute("ReceivesGlobalTexture", false)
 		
 		if self.db.style ~= "normal" then
-			self.Bar:SetBackgroundColor(unpack(self.db.backgroundColor))
+			self.Bar.Background.Tex:SetVertexColor(unpack(self.db.backgroundColor))
 		end
 		if self.db.style == "integrated" then
 			self.Bar.Overlay:SetStatusBarTexture(TextureReversed)
@@ -63,9 +63,9 @@ function BE:LoadProfile()
 			
 			self.Bar.Border:Show()
 			
+			self.Bar:SetBorderSize(self.db.borderSize)
 			self.Bar:SetBackgroundColor(unpack(self.db.backgroundColor))
 			self.Bar:SetBorderColor(unpack(self.db.borderColor))
-			self.Bar:SetBorderSize(self.db.borderSize)
 		end
 		
 		self.Bar:ClearAllPoints()
@@ -74,11 +74,14 @@ function BE:LoadProfile()
 		self.Bar:SetSize(self.db.width, self.db.height)
 		self.Bar.Rested:SetSize(self.db.width, self.db.height)
 		
-		self.Bar.Overlay:GetStatusBarTexture():SetVertexColor(unpack(E:ParseDBColor(CO.db.profile.colors.layoutBars["barExperienceNormal"])))
-		self.Bar.Rested:GetStatusBarTexture():SetVertexColor(unpack(E:ParseDBColor(CO.db.profile.colors.layoutBars["barExperienceRested"])))
+		local nrmCol, restedCol = E:ParseDBColor(CO.db.profile.colors.layoutBars["barExperienceNormal"]), E:ParseDBColor(CO.db.profile.colors.layoutBars["barExperienceRested"])
+		self.Bar.Overlay:GetStatusBarTexture():SetVertexColor(nrmCol[1], nrmCol[2], nrmCol[3], nrmCol[4])
+		self.Bar.Rested:GetStatusBarTexture():SetVertexColor(restedCol[1], restedCol[2], restedCol[3], restedCol[4])
 		
+		self:RegisterEvent("PLAYER_ENTERING_WORLD")
 		self:RegisterEvent("PLAYER_XP_UPDATE")
 		self:RegisterEvent("UPDATE_EXHAUSTION")
+		self.Bar.Overlay:SetScript('OnValueChanged', self.UpdateText)
 		
 		-- Instead of a straight "Show", first validate if it is supposed to!
 		self:Update() -- Update if shown (again) to prevent dirty values
@@ -87,10 +90,16 @@ function BE:LoadProfile()
 	end
 end
 --------------------------------------------------------
-	
-function BE:SetValue(value)
-	
+
+function Module:UpdateText(value)
+	self.Font:SetText(string.format("%s / %s (%s%%) %s", E:readableNumber(value, 2), E:readableNumber(self.Max, 2), E:Round((value/self.Max)*100,2), XPRestedString))
+end
+
+function Module:SetValue(value)
 	local XPRested = GetXPExhaustion()
+	
+	--self.Bar:SetValue(value, 0, self.Bar.Overlay.Max, UnitLevel("player"))
+	--self.UpdateText(self.Bar.Overlay, value)
 	
 	if XPRested then
 		XPRestedString = string.format(" %s: %s", TUTORIAL_TITLE26, E:readableNumber(XPRested, 2))
@@ -104,35 +113,104 @@ function BE:SetValue(value)
 	XPRestedString = ""
 end
 
-function BE:Update()
+function Module:Update(SkipAnimation)
 	local PlayerLevel = UnitLevel("player")
 	
 	if E.UNIT_MAXLEVEL ~= PlayerLevel then
 		local XPMax = UnitXPMax("player")
 		local XPCurrent = UnitXP("player")
 		
-		self.Bar:SetMinMaxValues(0, XPMax)
-		self.Bar:SetValue(XPCurrent)
-		--self.Bar.Overlay:SetAnimatedValues(XPCurrent, 0, XPMax, PlayerLevel)
+		self.Bar.Overlay.Max = XPMax
+		
+		if not SkipAnimation then
+			self.Bar.Overlay:SetAnimatedValues(XPCurrent, 0, XPMax, PlayerLevel)
+		else
+			self.Bar.Overlay:SetMinMaxValues(0, XPMax)
+			self.Bar.Overlay:SetValue(XPCurrent)
+		end
 		
 		self.Bar.Rested:SetMinMaxValues(0, XPMax)
 		self:SetValue(XPCurrent)
-		self.Bar.Overlay.Font:SetText(string.format("%s / %s (%s%%) %s", E:readableNumber(XPCurrent, 2), E:readableNumber(XPMax, 2), E:Round((XPCurrent/XPMax)*100,2), XPRestedString))
+		self.UpdateText(self.Bar.Overlay, XPCurrent)
+		
 		self.Bar:Show()
 	else
 		self.Bar:Hide()
 	end
 end
 
-function BE:Create()
+function Module:SetBarSmoothFactor(factor)
+	self.Bar.Overlay:SetSmoothFactor(factor)
+	self.Bar.Rested:SetSmoothFactor(factor)
+end
+
+local function IsCapped(self)
+	if GameLimitedMode_IsBankedXPActive() then
+		local restrictedLevel = GameLimitedMode_GetLevelLimit();
+		return UnitLevel("player") >= restrictedLevel;
+	end
+
+	return false;
+end
+
+local function GetLevelData(self)
+	local currXP = IsCapped(self) and UnitTrialXP("player") or UnitXP("player");
+	local nextXP = UnitXPMax("player");
+	local level = UnitLevel("player");
+	local bankedLevels = UnitTrialBankedLevels("player");
+
+	return currXP, nextXP, level, bankedLevels;
+end
+
+local function BarTooltip(self)
+	local exhaustionStateID, exhaustionStateName, exhaustionStateMultiplier = GetRestState();
+	if(not exhaustionStateID) then
+		return;
+	end
+
+	local currXP, nextXP = GetLevelData(self);
+	local percentXP = math.ceil(currXP/nextXP*100);
+
+	local tooltip = GetAppropriateTooltip();
+	GameTooltip_SetDefaultAnchor(tooltip, UIParent);
+	GameTooltip_SetTitle(tooltip, XP_TEXT:format(BreakUpLargeNumbers(currXP), BreakUpLargeNumbers(nextXP), percentXP));
+	GameTooltip_AddHighlightLine(tooltip, EXHAUST_TOOLTIP1:format(exhaustionStateName, exhaustionStateMultiplier * 100));
+
+	if not IsResting() and (exhaustionStateID == 4 or exhaustionStateID == 5) then
+		GameTooltip_AddHighlightLine(tooltip, EXHAUST_TOOLTIP2);
+	end
+
+	if GameLimitedMode_IsBankedXPActive() then
+		local bankedLevels = UnitTrialBankedLevels("player");
+		local bankedXP = UnitTrialXP("player");
+
+		if bankedLevels > 0 or bankedXP > 0 then
+			GameTooltip_AddBlankLineToTooltip(tooltip);
+			GameTooltip_AddNormalLine(tooltip, XP_TEXT_BANKED_XP_HEADER);
+		end
+
+		if bankedLevels > 0 then
+			GameTooltip_AddHighlightLine(tooltip, TRIAL_CAP_BANKED_LEVELS_TOOLTIP:format(bankedLevels));
+		elseif bankedXP > 0 then
+			GameTooltip_AddHighlightLine(tooltip, TRIAL_CAP_BANKED_XP_TOOLTIP);
+		end
+	end
+
+	GameTooltip:Show();
+end
+
+function Module:Create()
 	BarStrata, BarX, BarY, BarPoint, BarParent = "MEDIUM", 750, 14, {"BOTTOM", E.Parent, "BOTTOM"}, E.Parent
 	
-	self.Bar = E:CreateBar("Bar_Experience", BarStrata, BarX, BarY, BarPoint, BarParent, nil, nil, nil)
+	self.Bar = E:CreateAnimatedBar("Bar_Experience", BarStrata, BarX, BarY, BarPoint, self.Holder)
+	
+	E:HandleFrameInPetBattles(self.Bar)
 	
 	self.Bar.Rested = E:NewFrame("Statusbar", "Bar_Experience_Rested", "MEDIUM", BarX, BarY, BarPoint, self.Bar.Background)
 	self.Bar.Rested:SetStatusBarTexture(XPBAR_TEXTURE)
 	self.Bar.Rested:ClearAllPoints()
 	self.Bar.Rested:SetAllPoints(self.Bar)
+	self.Bar.Rested:SetParent(self.Bar)
 	
 	E:RegisterStatusBar(self.Bar.Rested)
 	
@@ -141,31 +219,44 @@ function BE:Create()
 	self.Bar.Overlay:SetAttribute("ReceivesGlobalTexture", false)
 	self.Bar.Rested:SetAttribute("ReceivesGlobalTexture", false)
 	
-	
-	E.Libs.LibSmooth:ResetBar(self.Bar.Overlay)
 	E.Libs.LibSmooth:SmoothBar(self.Bar.Rested)
+	self:SetBarSmoothFactor(25)
+	E.Libs.LibSmooth:ResetBar(self.Bar.Rested)
+	E.Libs.LibSmooth:ResetBar(self.Bar.Overlay)
 	
 	self.Bar.Overlay.Font = self.Bar.Overlay:CreateFontString(nil, "ARTWORK")
 	E:InitializeFontFrame(self.Bar.Overlay.Font, "ARTWORK", nil, 11, {0.8,0.8,0.8}, 1, {0,0}, "101010", 300, 20, self.Bar.Overlay, "CENTER", {1,1})
 	
-	E:RegisterPathFont(self.Bar.Overlay.Font, "db.profile.layout.barExperience.font")
+	self.Text = self.Bar.Overlay.Font
+	
+	E:RegisterAutoFont(self.Bar.Overlay.Font, "db.profile.layout.barExperience.font")
 	
 	self.Button = CreateFrame("Frame", "CUI_XPBarButton", self.Bar.Overlay)
 	self.Button:SetAllPoints(self.Bar.Overlay)
 	self.Button:EnableMouse(true)
-	self.Button:SetScript("OnEnter", function() ExhaustionTickMixin:ExhaustionToolTipText(); TT:UpdateStyle(nil) end)
+	self.Button:SetScript("OnEnter", BarTooltip)
 	self.Button:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-function BE:Init()	
+function Module:UpdateDB()
 	self.db = CO.db.profile.layout.barExperience
+end
+function Module:Init()
+	self:UpdateDB()
 	
 	self:Create()
-	self:Update()
+	self:Update(true)
 	
-	self:SetScript("OnEvent", self.Update)
+	self:SetScript("OnEvent", function(self, event)
+		if event == 'PLAYER_ENTERING_WORLD' then
+			E.Libs.LibSmooth:SmoothBar(self.Bar.Overlay)
+			E.Libs.LibSmooth:SmoothBar(self.Bar.Rested)
+		end
+		
+		self:Update(event == 'PLAYER_ENTERING_WORLD')
+	end)
 	
-	self:LoadProfile()
+	self:LoadConfig()
 end
 
-E:AddModule("Bar_Experience", BE)
+E:AddModule("Bar_Experience", Module)
