@@ -604,6 +604,17 @@ CD.Options.args.changelog = {
 	name = '|cff1784d1' .. L["Changelog"] .. '|r',
 	order = -4,
 	args = {
+		Header_0930_90300 = {
+			order = 5936,
+			type = "header",
+			name = "Minor • 0.9.3.0 Release • Rev. 90300 [Mar 12th 2026]",
+		},
+		Content_0930_90300 = {
+			order = 5936,
+			type = "description",
+			name = Content0930_90300,
+			fontSize = "medium",
+		},
 		Header_0922_90212 = {
 			order = 5937,
 			type = "header",
