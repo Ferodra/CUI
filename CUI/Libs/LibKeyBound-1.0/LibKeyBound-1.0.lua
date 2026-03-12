@@ -471,7 +471,7 @@ end
 
 function LibKeyBound.Binder:OnKeyDown(key)
 	local button = self.button
-	if not button or not button:IsMouseOver()then return end
+	if not button or not button:IsMouseOver() then return end
 
 	if (key == 'UNKNOWN' or key == 'LSHIFT' or key == 'RSHIFT' or
 		key == 'LCTRL' or key == 'RCTRL' or key == 'LALT' or key == 'RALT' or key == 'LMETA' or key == 'RMETA') then

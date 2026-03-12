@@ -292,9 +292,28 @@
         "DUNGEON_FLOOR_RUINSOFAHNQIRAJ1",
         "DUNGEON_FLOOR_ORGRIMMAR1",
         "DUNGEON_FLOOR_TANARIS17",
-        "DUNGEON_FLOOR_TANARIS18"
+        "DUNGEON_FLOOR_TANARIS18",
+        "Lib_UIDropDownMenu_AddSeparator",
+        "Lib_UIDropDownMenu_AddButton",
+        "LeaveParty",
+        "InviteUnit",
+        "CUI",
+        "WORLDMAP_COSMIC_ID",
+        "WORLDMAP_AZEROTH_ID",
+        "WorldMapButton",
+        "GetCurrentMapAreaID",
+        "GetCurrentMapDungeonLevel",
+        "GetCurrentMapZone",
+        "GetCurrentMapContinent",
+        "GAME_LOCALE"
     ],
     "Lua.diagnostics.disable": [
-        "assign-type-mismatch"
+        "assign-type-mismatch",
+        "lowercase-global",
+        "undefined-global"
+    ],
+    "Lua.diagnostics.ignoredFiles": "Opened",
+    "Lua.workspace.ignoreDir": [
+        "CUI/Libs"
     ]
 }

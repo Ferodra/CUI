@@ -37,6 +37,7 @@ Module.ACTIONBUTTON_TEXTURE_BORDER				= [[Interface/AddOns/CUI/Textures/buttons/
 
 E:RegisterEvents(Module, 'PET_BATTLE_OPENING_DONE', 'PET_BATTLE_CLOSE', 'PLAYER_SPECIALIZATION_CHANGED', 'UPDATE_BINDINGS', 'CVAR_UPDATE','TRADE_SKILL_CLOSE', 'ACTIONBAR_UPDATE_USABLE', 'PLAYER_MOUNT_DISPLAY_CHANGED', 'UPDATE_BONUS_ACTIONBAR', 'UPDATE_VEHICLE_ACTIONBAR', 'UPDATE_OVERRIDE_ACTIONBAR', 'ACTIONBAR_PAGE_CHANGED', 'UPDATE_MACROS', 'ADDON_LOADED', 'PLAYER_TARGET_CHANGED', 'PLAYER_ENTERING_WORLD', 'ACTIONBAR_SLOT_CHANGED', 'UPDATE_SHAPESHIFT_FORM', 'ACTIONBAR_UPDATE_COOLDOWN', 'SPELL_UPDATE_COOLDOWN', 'LOSS_OF_CONTROL_ADDED', 'LOSS_OF_CONTROL_UPDATE')
 
+-- /dump GetBindingKey("CUIBAR6BUTTON2")
 Module.Bindings = {
 	[1] = {
 		['binding'] = 'ACTIONBUTTON',
@@ -59,23 +60,23 @@ Module.Bindings = {
 		['page'] = 3,
 	},
 	[6] = {
-		['binding'] = 'EXTRABAR6BUTTON',
+		['binding'] = 'CUIBAR6BUTTON',
 		['page'] = 2,
 	},
 	[7] = {
-		['binding'] = 'EXTRABAR7BUTTON',
+		['binding'] = 'CUIBAR7BUTTON',
 		['page'] = 8,
 	},
 	[8] = {
-		['binding'] = 'EXTRABAR8BUTTON',
+		['binding'] = 'CUIBAR8BUTTON',
 		['page'] = 7,
 	},
 	[9] = {
-		['binding'] = 'EXTRABAR9BUTTON',
+		['binding'] = 'CUIBAR9BUTTON',
 		['page'] = 9,
 	},
 	[10] = {
-		['binding'] = 'EXTRABAR10BUTTON',
+		['binding'] = 'CUIBAR10BUTTON',
 		['page'] = 10,
 	},
 }
@@ -836,7 +837,9 @@ function Module:ActionButton_SetKey(key)
 	local BindButton = self:GetParent().bindButtons
 	local ButtonIndex = self.index
 	
-	SetBinding(key, BindButton .. ButtonIndex)
+	-- /dump SetBinding("SHIFT-G", "EXTRABAR6BUTTON2")
+	local Success = SetBinding(key, BindButton .. ButtonIndex)
+	print(Success, BindButton, ButtonIndex, key)
 	
 	Module:ReassignBindings()
 end

@@ -5,4 +5,69 @@
 	<Binding name="CLICK ExtraActionButton1:LeftButton" Category="CUI" runOnUp="false">
 		<!--Uses a virtual button to leftclick the Extra Ability-->
 	</Binding>
+
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON1' header='BAR2'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON2'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON3'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON4'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON5'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON6'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON7'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON8'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON9'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON10'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON11'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR6BUTTON12'/>
+
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON1' header='BAR7'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON2'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON3'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON4'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON5'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON6'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON7'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON8'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON9'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON10'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON11'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR7BUTTON12'/>
+
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON1' header='BAR8'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON2'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON3'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON4'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON5'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON6'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON7'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON8'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON9'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON10'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON11'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR8BUTTON12'/>
+
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON1' header='BAR9'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON2'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON3'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON4'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON5'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON6'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON7'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON8'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON9'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON10'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON11'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR9BUTTON12'/>
+
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON1' header='BAR10'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON2'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON3'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON4'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON5'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON6'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON7'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON8'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON9'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON10'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON11'/>
+	<Binding category='BINDING_HEADER_CUI' name='CUIBAR10BUTTON12'/>
 </Bindings>

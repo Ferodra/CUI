@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-global, deprecated
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 
 --[[
@@ -76,7 +77,7 @@ local E, L = unpack(select(2, ...)) -- Engine, Locale
 E.DropDownMenuCurrent = {}
 
 
-function E:PrepareDropDownInfo(self, unit, button)
+function E:PrepareDropDownInfo(owner, unit, button)
 	CurrentDropDownUnit 	= unit
 	CurrentDropDownButton 	= button
 end
