@@ -1,6 +1,14 @@
 local E, L = unpack(CUI) -- Engine
 local CD = E:LoadModules("Config_Dialog")
 
+local Content0930_90300 = [[|cff1784d1Features
+
+• Updated for Midnight (12.0)
+• Added option to handle character settings globally
+• Added some options to disable certain modules
+
+|r]]
+
 local Content0922_90212 = [[|cff1784d1Features
 
 • Updated for The War Within (10.0)

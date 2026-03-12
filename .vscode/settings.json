@@ -272,6 +272,29 @@
         "RAID",
         "CALENDAR_TYPE_DUNGEON",
         "Lerp",
-        "Saturate"
+        "Saturate",
+        "UNKNOWN",
+        "TALENTS",
+        "EXIT",
+        "DUNGEON_FLOOR_DUNMOROGH10",
+        "DUNGEON_FLOOR_GNOMEREGAN1",
+        "DUNGEON_FLOOR_SEARINGGORGE14",
+        "DUNGEON_FLOOR_SEARINGGORGE16",
+        "DUNGEON_FLOOR_SEARINGGORGE15",
+        "DUNGEON_FLOOR_THEDEADMINES1",
+        "DUNGEON_FLOOR_DESOLACE21",
+        "DUNGEON_FLOOR_DESOLACE22",
+        "DUNGEON_FLOOR_DIREMAUL2",
+        "DUNGEON_FLOOR_DIREMAUL5",
+        "DUNGEON_FLOOR_DIREMAUL1",
+        "DUNGEON_FLOOR_STRATHOLME1",
+        "DUNGEON_FLOOR_STRATHOLME2",
+        "DUNGEON_FLOOR_RUINSOFAHNQIRAJ1",
+        "DUNGEON_FLOOR_ORGRIMMAR1",
+        "DUNGEON_FLOOR_TANARIS17",
+        "DUNGEON_FLOOR_TANARIS18"
+    ],
+    "Lua.diagnostics.disable": [
+        "assign-type-mismatch"
     ]
 }
