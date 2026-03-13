@@ -81,7 +81,8 @@ function Module:LoadConfig()
 end
 
 function Module:SetZoneTooltipData()
-
+	if not GetZonePVPInfo then return end
+	
 	local pvpType, _, factionName = GetZonePVPInfo();
 	local zoneName = GetZoneText();
 	local subzoneName = GetSubZoneText();
