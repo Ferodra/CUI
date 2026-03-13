@@ -132,9 +132,10 @@ Constructor
 local function NewIcon(Parent)
 	local Icon = Parent:CreateTexture("OVERLAY", nil)
 	Icon:SetDrawLayer("OVERLAY", 5)
-	Icon:SetSize(20, 20)
+	Icon:SetSize(24, 24)
 	-- Cut away those ugly borders
-	Icon:SetTexCoord(0.06,0.94,0.06,0.94)
+	local CutoffFactor = 0.03
+	Icon:SetTexCoord(CutoffFactor,1-CutoffFactor,CutoffFactor,1-CutoffFactor)
 
 	Icon.mask = Parent:CreateMaskTexture()
 	Icon.mask:SetAllPoints(Icon)
@@ -205,17 +206,19 @@ local function Constructor()
 	Overlay:SetAllPoints(true)
 	Overlay:SetFrameLevel(frame:GetFrameLevel()+15)
 	
+	local IconYOffset = -27
+
 	Class = NewIcon(Overlay)
-	Class:SetPoint("BOTTOMRIGHT", Overlay, "TOPRIGHT", -40, -25)
+	Class:SetPoint("BOTTOMRIGHT", Overlay, "TOPRIGHT", -40, IconYOffset)
 	
 	Spec = NewIcon(frame)
-	Spec:SetPoint("BOTTOMRIGHT", Overlay, "TOPRIGHT", -10, -25)
+	Spec:SetPoint("BOTTOMRIGHT", Overlay, "TOPRIGHT", -10, IconYOffset)
 	
 	Faction = NewIcon(frame)
-	Faction:SetPoint("BOTTOMLEFT", Overlay, "TOPLEFT", 10, -25)
+	Faction:SetPoint("BOTTOMLEFT", Overlay, "TOPLEFT", 10, IconYOffset)
 	
 	Race = NewIcon(frame)
-	Race:SetPoint("BOTTOMLEFT", Overlay, "TOPLEFT", 40, -25)
+	Race:SetPoint("BOTTOMLEFT", Overlay, "TOPLEFT", 40, IconYOffset)
 	
 	local titletext = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	titletext:SetPoint("TOPLEFT", 14, -7)
