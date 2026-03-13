@@ -41,11 +41,13 @@ function Module:Enable()
 					order = 4,
 					type = "toggle",
 					name = L["BottomLeftCorner"],
+					disabled = function() return not CO.db.profile.layout.stateControl.textures.enableBottom end,
 				},
 				enableBottomRight = {
 					order = 5,
 					type = "toggle",
 					name = L["BottomRightCorner"],
+					disabled = function() return not CO.db.profile.layout.stateControl.textures.enableBottom end,
 				},
 				newLine2 = {type = "description", name = "", order = 19},
 				additionalHideConditions = {

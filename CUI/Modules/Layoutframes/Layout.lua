@@ -10,6 +10,7 @@ local HBD = LibStub("HereBeDragons-2.0") -- Using HereBeDragons to handle the co
 local _
 local CreateFrame		= CreateFrame
 local format			= string.format
+local GetZonePVPInfo	= C_PvP and C_PvP.GetZonePVPInfo
 
 -------------------------------------------------------
 
@@ -39,23 +40,30 @@ function Module:LoadConfig()
 		self.TopPanel:Show()
 	end
 	
-	self.BottomPanel.Center:ClearAllPoints()
-	-- For those, we just leave the edges shown, as they're pushed off-screen anyway when we adjust the width
-	-- Both
-	if not state["enableBottomLeft"] and not state["enableBottomRight"] then
-		self.BottomPanel.Center:SetWidth(GetScreenWidth())
-		self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
-	elseif not state["enableBottomLeft"] then
-		self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
-		self.BottomPanel.Center:SetPoint("BOTTOMLEFT", self.F, "BOTTOMLEFT")
-	elseif not state["enableBottomRight"] then
-		self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
-		self.BottomPanel.Center:SetPoint("BOTTOMRIGHT", self.F, "BOTTOMRIGHT")
-	-- None
+	if not state["enableBottom"] then
+		self.BottomPanel:Hide()
 	else
-		self.BottomPanel.Center:SetWidth(GetScreenWidth() - (140 * 2))
-		self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+		self.BottomPanel:Show()
+		
+		self.BottomPanel.Center:ClearAllPoints()
+		-- For those, we just leave the edges shown, as they're pushed off-screen anyway when we adjust the width
+		-- Both
+		if not state["enableBottomLeft"] and not state["enableBottomRight"] then
+			self.BottomPanel.Center:SetWidth(GetScreenWidth())
+			self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+		elseif not state["enableBottomLeft"] then
+			self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
+			self.BottomPanel.Center:SetPoint("BOTTOMLEFT", self.F, "BOTTOMLEFT")
+		elseif not state["enableBottomRight"] then
+			self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
+			self.BottomPanel.Center:SetPoint("BOTTOMRIGHT", self.F, "BOTTOMRIGHT")
+		-- None
+		else
+			self.BottomPanel.Center:SetWidth(GetScreenWidth() - (140 * 2))
+			self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+		end
 	end
+
 	
 	-- Disable OnUpdate
 	if not Config.fps.enable and
@@ -172,7 +180,7 @@ function Module:InitDataPanels()
 		Texture:SetPoint(v[5], Parent, v[7], v[8], v[9])
 		Texture:SetTexCoord(v[11], v[12], v[13], v[14])
 		Texture:SetVertexColor(0.8, 0.8, 0.8)
-		Texture:SetBlendMode("Blend")
+		Texture:SetBlendMode("BLEND")
 		Texture:SetAlpha(1)
 		
 		v[2][v[1]] = Texture

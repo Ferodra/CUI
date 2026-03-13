@@ -458,18 +458,32 @@ function Module:UpdateTrackerAutoHide()
 	end
 end
 
-function Module:CreateBlizzMovers()
+function Module:HandleVehicleButton(state)
+	local Button = MainMenuBarVehicleLeaveButton
+
+	if not state then
+		Button:SetParent(UIParent)
+		return
+	end
+
 	local LeaveVehicle = CreateFrame("Frame", "CUI_LeaveVehicleButton", E.Parent, "SecureHandlerStateTemplate")
 	LeaveVehicle:SetParent(E.Parent)
 	LeaveVehicle:SetSize(32, 32)
 	RegisterStateDriver(LeaveVehicle, "visible", "[canexitvehicle] 1; 0")
 	E:SetVisibilityHandler(LeaveVehicle)
 	
-	local Button = MainMenuBarVehicleLeaveButton
+	
 	Button:ClearAllPoints()
-	Button:SetParent(LeaveVehicle)
-	Button:SetAllPoints(LeaveVehicle)
+	Button:SetParent(UIParent)
+	Button:SetPoint('CENTER', LeaveVehicle, 'CENTER')
 	Button.ignoreFramePositionManager = true
+	--Button.system = nil
+	--print(Button.system)
+
+	-- @TODO: Critical issue with editmode managed frames: Moving them in any way will result in their config being effed, because they will save
+	-- 	their relative frame. There is no fallback to a default frame on blizzard's side for those cases.
+	-- We'd have to somehow remove the frame from being managed before doing anything to them.
+	-- OR we just don't create movers for any editmode managed frames at all.
 	
 	Button:SetScript("OnEvent", function(self, event, ...)
 		--if ( CanExitVehicle() and ActionBarController_GetCurrentActionBarState() == LE_ACTIONBAR_STATE_MAIN ) then
@@ -486,21 +500,27 @@ function Module:CreateBlizzMovers()
 	hooksecurefunc(Button, 'SetPoint', function(_, _, parent)
 		if parent ~= LeaveVehicle then
 			Button:ClearAllPoints()
-			Button:SetParent(LeaveVehicle)
-			Button:SetAllPoints(LeaveVehicle)
+			Button:SetParent(UIParent)
+			Button:SetPoint('CENTER', LeaveVehicle, 'CENTER')
 		end
 	end)
 	
 	-- Vehicle Leave Button
-		E:CreateMover(LeaveVehicle, "Vehicle Leave Button", nil, nil, nil, nil, "actionbars")	
+		E:CreateMover(LeaveVehicle, "Vehicle Leave Button", nil, nil, nil, nil, "actionbars")
+end
+
+
+function Module:CreateBlizzMovers()
+
+		self:HandleVehicleButton(false)
 	-- Battlenet Notifications
 		E:CreateMover(BNToastFrame, "BattleNet Notification", nil, nil, nil, nil, "misc")
 	-- Alternate Boss Energy
 		E:CreateMover(PlayerPowerBarAlt, "Alternate Boss Energy", nil, 256, 64, nil, "misc") -- 256x64 is be biggest it will ever get (according to sourcecode)	
 	-- Durability Frame
-		E:CreateMover(DurabilityFrame, "Durability Frame", nil, nil, nil, nil, "misc")
+		--E:CreateMover(DurabilityFrame, "Durability Frame", nil, nil, nil, nil, "misc")
 	-- Vehicle Seats
-		E:CreateMover(VehicleSeatIndicator, L["vehicleSeatFrame"], nil, nil, nil, nil, "misc")
+		--E:CreateMover(VehicleSeatIndicator, L["vehicleSeatFrame"], nil, nil, nil, nil, "misc")
 	-- Widgets
 		E:CreateMover(UIWidgetTopCenterContainerFrame, "Info Frame", "CENTER", 128, 50, "Stuff like Azerite on Island Expeditions etc.", "misc")
 		E:CreateMover(UIWidgetPowerBarContainerFrame, "Power Bar Widget", "CENTER", 300, 70, "Advanced flying power etc.", "misc")
@@ -508,9 +528,9 @@ function Module:CreateBlizzMovers()
 		E:CreateMover(AlertFrameHolder, "Alertframe Anchor", nil, nil, nil, "Holds information like 'Mission completed' or 'Loot won' etc.", "misc")
 		E:SecureHook(AlertFrame, "UpdateAnchors", self.MoveAlerts)
 	-- Quest Tracker
-		ObjectiveTrackerFrame:SetHeight(ObjectiveTrackerFrame:GetHeight()) -- If we don't set this, there's basically just the header
-		ObjectiveTrackerFrame.isManagedFrame = false
-		E:CreateMover(ObjectiveTrackerFrame, "Objective Tracker", "TOPRIGHT", ObjectiveTrackerFrame:GetWidth() + 25, 250, nil, "misc")
+		--jectiveTrackerFrame:SetHeight(ObjectiveTrackerFrame:GetHeight()) -- If we don't set this, there's basically just the header
+		--jectiveTrackerFrame.isManagedFrame = false
+		--E:CreateMover(ObjectiveTrackerFrame, "Objective Tracker", "TOPRIGHT", ObjectiveTrackerFrame:GetWidth() + 25, 250, nil, "misc")
 	-- Azshara Widget etc.
 		E:CreateMover(UIWidgetBelowMinimapContainerFrame, "UI Widget Container", nil, 100, 100, "Holds things like the Azshara Encounter Widget", "misc")
 		
@@ -594,7 +614,7 @@ function Module:Init()
 	self:RegisterBlizzAddonMovers()
 	self:AddGameMenuButtons()
 	
-	self:InitTrackerAutoHide()
+	--self:InitTrackerAutoHide()
 	
 	
 	-- Widget type table

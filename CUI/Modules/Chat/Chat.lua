@@ -290,15 +290,15 @@ function Module:SetupChat()
 		
 		-- We have to re-parent every chat tab to position them unfortunately. Thanks blizz :c
 		if id < 2 and not (id > NUM_CHAT_WINDOWS) then
-			frame:ClearAllPoints()
-			frame:SetPoint("BOTTOMLEFT", self.Parent, "BOTTOMLEFT")
+			--frame:ClearAllPoints()
+			--frame:SetPoint("BOTTOMLEFT", self.Parent, "BOTTOMLEFT")
 			
 			-- Just call when we have a valid position that won't cause errors
-			if frame:GetLeft() then
-				FCF_SavePositionAndDimensions(frame)
-			end
+			--if frame:GetLeft() then
+			--	FCF_SavePositionAndDimensions(frame)
+			--end
 		end
-		frame:SetParent(self.Parent)
+		--frame:SetParent(self.Parent)
 		
 		if not frame.SizeHooked then
 			frame:HookScript("OnSizeChanged", function(_, width, height)
@@ -327,7 +327,7 @@ function Module:SetupChat()
 	end
 	
 	if not self.Initialized then
-		E:CreateMover(self.Parent, L["chatFrame"], nil, nil, nil, nil, "misc")
+		--E:CreateMover(self.Parent, L["chatFrame"], nil, nil, nil, nil, "misc")
 		
 		self.Initialized = true
 	end

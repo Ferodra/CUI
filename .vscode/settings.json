@@ -315,5 +315,6 @@
     "Lua.diagnostics.ignoredFiles": "Opened",
     "Lua.workspace.ignoreDir": [
         "CUI/Libs"
-    ]
+    ],
+    "Lua.type.weakUnionCheck": true
 }

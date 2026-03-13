@@ -429,7 +429,6 @@ end
 -- Causes the minimap buttons to correctly follow the new shape
 -- We simply override the function global c:
 --GetMinimapShape = function() return "CORNER-BOTTOMLEFT" end
-GetMinimapShape = function() return "SQUARE" end
 -- Fix for when the minimap is not on its default position or scaled up high.
 --MinimapCluster.GetBottom = function() return 9999 end
 
@@ -439,6 +438,7 @@ function Module:Init()
 	if not CO.db.char.minimap.enable then return end
 	
 	self:LoadMinimapStyle()
+	GetMinimapShape = function() return "SQUARE" end
 	
 	Minimap:SetArchBlobRingScalar(0)
 	Minimap:SetQuestBlobRingScalar(0)
