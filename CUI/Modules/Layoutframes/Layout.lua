@@ -39,23 +39,30 @@ function Module:LoadConfig()
 		self.TopPanel:Show()
 	end
 	
-	self.BottomPanel.Center:ClearAllPoints()
-	-- For those, we just leave the edges shown, as they're pushed off-screen anyway when we adjust the width
-	-- Both
-	if not state["enableBottomLeft"] and not state["enableBottomRight"] then
-		self.BottomPanel.Center:SetWidth(GetScreenWidth())
-		self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
-	elseif not state["enableBottomLeft"] then
-		self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
-		self.BottomPanel.Center:SetPoint("BOTTOMLEFT", self.F, "BOTTOMLEFT")
-	elseif not state["enableBottomRight"] then
-		self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
-		self.BottomPanel.Center:SetPoint("BOTTOMRIGHT", self.F, "BOTTOMRIGHT")
-	-- None
+	if not state["enableBottom"] then
+		self.BottomPanel:Hide()
 	else
-		self.BottomPanel.Center:SetWidth(GetScreenWidth() - (140 * 2))
-		self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+		self.BottomPanel:Show()
+		
+		self.BottomPanel.Center:ClearAllPoints()
+		-- For those, we just leave the edges shown, as they're pushed off-screen anyway when we adjust the width
+		-- Both
+		if not state["enableBottomLeft"] and not state["enableBottomRight"] then
+			self.BottomPanel.Center:SetWidth(GetScreenWidth())
+			self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+		elseif not state["enableBottomLeft"] then
+			self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
+			self.BottomPanel.Center:SetPoint("BOTTOMLEFT", self.F, "BOTTOMLEFT")
+		elseif not state["enableBottomRight"] then
+			self.BottomPanel.Center:SetWidth(GetScreenWidth() - 140)
+			self.BottomPanel.Center:SetPoint("BOTTOMRIGHT", self.F, "BOTTOMRIGHT")
+		-- None
+		else
+			self.BottomPanel.Center:SetWidth(GetScreenWidth() - (140 * 2))
+			self.BottomPanel.Center:SetPoint("BOTTOM", self.F, "BOTTOM")
+		end
 	end
+
 	
 	-- Disable OnUpdate
 	if not Config.fps.enable and
