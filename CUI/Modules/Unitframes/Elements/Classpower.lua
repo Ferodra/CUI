@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, UF, Module = E:LoadModules("Config", "Unitframes", "Classpower")
 Module.Autoload = true
@@ -331,8 +332,11 @@ function Module:UpdateSegments()
 					Bars[i]:SetBackgroundColor(E:ColorGradient((i / MaxSegments), 0.25, 0, 0, 0.25, 0.25, 0, 0, 0.25, 0))
 					Bars[i]:SetOverlayColor(E:ColorGradient((i / MaxSegments), 1, 0.3, 0.3, 1, 1, 0.3, 0.3, 1, 0.3))
 				else
-					Bars[i]:SetBackgroundColor(unpack(self.db.backgroundColor))
-					Bars[i]:SetOverlayColor(Color[1], Color[2], Color[3], 1)
+					-- Fix for profile swaps, where the color keys would be empty
+					if Color and Color[1] then
+						Bars[i]:SetBackgroundColor(unpack(self.db.backgroundColor))
+						Bars[i]:SetOverlayColor(Color[1], Color[2], Color[3], 1)
+					end
 				end
 			end
 		else

@@ -51,7 +51,6 @@ function E:GetAltPowerColor(id)
 	end
 	
 	return self.PowerColors[id] or self.PowerColors[0]
-	--return CO.db.profile.colors.powers[E.PowerTypes[id]] or self.PowerColors[id]
 end
 
 local DefaultReturnParse = {1,1,1,1}
