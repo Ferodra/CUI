@@ -1,5 +1,6 @@
 ---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
+---@class CO, Layout, TT
 local CO, Module, TT = E:LoadModules("Config", "Layout", "Tooltip")
 local HBD = LibStub("HereBeDragons-2.0") -- Using HereBeDragons to handle the coords
 

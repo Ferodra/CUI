@@ -5,11 +5,14 @@ local _
 
 local XPMax, XPCurrent, MaxLevel, PlayerLevel, BarX, BarY, BarPoint, BarParent, BarStrata, XPRestedString
 
-local XPBAR_TEXTURE = [[Interface\AddOns\CUI\Textures\layout\modern\XPBar]]
-local Texture = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottom]]
-local TextureFlipped = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomFlipped]]
-local TextureReversed = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomReversed]]
-local TextureReversedFlipped = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomReversedFlipped]]
+local TexturePath = [[Interface\AddOns\CUI\Textures\]]
+local Textures = {
+	['integrated'] = TexturePath .. [[statusbar\layoutBarBottomReversed]],
+	['integratedReversed'] = TexturePath .. [[statusbar\layoutBarBottom]],
+	['integratedReversedFlipped'] = TexturePath .. [[statusbar\layoutBarBottomFlipped]],
+	['integratedFlipped'] = TexturePath .. [[statusbar\layoutBarBottomReversedFlipped]],
+	['XPBarTexture'] =  TexturePath .. [[layout\modern\XPBar]]
+}
 
 --------------------------------------------------------
 function Module:LoadConfig()
@@ -32,24 +35,13 @@ function Module:LoadConfig()
 		if self.db.style ~= "normal" then
 			self.Bar.Background.Tex:SetVertexColor(unpack(self.db.backgroundColor))
 		end
-		if self.db.style == "integrated" then
-			self.Bar.Overlay:SetStatusBarTexture(TextureReversed)
-			self.Bar.Rested:SetStatusBarTexture(TextureReversed)
-			self.Bar.Background.Tex:SetTexture(TextureReversed)
-		elseif self.db.style == "integratedReversed" then
+		local Texture = Textures[self.db.style]
+
+		if Texture then
 			self.Bar.Overlay:SetStatusBarTexture(Texture)
 			self.Bar.Rested:SetStatusBarTexture(Texture)
 			self.Bar.Background.Tex:SetTexture(Texture)
-		elseif self.db.style == "integratedReversedFlipped" then
-			self.Bar.Overlay:SetStatusBarTexture(TextureFlipped)
-			self.Bar.Rested:SetStatusBarTexture(TextureFlipped)
-			self.Bar.Background.Tex:SetTexture(TextureFlipped)
-		elseif self.db.style == "integratedFlipped" then
-			self.Bar.Overlay:SetStatusBarTexture(TextureReversedFlipped)
-			self.Bar.Rested:SetStatusBarTexture(TextureReversedFlipped)
-			self.Bar.Background.Tex:SetTexture(TextureReversedFlipped)
-		else
-			
+		else			
 			self.Bar.Overlay:SetAttribute("ReceivesGlobalTexture", true)
 			self.Bar.Rested:SetAttribute("ReceivesGlobalTexture", true)
 			self.Bar.Overlay:SetStatusBarTexture(E.Media:Fetch("statusbar", CO.db.profile.unitframe.units["all"]['barTexture']))
@@ -202,19 +194,19 @@ end
 function Module:Create()
 	BarStrata, BarX, BarY, BarPoint, BarParent = "MEDIUM", 750, 14, {"BOTTOM", E.Parent, "BOTTOM"}, E.Parent
 	
-	self.Bar = E:CreateAnimatedBar("Bar_Experience", BarStrata, BarX, BarY, BarPoint, self.Holder)
+	self.Bar = E:CreateAnimatedBar("Bar_Experience", BarStrata, BarX, BarY, BarPoint, self.Holder or E.Parent)
 	
 	E:HandleFrameInPetBattles(self.Bar)
 	
 	self.Bar.Rested = E:NewFrame("Statusbar", "Bar_Experience_Rested", "MEDIUM", BarX, BarY, BarPoint, self.Bar.Background)
-	self.Bar.Rested:SetStatusBarTexture(XPBAR_TEXTURE)
+	self.Bar.Rested:SetStatusBarTexture(Textures.XPBarTexture)
 	self.Bar.Rested:ClearAllPoints()
 	self.Bar.Rested:SetAllPoints(self.Bar)
 	self.Bar.Rested:SetParent(self.Bar)
 	
 	E:RegisterStatusBar(self.Bar.Rested)
 	
-	self.Bar.Overlay:SetStatusBarTexture(XPBAR_TEXTURE)
+	self.Bar.Overlay:SetStatusBarTexture(Textures.XPBarTexture))
 	
 	self.Bar.Overlay:SetAttribute("ReceivesGlobalTexture", false)
 	self.Bar.Rested:SetAttribute("ReceivesGlobalTexture", false)
