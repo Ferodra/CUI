@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, Module, BA = E:LoadModules("Config", "Filters", "Bar_Auras")
 

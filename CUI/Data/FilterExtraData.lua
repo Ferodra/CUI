@@ -1,4 +1,6 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
+---@class FI
 local FI = E:LoadModules("Filters")
 
 --[[

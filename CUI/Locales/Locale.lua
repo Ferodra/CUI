@@ -1,3 +1,4 @@
+---@class E
 local E = select(2, ...) -- Engine
 
 local Locale = GetLocale()
@@ -5,6 +6,7 @@ local Locale = GetLocale()
 do 
 	E[2] = E[1].Libs.AceLocale:GetLocale('CUI', Locale)
 	
+	---@class L
 	local L = E[2]
 	
 	-- Additional strings

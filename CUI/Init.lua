@@ -55,6 +55,7 @@ local GetAddOnMetadata = C_AddOns.GetAddOnMetadata
 
 local AddOnName, E							= ... -- AddOn-Name, Engine
 local AceAddon = _G.LibStub('AceAddon-3.0')
+---@class E
 local AddOn = AceAddon:NewAddon(AddOnName, 'AceHook-3.0')
 AddOn.AddOnName = AddOnName
 

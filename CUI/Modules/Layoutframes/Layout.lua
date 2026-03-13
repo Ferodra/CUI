@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, Module, TT = E:LoadModules("Config", "Layout", "Tooltip")
 local HBD = LibStub("HereBeDragons-2.0") -- Using HereBeDragons to handle the coords
@@ -82,7 +83,7 @@ end
 
 function Module:SetZoneTooltipData()
 	if not GetZonePVPInfo then return end
-	
+
 	local pvpType, _, factionName = GetZonePVPInfo();
 	local zoneName = GetZoneText();
 	local subzoneName = GetSubZoneText();

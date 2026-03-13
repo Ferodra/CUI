@@ -1,3 +1,4 @@
+---@class E
 local AddOn = unpack(select(2, ...)) -- Engine
 
 --[[===========================

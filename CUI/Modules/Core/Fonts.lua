@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO = E:LoadModules("Config")
 

@@ -1,4 +1,5 @@
 local E, L = unpack(select(2, ...)) -- Engine, Locale
+---@class ItemDB
 local ItemDB = E:LoadModules('ItemDB')
 
 local Defaults = {

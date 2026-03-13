@@ -1,4 +1,6 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
+---@class AB, CO, TT
 local Module, CO, TT = E:LoadModules('Actionbars', 'Config', 'Tooltip')
 
 local _

@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 
 -- Default class colors that are being used as profile default values
@@ -19,6 +20,7 @@ E.ClassColors = {
 }
 
 -- Used to resolve class names as how they are returned by some functions [GetPlayerInfoByGUID]
+---@enum (key) ClassName
 E.ClassIDByName = {
 	["WARRIOR"] 	= 1,
 	["PALADIN"] 	= 2,

@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, Module = E:LoadModules("Config", "Datatexts")
 Module.Autoload = true

@@ -1,4 +1,5 @@
 ---@diagnostic disable: undefined-global, deprecated
+---@---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 
 --[[

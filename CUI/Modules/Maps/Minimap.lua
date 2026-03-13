@@ -1,3 +1,4 @@
+---@class E
 local E = unpack(select(2, ...)) -- Engine, Locale
 local CO, Module = E:LoadModules("Config", "Minimap")
 

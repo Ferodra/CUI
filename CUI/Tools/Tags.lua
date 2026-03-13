@@ -1,3 +1,4 @@
+---@class E, L
 local E, L = unpack(select(2, ...)) -- Engine, Locale
 
 -- @TODO: Profile Data needs a "restore default" button!
