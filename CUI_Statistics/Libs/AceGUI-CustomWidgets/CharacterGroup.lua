@@ -74,12 +74,12 @@ local methods = {
 			self.class:SetTexture("Interface\\TargetingFrame\\UI-Classes-Circles")
 			self.class:SetTexCoord(unpack(CLASS_ICON_TCOORDS[strupper(className)]))
 		else
-			SetPortraitToTexture(self.class, 134400)
+			self.class:SetTexture(134400)
 		end
 	end,
 	
 	["SetSpecIcon"] = function(self, icon)
-		SetPortraitToTexture(self.spec, icon)
+		self.spec:SetTexture(icon)
 	end,
 	
 	["SetBGColor"] = function(self, r, g, b, a)
@@ -93,18 +93,18 @@ local methods = {
 	
 	["SetFaction"] = function(self, value)
 		if value == "Alliance" then
-			SetPortraitToTexture(self.faction, 2175463)
+			self.faction:SetTexture(2175463)
 		elseif value == "Horde" then
-			SetPortraitToTexture(self.faction, 2175464)
+			self.faction:SetTexture(2175464)
 		else
-			SetPortraitToTexture(self.faction, 134400)
+			self.faction:SetTexture(134400)
 		end
 	end,
 	
 	["SetRace"] = function(self, value, sex)
 		sex = (sex == 3) and "Female" or "Male"
 		if value then
-			SetPortraitToTexture(self.race, GetRaceTexture(value, sex) or 134400)
+			self.race:SetTexture(GetRaceTexture(value, sex) or 134400)
 			self.race:Show()
 		else
 			self.race:Hide()
@@ -135,6 +135,11 @@ local function NewIcon(Parent)
 	Icon:SetSize(20, 20)
 	-- Cut away those ugly borders
 	Icon:SetTexCoord(0.06,0.94,0.06,0.94)
+
+	Icon.mask = Parent:CreateMaskTexture()
+	Icon.mask:SetAllPoints(Icon)
+	Icon.mask:SetTexture("Interface/CHARACTERFRAME/TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	Icon:AddMaskTexture(Icon.mask)
 	
 	return Icon
 end
