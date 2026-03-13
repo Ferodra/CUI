@@ -206,7 +206,7 @@ function Module:Create()
 	
 	E:RegisterStatusBar(self.Bar.Rested)
 	
-	self.Bar.Overlay:SetStatusBarTexture(Textures.XPBarTexture))
+	self.Bar.Overlay:SetStatusBarTexture(Textures.XPBarTexture)
 	
 	self.Bar.Overlay:SetAttribute("ReceivesGlobalTexture", false)
 	self.Bar.Rested:SetAttribute("ReceivesGlobalTexture", false)
