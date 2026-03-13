@@ -13,10 +13,10 @@ local MessageToGUID 	= {}
 Module.Frames = {}
 
 Module.BackdropTemplate = {
-	  bgFile = [[Interface\AddOns\CUI\Textures\borders\WHITE8X8]], 
+	  bgFile = [[Interface\AddOns\CUI\Textures\borders\WHITE8X8]],
 	  edgeFile = [[Interface\AddOns\CUI\Textures\borders\WHITE8X8]],
 	  tile = true,
-	  edgeSize = 1, 
+	  edgeSize = 1,
 	  insets = { left = 0, right = 0, top = 0, bottom = 0 }
 }
 
@@ -147,7 +147,7 @@ end
 
 -- Event Wrapper
 local function OnEvent(self, event, Msg, Sender, _, _, _, _, _, _, _, _, _, GUID)
-	if InCombatLockdown() then return end
+	if InCombatLockdown() or issecretvalue(Msg) or issecretvalue(Sender) or issecretvalue(GUID) then return end
 	
 	if Msg then
 		if Sender then
