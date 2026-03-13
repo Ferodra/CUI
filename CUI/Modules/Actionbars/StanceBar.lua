@@ -47,7 +47,8 @@ function AB:UpdateActiveStanceButtons(event)
 	end
 	
 	if GetNumShapeshiftForms() > 0 then
-		local NewWidth, NewHeight = E:SortFrames(Bar.buttons, Bar, nil, nil, Config.buttonSizeMultiplier, Config.buttonsPerRow, nil, nil, Config.buttonGap, Config.buttonGap, true, false)
+		local BarParent = Bar -- This should be something else when we don't use our movers
+		local NewWidth, NewHeight = E:SortFrames(Bar.buttons, BarParent, nil, nil, Config.buttonSizeMultiplier, Config.buttonsPerRow, nil, nil, Config.buttonGap, Config.buttonGap, true, false)
 		Bar:SetSize(NewWidth, NewHeight)
 	else
 		Bar:SetSize(32,32)

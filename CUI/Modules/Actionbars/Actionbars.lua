@@ -624,7 +624,7 @@ function Module:UpdateActionbar(bar)
 		Module:UpdateConfig(Bar)
 	end
 	
-	
+	local ButtonParent = Bar
 	for k, child in ipairs(Bar.buttons) do			
 		child.IgnoreSort = nil
 		
@@ -654,10 +654,10 @@ function Module:UpdateActionbar(bar)
 	
 	if bar == 'stancebar' then
 		Module:UpdateActiveStanceButtons()
-		
+
 		return
 	end
-	local NewWidth, NewHeight = E:SortFrames(Bar.buttons, Bar, nil, nil, Config.buttonSizeMultiplier, Config.buttonsPerRow, nil, nil, Config.buttonGap, Config.buttonGap, true, false)
+	local NewWidth, NewHeight = E:SortFrames(Bar.buttons, ButtonParent, nil, nil, Config.buttonSizeMultiplier, Config.buttonsPerRow, nil, nil, Config.buttonGap, Config.buttonGap, true, false)
 	Bar:SetSize(NewWidth, NewHeight)
 	
 	E:LoadMoverPositions(Bar)
