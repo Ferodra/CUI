@@ -73,10 +73,9 @@ function Module:LoadConfig()
 	end
 end
 
-local UpdateData
 function Module:UpdateFactionData()
 
-	UpdateData = GetWatchedFactionData()
+	local UpdateData = GetWatchedFactionData()
 	if not UpdateData or UpdateData.factionID == 0 then 
 		self.isFactionWatched = false
 		self.Bar:Hide()
