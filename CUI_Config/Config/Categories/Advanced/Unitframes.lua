@@ -524,8 +524,12 @@ local function GetLabel(Name, Disabled)
 	return Name
 end
 
-local function IsGroupDisabled(groupName)
-	return not CO.db.profile.unitframe.units[groupName].enable
+local function IsGroupDisabled(groupName, context)
+	if not context then
+		return not CO.db.profile.unitframe.units[groupName].enable
+	else
+		return false
+	end
 end
 
 local function GetOptionsTable_General(groupName)
@@ -3389,21 +3393,37 @@ local function GetOptionsTable_Absorption(groupName)
 	return config
 end
 
-local function GetOptionsTable_ClassPower(groupName)
-	local Name = GetLabel(CategoryColors['CoreModules']:format(L["Alternate Power"]), IsGroupDisabled(groupName))
-	
+local hiddenFunc_ClassPower = function(context)
+	if CO.db.char.unitframe.enable then
+		return (context == "general")
+	else
+		return (context == "unitframe")
+	end
+end
+
+local function GetOptionsTable_ClassPower(groupName, context)
+	local Name = GetLabel(CategoryColors['CoreModules']:format(L["Alternate Power"]), IsGroupDisabled(groupName, context))
+	local disabledFunc = function() return not CO.db.profile.unitframe.units[groupName].alternatePower.enable end
+	local UpdateFunc = function() E:LoadModule("Classpower"):LoadConfig() end
+
 	local config = {
 		order = CategoryOrders.ClassPower,
 		type = 'group',
 		name = Name,
 		childGroups = "tab",
+		get = function(info) return CO.db.profile.unitframe.units[groupName].alternatePower[ info[#info] ] end,
+		set = function(info, value) CO.db.profile.unitframe.units[groupName].alternatePower[ info[#info] ] = value; UpdateFunc() end,
 		args = {
+			enable = {
+				order = -1,
+				type = "toggle",
+				name = L["Enable"],
+			},
 			Bars = {
 				order = 1,
 				type = 'group',
 				name = L["Bars"],
-				get = function(info) return CO.db.profile.unitframe.units[groupName].alternatePower[ info[#info] ] end,
-				set = function(info, value) CO.db.profile.unitframe.units[groupName].alternatePower[ info[#info] ] = value; E:LoadModule("Classpower"):LoadConfig() end,
+				disabled = disabledFunc,
 				args = {
 					-- Position will be filled in by for loop below
 					header = {
@@ -3473,7 +3493,7 @@ local function GetOptionsTable_ClassPower(groupName)
 									
 									c[1], c[2], c[3], c[4] = r, g, b, a
 									
-									UF:LoadProfileForUnits(groupName)
+									UpdateFunc()
 								end,
 							},
 							borderColor = {
@@ -3491,7 +3511,7 @@ local function GetOptionsTable_ClassPower(groupName)
 									
 									c[1], c[2], c[3], c[4] = r, g, b, a
 									
-									UF:LoadProfileForUnits(groupName)
+									UpdateFunc()
 								end,
 							},
 							borderSize = {
@@ -3505,7 +3525,7 @@ local function GetOptionsTable_ClassPower(groupName)
 										value = 0.1
 									end
 									
-									CO.db.profile.unitframe.units[groupName].alternatePower[ info[#info] ] = value; E:LoadModule("Classpower"):LoadConfig()
+									CO.db.profile.unitframe.units[groupName].alternatePower[ info[#info] ] = value; UpdateFunc()
 								end,
 							},
 						},
@@ -3517,7 +3537,8 @@ local function GetOptionsTable_ClassPower(groupName)
 				type = 'group',
 				name = L["Background"],
 				get = function(info) return CO.db.profile.unitframe.units[groupName].alternatePower.artFill[ info[#info] ] end,
-				set = function(info, value) CO.db.profile.unitframe.units[groupName].alternatePower.artFill[ info[#info] ] = value; E:LoadModule("Classpower"):LoadConfig() end,
+				set = function(info, value) CO.db.profile.unitframe.units[groupName].alternatePower.artFill[ info[#info] ] = value; UpdateFunc() end,
+				disabled = disabledFunc,
 				args = {
 					enable = {
 						type = "toggle",
@@ -3577,7 +3598,7 @@ local function GetOptionsTable_ClassPower(groupName)
 						set = function(info, r, g, b, a)
 							local c = CO.db.profile.unitframe.units[groupName].alternatePower.artFill.borderColor
 							c[1], c[2], c[3], c[4] = r, g, b, a
-							E:LoadModule("Classpower"):LoadConfig();
+							UpdateFunc()
 						end,
 						disabled = function() return not CO.db.profile.unitframe.units[groupName].alternatePower.artFill.enable end,
 					},
@@ -3593,7 +3614,7 @@ local function GetOptionsTable_ClassPower(groupName)
 						set = function(info, r, g, b, a)
 							local c = CO.db.profile.unitframe.units[groupName].alternatePower.artFill.backgroundColor
 							c[1], c[2], c[3], c[4] = r, g, b, a
-							E:LoadModule("Classpower"):LoadConfig();
+							UpdateFunc()
 						end,
 						disabled = function() return not CO.db.profile.unitframe.units[groupName].alternatePower.artFill.enable end,
 					},
@@ -3604,7 +3625,8 @@ local function GetOptionsTable_ClassPower(groupName)
 				type = 'group',
 				name = L["ClassSpecific"],
 				get = function(info) return CO.db.profile.unitframe.units[groupName].alternatePower.data[ info[#info] ] end,
-				set = function(info, value) CO.db.profile.unitframe.units[groupName].alternatePower.data[ info[#info] ] = value; E:LoadModule("Classpower"):LoadConfig() end,
+				set = function(info, value) CO.db.profile.unitframe.units[groupName].alternatePower.data[ info[#info] ] = value; UpdateFunc() end,
+				disabled = disabledFunc,
 				args = {
 					SpecBasedSettings_Select = {
 						name = SPECIALIZATION,
@@ -4487,6 +4509,17 @@ function Module:Enable()
 		},
 	}
 
+	CD.Options.args.unitframe.args.classpower = {
+		name = L["Alternate Power"],
+		type = 'group',
+		order = 2,
+		childGroups = "tab",
+		hidden = function() return hiddenFunc_ClassPower("general") end,
+		args = {
+			alternatePower = GetOptionsTable_ClassPower("player", "general")
+		},
+	}
+
 	CD.Options.args.unitframe.args.player = {
 		name = L["Player"],
 		type = 'group',
@@ -4514,7 +4547,7 @@ function Module:Enable()
 			absorb = GetOptionsTable_Absorption("player"),
 			barHealth = GetOptionsTable_HealthBar("player"),
 			barPower = GetOptionsTable_PowerBar("player"),
-			alternatePower = GetOptionsTable_ClassPower("player"),
+			alternatePower = GetOptionsTable_ClassPower("player", "unitframe"),
 			castbar = GetOptionsTable_CastBar("player"),
 			unitAlternatePower = GetOptionsTable_UnitAlternatePower("player"),
 		},
@@ -4835,7 +4868,7 @@ function Module:Enable()
 	
 	-- Disabled Unit handling
 	for groupName, tbl in pairs(CD.Options.args.unitframe.args) do
-		if groupName ~= 'all' and tbl.args then
+		if groupName ~= 'all' and groupName ~= 'classpower' and tbl.args then
 			for moduleName, module in pairs(tbl.args) do
 				if moduleName ~= "generalGroup" then
 					module.disabled = function() 

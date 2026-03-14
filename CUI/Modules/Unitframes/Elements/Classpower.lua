@@ -130,6 +130,13 @@ function Module:LoadConfig()
 	Module:UpdateDB()
 	
 	if not self.Holder then return end
+
+	if not self.db.enable then
+		self:Disable()
+		return
+	else
+		self:Enable()
+	end
 	
 	self:UpdateSegments() -- To apply various changes
 	self:UpdateValue() -- To apply various changes
@@ -285,7 +292,8 @@ function Module:UpdatePowerColor()
 end
 
 function Module:UpdateSegments()
-	
+	if not self.enabled then return end
+
 	self.PreviousPowerId = (self.PowerId or -1)
 	self:UpdateCurrentPowerInfo()
 	
@@ -604,6 +612,24 @@ function Module:__OnEvent(event, ...)
 		or event == "SPELLS_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" or event == "PLAYER_LOSES_VEHICLE_DATA" then
 		self:UpdateSegments()
 		self:UpdateValue()
+	end
+end
+
+function Module:Disable()
+	self:UnregisterAllEvents()
+	self.enabled = false
+
+	if self.Holder then
+		self.Holder:Hide()
+	end
+end
+
+function Module:Enable()
+	self:InitEventHandler()
+	self.enabled = true
+	
+	if self.Holder then
+		self:__OnEvent('PLAYER_ENTERING_WORLD')
 	end
 end
 
