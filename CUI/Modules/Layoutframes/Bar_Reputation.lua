@@ -2,6 +2,7 @@ local E, L = unpack(select(2, ...)) -- Engine, Locale
 local CO, UF, TT, Module = E:LoadModules("Config", "Unitframes", "Tooltip", "Bar_Reputation")
 
 local _
+local LEVEL						= LEVEL
 local format					= string.format
 local GetWatchedFactionData		= C_Reputation.GetWatchedFactionData
 local GetFriendshipReputation	= C_GossipInfo.GetFriendshipReputation
@@ -9,6 +10,8 @@ local IsFactionParagon			= C_Reputation.IsFactionParagon
 local IsMajorFaction			= C_Reputation.IsMajorFaction
 local GetFactionParagonInfo		= C_Reputation.GetFactionParagonInfo
 local GetMajorFactionData		= C_MajorFactions.GetMajorFactionData
+
+-- C_Reputation.IsFactionParagon(2699)
 
 local Texture = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottom]]
 local TextureFlipped = [[Interface\AddOns\CUI\Textures\statusbar\layoutBarBottomFlipped]]
@@ -100,7 +103,11 @@ function Module:UpdateFactionData()
 	
 	local level
 	local minBar, maxBar, value = UpdateData.currentReactionThreshold, UpdateData.nextReactionThreshold, UpdateData.currentStanding;
-	if IsParagon then
+	if IsMajor then
+		local majorFactionData = GetMajorFactionData(factionID);
+		minBar, maxBar = 0, majorFactionData.renownLevelThreshold;
+		level = majorFactionData.renownLevel;
+	elseif IsParagon then
 		local currentValue, threshold, _, hasRewardPending = GetFactionParagonInfo(factionID);
 		minBar, maxBar  = 0, threshold;
 		value = currentValue % threshold;
@@ -108,10 +115,6 @@ function Module:UpdateFactionData()
 		if hasRewardPending then
 			value = value + threshold;
 		end
-	elseif IsMajor then
-		local majorFactionData = GetMajorFactionData(factionID);
-		minBar, maxBar = 0, majorFactionData.renownLevelThreshold;
-		level = majorFactionData.renownLevel;
 	elseif friendshipInfo and friendshipFactionID > 0 then
 		local repRankInfo = C_GossipInfo.GetFriendshipReputationRanks(factionID);
 		level = repRankInfo.currentLevel;
@@ -152,7 +155,7 @@ function Module:UpdateValue()
 		self.Bar:SetMinMaxValues(self.UpdateData.MinValue, self.UpdateData.MaxValue)
 		self.Bar:SetValue(self.UpdateData.CurrentValue)
 		
-		self.Bar.Font:SetText(string.format("%s / %s (%s %%)", E:readableNumber(self.UpdateData.CurrentValue, 2), E:readableNumber(self.UpdateData.MaxValue, 2), (E:Round(self.UpdateData.CurrentValue / self.UpdateData.MaxValue, 2) * 100)))
+		self.Bar.Font:SetText(string.format("%s: %s / %s (%s %%)", self.UpdateData.Name, E:readableNumber(self.UpdateData.CurrentValue, 2), E:readableNumber(self.UpdateData.MaxValue, 2), (E:Round(self.UpdateData.CurrentValue / self.UpdateData.MaxValue, 2) * 100)))
 		
 		self.Bar:Show()
 	else
@@ -193,6 +196,7 @@ function Module:__Construct()
 		GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
 		
 		GameTooltip:AddLine(Module.UpdateData.Name)
+		GameTooltip:AddLine(format("%s: %s", LEVEL, Module.UpdateData.Level))
 		GameTooltip:AddLine(format("%s / %s", Module.UpdateData.CurrentValue, Module.UpdateData.MaxValue))
 		
 		TT:UpdateStyle(nil)
