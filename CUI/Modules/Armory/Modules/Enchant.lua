@@ -19,20 +19,20 @@ local EnchantMatchKey = ENCHANTED_TOOLTIP_LINE:gsub('%%s', '(.+)')
 do
 	if E.IsRetail then
 		Module.EnchantSlots = {
-			[1] = false, 	-- Head
+			[1] = true, 	-- Head
 			[2] = false, 	-- Neck
-			[3] = false, 	-- Shoulder
+			[3] = true, 	-- Shoulder
 			[5] = true, 	-- Chest
 			[6] = false, 	-- Waist
 			[7] = true, 	-- Legs
 			[8] = true, 	-- Feet
-			[9] = true, 	-- Wrist
+			[9] = false, 	-- Wrist
 			[10] = false, 	-- Hand
 			[11] = true, 	-- Finger 1
 			[12] = true, 	-- Finger 2
 			[13] = false, 	-- Trinket 1
 			[14] = false, 	-- Trinket 2
-			[15] = true, 	-- Cloak
+			[15] = false, 	-- Cloak
 			[16] = true, 	-- Weapon 1
 			[17] = true, 	-- Weapon 2
 		}

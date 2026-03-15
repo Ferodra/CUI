@@ -127,7 +127,7 @@ end
 
 function Module:LoadConfig()
 	
-	Module:UpdateDB()
+	self:UpdateDB()
 	
 	if not self.Holder then return end
 
@@ -227,7 +227,7 @@ function Module:RepositionSegments()
 	local Bars = self.CurrentPower.Bars
 	
 	-- Separated
-	if Module:IsPowerSeparated(self.PowerId) then
+	if self:IsPowerSeparated(self.PowerId) then
 		local SizeX = ((self.Holder:GetWidth() / self.PowerMax) - self.db.gap) + (self.db.gap / self.PowerMax)
 		local SizeY = self.Holder:GetHeight()
 		

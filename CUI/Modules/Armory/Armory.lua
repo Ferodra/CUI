@@ -434,10 +434,10 @@ function Module:ToggleInfo(type, state)
 	type = type or "all"
 	if type == "all" then
 		for _, name in pairs(types) do
-			--ToggleInfo_Single(name, state)
+			ToggleInfo_Single(name, state)
 		end
 	else
-		--ToggleInfo_Single(type, state)
+		ToggleInfo_Single(type, state)
 	end
 	
 	self:ToggleInfo_UpdateBackground()
@@ -480,6 +480,11 @@ function Module:UpdatePanel()
 			CharacterFrameInset:SetPoint("BOTTOMRIGHT", CharacterFrame, "BOTTOMLEFT", CharacterFrameInset.OriginalOffset, 4)
 			
 			Module:ToggleInfo("all", false)
+		end
+
+		-- Idk why this is shown when we open the panel
+		if CharacterModelScene and CharacterModelScene:IsVisible() and CharacterModelScene.ControlFrame then
+			CharacterModelScene.ControlFrame:Hide()
 		end
 	end
 	

@@ -7,9 +7,14 @@ local A, CO = E:LoadModules("Armory", "Config")
 
 local _
 local Module = {}
+local GetItemNumSockets = C_Item and C_Item.GetItemNumSockets -- args: (itemLink)
+local GetSocketGem		= C_TooltipInfo.GetSocketGem -- args: (index)
+local GetItemGem		= C_Item and C_Item.GetItemGem -- args: (hyperlink, index)
+local GetItemInfo		= C_Item and C_Item.GetItemInfo
 
 local ScanTipTexturePath = E.ScanningTooltip:GetName() .. "Texture"
 local EmptySocketString = "UI--EmptySocket"
+local EmptySocketTexture = 'Interface/Addons/CUI/Textures/icons/UI-EmptySocket'
 
 -----------------------------------------
 
@@ -46,26 +51,27 @@ function Module:GetInfo(ItemLink)
 	
 	local GemData = {}
 	
+	local NumSockets = GetItemNumSockets(ItemLink)
+	local GemInfo
 	for i=1, MAX_NUM_SOCKETS do
-		local GemTex = GetGemTexture(i)
-		GemID = nil
-		
-		GemData[i] = {}
-		
-		if (type(GemTex) == "string" and GemTex:find(EmptySocketString)) then
-			GemData[i].isEmpty = true
-		elseif type(GemTex) == "number" then
-			GemData[i].isEmpty = false
-			GemID = GemTex
+		GemInfo = nil
+		if not GemData[i] then
+			GemData[i] = {}
+		end
+
+		GemData[i].GemLink = select(2, GetItemGem(ItemLink, i))
+		if i <= NumSockets then
+			GemData[i].isEmpty = GemData[i].GemLink == true
 		else
 			GemData[i].isEmpty = nil
 		end
 		
-		GemData[i].Texture		= GemTex
-		GemData[i].GemLink 		= select(2, GetItemGem(ItemLink, i))
 		if GemData[i].GemLink then
-			GemData[i].GemQuality 	= select(3, GetItemInfo(GemData[i].GemLink))
+			GemInfo = {GetItemInfo(GemData[i].GemLink)}
+			GemData[i].GemQuality = select(3, unpack(GemInfo))
 		end
+		GemData[i].Texture = GemInfo and select(10, unpack(GemInfo)) or EmptySocketTexture
+		print(GemInfo, GemInfo and select(10, unpack(GemInfo)), ItemLink, GemData[i].Texture)
 	end
 	
 	E.ScanningTooltip:Release()
