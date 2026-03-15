@@ -71,7 +71,6 @@ function Module:GetInfo(ItemLink)
 			GemData[i].GemQuality = select(3, unpack(GemInfo))
 		end
 		GemData[i].Texture = GemInfo and select(10, unpack(GemInfo)) or EmptySocketTexture
-		print(GemInfo, GemInfo and select(10, unpack(GemInfo)), ItemLink, GemData[i].Texture)
 	end
 	
 	E.ScanningTooltip:Release()
