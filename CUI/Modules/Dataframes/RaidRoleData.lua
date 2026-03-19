@@ -57,6 +57,14 @@ function Module:Toggle()
 	self:LoadConfig()
 end
 
+local function InsertUnitData(Data, Unit)
+	Data.Count = (Data.Count or 0) + 1
+
+	Data[Data.Count] = {}
+	Data[Data.Count].Unit = Unit
+	Data[Data.Count].Name = UnitName(Unit)
+end
+
 -- GetGroupMemberCounts essentially does the same thing, but we also want the corresponding player names
 -- UnitGroupRolesAssigned(F.unit)
 -- @TODO: Clean this mess of a function up
@@ -69,34 +77,18 @@ function Module:GetNumRoles(type)
 			-- 1 to 5, because you never know
 			for i=1,5 do
 				if UnitExists(format("party%s", i)) and UnitGroupRolesAssigned(format("party%s", i)) == type then
-					Data.Count = Data.Count + 1
-
-					Data[i] = {}
-					Data[i].Unit = format("party%s", i)
-					Data[i].Name = UnitName(format("party%s", i))
-					
-					--self.NumRoles.Count = self.NumRoles.Count + 1
+					InsertUnitData(Data, format("party%s", i))
 				end
 			end
 			
 			if UnitGroupRolesAssigned("player") == type or select(1, E:GetPlayerSpecInfo()) == type then
-				Data.Count = Data.Count + 1
-
-				Data[Data.Count] = {}
-				Data[Data.Count].Unit = "player"
-				Data[Data.Count].Name = UnitName("player")
-				
-				--self.NumRoles.Count = self.NumRoles.Count + 1
+				InsertUnitData(Data, "player")
 			end
 		end
 	else
 		for i=1,40 do
 			if UnitExists(format("raid%s", i)) and UnitGroupRolesAssigned(format("raid%s", i)) == type then
-				Data.Count = Data.Count + 1
-
-				Data[i] = {}
-				Data[i].Unit = format("raid%s", i)
-				Data[i].Name = UnitName(format("raid%s", i))
+				InsertUnitData(Data, format("raid%s", i))
 			end
 		end
 	end
