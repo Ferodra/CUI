@@ -57,46 +57,34 @@ function Module:Toggle()
 	self:LoadConfig()
 end
 
-function Module:NumAddUnit(i, unit)
-	self.NumRoles[i] = {}
-	self.NumRoles[i].Count = self.NumRoles.Count + 1
-	self.NumRoles[i].Unit = unit
-	
-	self.NumRoles.Count = self.NumRoles.Count + 1
-end
-
 -- GetGroupMemberCounts essentially does the same thing, but we also want the corresponding player names
 -- UnitGroupRolesAssigned(F.unit)
 -- @TODO: Clean this mess of a function up
 function Module:GetNumRoles(type)
-	if not self.NumRoles then
-		self.NumRoles = {}
-	else
-		wipe(self.NumRoles)
-	end
+	local Data = {}
 	
-	self.NumRoles.Count = 0
+	Data.Count = 0
 	if not IsInRaid() then
 		if IsInGroup() then
 			-- 1 to 5, because you never know
 			for i=1,5 do
 				if UnitExists(format("party%s", i)) and UnitGroupRolesAssigned(format("party%s", i)) == type then
-					self.NumRoles.Count = self.NumRoles.Count + 1
+					Data.Count = Data.Count + 1
 
-					self.NumRoles[i] = {}
-					self.NumRoles[i].Unit = format("party%s", i)
-					self.NumRoles[i].Name = UnitName(format("party%s", i))
+					Data[i] = {}
+					Data[i].Unit = format("party%s", i)
+					Data[i].Name = UnitName(format("party%s", i))
 					
 					--self.NumRoles.Count = self.NumRoles.Count + 1
 				end
 			end
 			
 			if UnitGroupRolesAssigned("player") == type or select(1, E:GetPlayerSpecInfo()) == type then
-				self.NumRoles.Count = self.NumRoles.Count + 1
+				Data.Count = Data.Count + 1
 
-				self.NumRoles[self.NumRoles.Count] = {}
-				self.NumRoles[self.NumRoles.Count].Unit = "player"
-				self.NumRoles[self.NumRoles.Count].Name = UnitName("player")
+				Data[Data.Count] = {}
+				Data[Data.Count].Unit = "player"
+				Data[Data.Count].Name = UnitName("player")
 				
 				--self.NumRoles.Count = self.NumRoles.Count + 1
 			end
@@ -104,18 +92,16 @@ function Module:GetNumRoles(type)
 	else
 		for i=1,40 do
 			if UnitExists(format("raid%s", i)) and UnitGroupRolesAssigned(format("raid%s", i)) == type then
-				self.NumRoles.Count = self.NumRoles.Count + 1
+				Data.Count = Data.Count + 1
 
-				self.NumRoles[i] = {}
-				self.NumRoles[i].Unit = format("raid%s", i)
-				self.NumRoles[i].Name = UnitName(format("raid%s", i))
-				
-				--self.NumRoles.Count = self.NumRoles.Count + 1
+				Data[i] = {}
+				Data[i].Unit = format("raid%s", i)
+				Data[i].Name = UnitName(format("raid%s", i))
 			end
 		end
 	end
 	
-	return self.NumRoles
+	return Data
 end
 
 -- /dump CUI[1]:LoadModule("RaidRoleData"):GetNumRoles("TANK")
