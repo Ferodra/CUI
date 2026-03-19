@@ -25,6 +25,9 @@ function CO:GetGlobalDefaults()
 		['misc'] = {
 			['collectionsShowHelmet'] = true,
 		},
+		['utility'] = {
+			
+		},
 		['communication'] = {
 			['autoCheckVersion'] = true,
 		},

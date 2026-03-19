@@ -36,7 +36,7 @@ function Module:Enable()
 						type = "group",
 						name = L["General"],
 						order = 1,
-						disabled = function() return CO.db.char.minimap.enable end,
+						disabled = function() return not CO.db.char.minimap.enable end,
 						args = {
 							minimapPositioning = {
 								order = 1,
@@ -133,7 +133,7 @@ function Module:Enable()
 						childGroups = "tab",
 						get = function(info) return CO.db.profile.minimap.clock[ info[#info] ] end,
 						set = function(info, value) CO.db.profile.minimap.clock[ info[#info] ] = value; E:LoadModule("Minimap"):LoadConfig(); end,
-						disabled = function() return CO.db.char.minimap.enable end,
+						disabled = function() return not CO.db.char.minimap.enable end,
 						args = {
 							generalGroup = {
 								type = "group",
@@ -250,7 +250,7 @@ function Module:Enable()
 						type = "group",
 						name = "Vanilla Buttons",
 						order = 100,
-						disabled = function() return CO.db.char.minimap.enable end,
+						disabled = function() return not CO.db.char.minimap.enable end,
 						args = {
 							zoneText = {
 								order = 23,
@@ -279,7 +279,7 @@ function Module:Enable()
 						type = "group",
 						name = "Custom Buttons",
 						order = 200,
-						disabled = function() return CO.db.char.minimap.enable end,
+						disabled = function() return not CO.db.char.minimap.enable end,
 						args = {
 							customMailIcon = {
 								order = 1,

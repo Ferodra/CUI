@@ -50,6 +50,7 @@ local ExcludeList = {
 	[21525] = true, 	-- Green Winter Hat
 	[241007] = true, 	-- Cosmetic Mace
 	[241019] = true, 	-- Cosmetic Sword
+	[241291] = true, 	-- Alchemy Stone Midnight
 }
 
 local IncludeList = {
@@ -240,6 +241,39 @@ function Module:SellGreys_VendorError(msg)
 	end
 end
 
+function Module:RestoreSelfHighlightState()
+	local TargetState = CO.db.global.utility.selfHighlightState
+
+	local NewState = ToggleSelfHighlight()
+	if NewState ~= TargetState then
+		ToggleSelfHighlight()
+	end
+end
+
+function Module:HandleSelfHighlight()
+	local SelfHighlightCVar = "findYourselfAnywhere"
+	local handler = CreateFrame('Frame')
+
+	handler:RegisterEvent('PLAYER_LOGOUT')
+	handler:RegisterEvent('PLAYER_ENTERING_WORLD')
+	handler:SetScript('OnEvent', function(self, event)
+		if GetCVar(SelfHighlightCVar) then
+			if event == 'PLAYER_ENTERING_WORLD' then
+				self:SetScript('OnUpdate', function(self, elapsed)
+					self.elapsed = (self.elapsed or 0) + elapsed
+					if self.elapsed > 1 then
+						Module:RestoreSelfHighlightState()
+						self:SetScript('OnUpdate', nil)
+					end
+				end)
+			else
+				-- Store last state
+				CO.db.global.utility.selfHighlightState = not ToggleSelfHighlight()
+			end
+		end
+	end)
+end
+
 function Module:LoadConfig()
 	if self.db.autoSellGreys or self.db.autoSellBelowIlvlEnable or self.db.autoSellOldGems then
 		if not self.SellGreysFrame:IsEventRegistered("MERCHANT_SHOW") then
@@ -263,6 +297,8 @@ function Module:Construct()
 	self.SellGreysFrame.Reported = false
 	self.SellGreysFrame.Count = 0
 	self.SellGreysFrame:SetScript("OnEvent", Module.SellGreys)
+
+	self:HandleSelfHighlight()
 end
 
 function Module:Init()

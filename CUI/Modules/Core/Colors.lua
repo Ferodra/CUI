@@ -122,21 +122,23 @@ function E:GetUnitReactionColor(Unit, ReturnRGB, IgnoreCustoms)
 	if not IgnoreCustoms then
 		local Name = UnitName(Unit)
 		
-		local Tbl = CO.db.global.colors.units[Name]
-		
-		if Tbl and Tbl.enabled and Tbl.color then
-		
-			if ReturnRGB == nil or ReturnRGB == true then
-				ReturnTable.r = Tbl.color.r
-				ReturnTable.g = Tbl.color.g
-				ReturnTable.b = Tbl.color.b
-			else
-				ReturnTable[1] = Tbl.color.r
-				ReturnTable[2] = Tbl.color.g
-				ReturnTable[3] = Tbl.color.b
+		if not issecretvalue(Name) then
+			local Tbl = CO.db.global.colors.units[Name]
+			
+			if Tbl and Tbl.enabled and Tbl.color then
+			
+				if ReturnRGB == nil or ReturnRGB == true then
+					ReturnTable.r = Tbl.color.r
+					ReturnTable.g = Tbl.color.g
+					ReturnTable.b = Tbl.color.b
+				else
+					ReturnTable[1] = Tbl.color.r
+					ReturnTable[2] = Tbl.color.g
+					ReturnTable[3] = Tbl.color.b
+				end
+			
+				return ReturnTable
 			end
-		
-			return ReturnTable
 		end
 	end
 	

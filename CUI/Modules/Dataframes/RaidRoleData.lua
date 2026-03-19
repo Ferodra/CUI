@@ -69,36 +69,48 @@ end
 -- UnitGroupRolesAssigned(F.unit)
 -- @TODO: Clean this mess of a function up
 function Module:GetNumRoles(type)
-	self.NumRoles = {}
+	if not self.NumRoles then
+		self.NumRoles = {}
+	else
+		wipe(self.NumRoles)
+	end
+	
 	self.NumRoles.Count = 0
 	if not IsInRaid() then
 		if IsInGroup() then
-			for i=1,4 do
+			-- 1 to 5, because you never know
+			for i=1,5 do
 				if UnitExists(format("party%s", i)) and UnitGroupRolesAssigned(format("party%s", i)) == type then
-					self.NumRoles[i] = {}
-					self.NumRoles[i].Count = self.NumRoles.Count + 1
-					self.NumRoles[i].Unit = format("party%s", i)
-					
 					self.NumRoles.Count = self.NumRoles.Count + 1
+
+					self.NumRoles[i] = {}
+					self.NumRoles[i].Unit = format("party%s", i)
+					self.NumRoles[i].Name = UnitName(format("party%s", i))
+					
+					--self.NumRoles.Count = self.NumRoles.Count + 1
 				end
 			end
 			
-			if UnitGroupRolesAssigned("player") == type then
-				self.NumRoles[self.NumRoles.Count + 1] = {}
-				self.NumRoles[self.NumRoles.Count + 1].Count = self.NumRoles.Count + 1
-				self.NumRoles[self.NumRoles.Count + 1].Unit = "player"
-				
+			if UnitGroupRolesAssigned("player") == type or select(1, E:GetPlayerSpecInfo()) == type then
 				self.NumRoles.Count = self.NumRoles.Count + 1
+
+				self.NumRoles[self.NumRoles.Count] = {}
+				self.NumRoles[self.NumRoles.Count].Unit = "player"
+				self.NumRoles[self.NumRoles.Count].Name = UnitName("player")
+				
+				--self.NumRoles.Count = self.NumRoles.Count + 1
 			end
 		end
 	else
 		for i=1,40 do
 			if UnitExists(format("raid%s", i)) and UnitGroupRolesAssigned(format("raid%s", i)) == type then
-				self.NumRoles[i] = {}
-				self.NumRoles[i].Count = self.NumRoles.Count + 1
-				self.NumRoles[i].Unit = format("raid%s", i)
-				
 				self.NumRoles.Count = self.NumRoles.Count + 1
+
+				self.NumRoles[i] = {}
+				self.NumRoles[i].Unit = format("raid%s", i)
+				self.NumRoles[i].Name = UnitName(format("raid%s", i))
+				
+				--self.NumRoles.Count = self.NumRoles.Count + 1
 			end
 		end
 	end
@@ -146,7 +158,7 @@ function Module:Construct()
 			if self.Num then
 				for k,v in pairs(self.Num) do
 					if type(v) == "table" then
-						GameTooltip:AddLine(UnitName(v.Unit))
+						GameTooltip:AddLine(v.Name)
 					end
 				end
 			end

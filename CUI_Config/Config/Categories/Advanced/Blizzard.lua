@@ -313,6 +313,27 @@ function Module:Enable()
 					},
 				},
 			},
+			playerHighlight = {
+				order = 40,
+				type = 'group',
+				name = CD:GetNewFeatureString("Player Highlight"),
+				childGroups = "tab",
+				get = function(info) return CO.db.profile.utility[ info[#info] ] end,
+				set = function(info, value) CO.db.profile.utility[ info[#info] ] = value end,
+				args = {
+					positionHeader = {
+						type = "header",
+						order = 1,
+						name = L["Player Highlight"],
+					},
+					disablePlayerHighlightOnLogin = {
+						type = "toggle",
+						order = 5,
+						name = "Disable Highlight On Login",
+						desc = "By default, the player highlight will always return to an enabled state when you've set it to something and use a keybind to disable it. Enabling this option will force the highlight to always be disabled on login.",
+					},
+				},
+			},
 		},
 		
 	}

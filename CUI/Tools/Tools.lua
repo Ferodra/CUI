@@ -15,6 +15,7 @@ local format	= string.format
 local floor 	= math.floor
 local fmod 		= math.fmod
 local tinsert	= table.insert
+local GetNumSpecializationsForClassID = C_SpecializationInfo.GetNumSpecializationsForClassID
 
 function E:GetRandomTableKey(t)
 	local keys, i = {}, 1
@@ -673,7 +674,7 @@ function E:TableMerge(target, source)
     for k,v in pairs(source) do
         if type(v) == "table" then
             if type(target[k] or false) == "table" then
-                E:TableMerge(target[k] or {}, source[k] or {})
+                self:TableMerge(target[k] or {}, source[k] or {})
             else
                 target[k] = v
             end
@@ -694,19 +695,17 @@ function E:GetFloat(Number, Decimals)
 end
 
 local LinkInfo = {}
-function E:GetItemLinkInfo(l)
+function E:GetItemLinkInfo(ItemLink)
 	LinkInfo.itemName, LinkInfo.itemLink, LinkInfo.itemRarity, LinkInfo.itemLevel, LinkInfo.itemMinLevel, LinkInfo.itemType,
 	LinkInfo.itemSubType, LinkInfo.itemStackCount, LinkInfo.itemEquipLoc, LinkInfo.itemTexture, LinkInfo.itemSellPrice =
-		GetItemInfo(l)
+		GetItemInfo(ItemLink)
 	
 	return LinkInfo
 end
 
 function E:GetAllSpecInfo()
 	if not E.SpecInfo then
-		
 		E.SpecInfo = {}
-		local SpecID, SpecName, IconID
 		
 		for i=1, GetNumClasses() do
 			if not E.SpecInfo[i] then
@@ -715,12 +714,7 @@ function E:GetAllSpecInfo()
 			
 			for a=1, GetNumSpecializationsForClassID(i) do
 				E.SpecInfo[i][a] = {}
-				
-				SpecID, SpecName, _, IconID = GetSpecializationInfoForClassID(i, a)
-				
-				E.SpecInfo[i][a].SpecID 	= SpecID
-				E.SpecInfo[i][a].SpecName 	= SpecName
-				E.SpecInfo[i][a].IconID		= IconID
+				E.SpecInfo[i][a].SpecID, E.SpecInfo[i][a].SpecName, _, E.SpecInfo[i][a].IconID = GetSpecializationInfoForClassID(i, a)
 			end
 		end
 	end

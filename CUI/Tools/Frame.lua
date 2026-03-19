@@ -245,10 +245,17 @@ function E:SetFontInfo(Frame, fontName, fontFlags, fontHeight, fontColor, pushUp
 		Frame["a"]			=	fontColor and fontColor[4] or 1
 	else
 		-- Pull from db
-		Frame.r = Frame.DBColor.r
-		Frame.g = Frame.DBColor.g
-		Frame.b = Frame.DBColor.b
-		Frame.a = Frame.DBColor.a
+		if Frame.DBColor then		
+			Frame.r = Frame.DBColor.r
+			Frame.g = Frame.DBColor.g
+			Frame.b = Frame.DBColor.b
+			Frame.a = Frame.DBColor.a
+		else
+			Frame.r = 1
+			Frame.g = 1
+			Frame.b = 1
+			Frame.a = 1
+		end
 	end
 	
 	if pushUpdate then

@@ -49,12 +49,12 @@ local function UpdateRange(F)
 	
 	if not UnitCanAttack("player", F.unit) then
 		if not F.unit:find('pet') then
-			F.IsInRange = UnitIsConnected(F.unit) and FriendlyIsInRange(F.unit)
+			F.IsInRange = UnitIsConnected(F.unit) and UnitInRange(F.unit)
 		else
 			F.IsInRange = PetIsInRange(F.unit)
 		end
 	else
-		F.IsInRange = EnemyIsInRange(F.unit)
+		F.IsInRange = true
 	end
 	--end
 	
