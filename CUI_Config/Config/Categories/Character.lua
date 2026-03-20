@@ -33,6 +33,14 @@ CD.Options.args.character = {
 					name = L["Actionbars"],
 					order = 5,
 					args = {
+						enable = {
+							type = 'toggle',
+							order = 0.1,
+							name = L['EnableModule'],
+							desc = 'Controls the state of the actionbar module. When disabled, you\'re just left with Blizzard actionbars and their textures etc.\n\nOn The upside, you then can use alternate AddOns like Bartender or Dominos to handle all actionbars.\n\nRequires a reload after enabling/disabling to take effect.\n\nThis is a character setting and is not being saved in your profile!',
+							get = function(info) return CO.db.char.actionbar.enable end,
+							set = function(info, value) CO.db.char.actionbar.enable = value; CD:ShowNotification('CHARACTERSETTING_NOTIFICATION') end,
+						},
 						enableOverride = {
 							type = "toggle",
 							order = 1,
