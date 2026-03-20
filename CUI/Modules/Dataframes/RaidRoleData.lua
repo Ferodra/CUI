@@ -35,7 +35,11 @@ function Module:LoadConfig()
 			self.Roles[v[1]]:EnableMouse(not self.db.clickThrough)
 		end
 		
-		RegisterStateDriver(self, "visible", (self.State and "[group:raid] 1; [group:party] 1; 0") or "1")
+		local StateDriverCondition = "1"
+		if self.State then
+			StateDriverCondition = "[group:raid] 1; [group:party] 1; 0"
+		end
+		RegisterStateDriver(self, "visible", StateDriverCondition)
 		
 		self.ForceMoverEnabled = nil
 	else
