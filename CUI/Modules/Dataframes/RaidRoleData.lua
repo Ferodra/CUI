@@ -35,9 +35,9 @@ function Module:LoadConfig()
 			self.Roles[v[1]]:EnableMouse(not self.db.clickThrough)
 		end
 		
-		local StateDriverCondition = "1"
+		local StateDriverCondition = "[group:raid] 1; [group:party] 1; 0"
 		if self.State then
-			StateDriverCondition = "[group:raid] 1; [group:party] 1; 0"
+			StateDriverCondition = "1"
 		end
 		RegisterStateDriver(self, "visible", StateDriverCondition)
 		
@@ -65,7 +65,6 @@ local function InsertUnitData(Data, Unit)
 	Data[Data.Count].Unit = Unit
 	Data[Data.Count].Name = UnitName(Unit)
 	Data[Data.Count].ClassColor = E:GetUnitClassColor(Unit)
-	
 end
 
 -- GetGroupMemberCounts essentially does the same thing, but we also want the corresponding player names
@@ -137,9 +136,9 @@ function Module:Construct()
 			GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 			
 			if self.Num then
-				for k,v in pairs(self.Num) do
-					if type(v) == "table" then
-						GameTooltip:AddLine(v.Name, unpack(v.ClassColor, 1, 3))
+				for k, member in pairs(self.Num) do
+					if type(member) == "table" then
+						GameTooltip:AddLine(member.Name, unpack(member.ClassColor, 1, 3))
 					end
 				end
 			end

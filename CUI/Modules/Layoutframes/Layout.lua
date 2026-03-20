@@ -5,7 +5,7 @@ local CO, Module, TT = E:LoadModules("Config", "Layout", "Tooltip")
 local HBD = LibStub("HereBeDragons-2.0") -- Using HereBeDragons to handle the coords
 
 --[[
-	This module abomination needs a complete rewrite, omg
+	This module abomination needs a complete rewrite
 	I didn't know any better before, okay?
 ]]--
 
@@ -15,8 +15,6 @@ local format			= string.format
 local GetZonePVPInfo	= C_PvP and C_PvP.GetZonePVPInfo
 
 -------------------------------------------------------
-
-local ClassColor
 
 local TextureDir = "Interface/AddOns/CUI/Textures/"
 local Textures = {
@@ -33,7 +31,7 @@ function Module:LoadConfig()
 	local Config = CO.db.profile.layout
 	self.db = Config
 	
-	ClassColor = E:GetUnitClassColor("player")
+	local ClassColor = E:GetUnitClassColor("player")
 	
 	local state = Config.stateControl.textures	
 	if not state["enableTop"] then
