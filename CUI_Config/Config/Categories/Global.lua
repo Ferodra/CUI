@@ -84,6 +84,15 @@ CD.Options.args.global = {
 					get = function() return CO.db.global.itemDB.enable end,
 					set = function(info, value) CO.db.global.itemDB.enable = value; E:LoadModule('ItemDB'):LoadConfig() end,
 				},
+				SetMilitaryTimeState = {
+					type = "toggle",
+					order = 36,
+					name = "Use Military Time",
+					desc = "Blizzard toggle for broken military time switch",
+					get = function() return CO.db.global.blizzard.useMilitaryTime end,
+					set = function(info, value) CO.db.global.blizzard.useMilitaryTime = value; E:LoadModule('Blizzard'):SetMilitaryTimeState() end,
+					hidden = true,
+				},
 			},
 		},
 		

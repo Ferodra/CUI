@@ -607,8 +607,20 @@ function Module:RemovePlayerAuras()
 	end
 end
 
+function Module:HandleMilitaryTimeState()
+	SetCVar("timeMgrUseMilitaryTime", CO.db.global.blizzard.useMilitaryTime)
+	_G['TimeManagerMilitaryTimeCheck']:HookScript('OnClick', function(self, value, ...)
+		CO.db.global.blizzard.useMilitaryTime = self:GetChecked()
+	end)
+end
+
+function Module:UpdateDB()
+	self.db = CO.db
+end
+
 function Module:Init()
-	CO = E:LoadModule("Config")
+	self:UpdateDB()
+
 	HiddenFrame:Hide()
 	HiddenFrame:SetPoint("TOPLEFT", E.Parent, "TOPLEFT")
 	HiddenFrame:SetPoint("BOTTOMRIGHT", E.Parent, "BOTTOMRIGHT")
@@ -621,7 +633,7 @@ function Module:Init()
 	self:CreateBlizzMovers()
 	self:RegisterBlizzAddonMovers()
 	self:AddGameMenuButtons()
-	
+	self:HandleMilitaryTimeState()
 	--self:InitTrackerAutoHide()
 	
 	

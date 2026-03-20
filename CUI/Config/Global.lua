@@ -28,6 +28,9 @@ function CO:GetGlobalDefaults()
 		['utility'] = {
 			
 		},
+		['blizzard'] = {
+			
+		},
 		['communication'] = {
 			['autoCheckVersion'] = true,
 		},
