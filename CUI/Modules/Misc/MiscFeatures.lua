@@ -266,6 +266,8 @@ function Module:HandleSelfHighlight()
 						self:SetScript('OnUpdate', nil)
 					end
 				end)
+				-- Only do this once
+				self:UnregisterEvent('PLAYER_ENTERING_WORLD')
 			else
 				-- Store last state
 				CO.db.global.utility.selfHighlightState = not ToggleSelfHighlight()

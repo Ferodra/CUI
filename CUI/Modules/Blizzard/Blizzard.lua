@@ -109,6 +109,22 @@ local FramesToHide = {
 	MainActionBar = true,
 }
 
+local KeepEventHandlerForButtons = {
+	['ActionButton1'] = true,
+	['ActionButton2'] = true,
+	['ActionButton3'] = true,
+	['ActionButton4'] = true,
+	['ActionButton5'] = true,
+	['ActionButton6'] = true,
+	['ActionButton7'] = true,
+	['ActionButton8'] = true,
+	['ActionButton9'] = true,
+	['ActionButton10'] = true,
+	['ActionButton11'] = true,
+	['ActionButton12'] = true,
+	['ExtraActionButton1'] = true
+}
+
 local function OnDragStart(self)
 	if InCombatLockdown() then return end
 	
@@ -557,18 +573,10 @@ function Module:RemoveActionbars()
 	-- This potentially frees up a few milliseconds.
 	-- Leave buttons with paging intact, as those are still
 	-- needed for proper updating
-	local HasMatch
 	for k,v in pairs(ActionBarButtonEventsFrame.frames) do
 		local Name = v:GetName()
-		HasMatch = false
 		
-		for i=1,12 do
-			if Name == 'ActionButton' .. i then
-				HasMatch = true
-			end
-		end
-		
-		if not HasMatch then
+		if not KeepEventHandlerForButtons[Name] then
 			ActionBarButtonEventsFrame.frames[k] = nil
 		end
 	end
