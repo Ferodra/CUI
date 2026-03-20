@@ -694,8 +694,8 @@ function E:GetFloat(Number, Decimals)
 	return format(('%%.%df'):format(Decimals), Number), Decimals
 end
 
-local LinkInfo = {}
 function E:GetItemLinkInfo(ItemLink)
+	local LinkInfo = {}
 	LinkInfo.itemName, LinkInfo.itemLink, LinkInfo.itemRarity, LinkInfo.itemLevel, LinkInfo.itemMinLevel, LinkInfo.itemType,
 	LinkInfo.itemSubType, LinkInfo.itemStackCount, LinkInfo.itemEquipLoc, LinkInfo.itemTexture, LinkInfo.itemSellPrice =
 		GetItemInfo(ItemLink)

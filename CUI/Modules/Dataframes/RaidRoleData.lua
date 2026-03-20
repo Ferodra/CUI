@@ -7,6 +7,7 @@ Module.Autoload = true -- This will cause CUI to automatically load this module.
 ----------------------------------------------------
 
 local format					= string.format
+local unpack					= unpack
 local pairs						= pairs
 local select					= select
 local type						= type
@@ -17,7 +18,7 @@ local UnitGroupRolesAssigned	= UnitGroupRolesAssigned
 local RegisterStateDriver		= RegisterStateDriver
 
 local Types = {[1] = {"TANK", "LEFT"}, [2] = {"HEALER", "CENTER"}, [3] = {"DAMAGER", "RIGHT"}}
-
+local SpecInfo = E:GetAllSpecInfo()
 
 function Module:LoadConfig()
 	self.db = CO.db.profile.dataframes.raidroledata
@@ -27,18 +28,14 @@ function Module:LoadConfig()
 	if self.db.enable then
 		
 		self:SetScale(self.db.scale)
-		self.Background:SetColorTexture(self.db.backgroundColor[1],self.db.backgroundColor[2],self.db.backgroundColor[3],self.db.backgroundColor[4])
-		self.Border:SetBackdropBorderColor(self.db.borderColor[1],self.db.borderColor[2],self.db.borderColor[3],self.db.borderColor[4])
+		self.Background:SetColorTexture(unpack(self.db.backgroundColor))
+		self.Border:SetBackdropBorderColor(unpack(self.db.borderColor))
 		
 		for k, v in pairs(Types) do
 			self.Roles[v[1]]:EnableMouse(not self.db.clickThrough)
 		end
 		
-		if not self.State then
-			RegisterStateDriver(self, "visible", "[group:raid] 1; [group:party] 1; 0")
-		else
-			RegisterStateDriver(self, "visible", "1")
-		end
+		RegisterStateDriver(self, "visible", (self.State and "[group:raid] 1; [group:party] 1; 0") or "1")
 		
 		self.ForceMoverEnabled = nil
 	else
@@ -63,6 +60,8 @@ local function InsertUnitData(Data, Unit)
 	Data[Data.Count] = {}
 	Data[Data.Count].Unit = Unit
 	Data[Data.Count].Name = UnitName(Unit)
+	Data[Data.Count].ClassColor = E:GetUnitClassColor(Unit)
+	
 end
 
 -- GetGroupMemberCounts essentially does the same thing, but we also want the corresponding player names
@@ -99,13 +98,10 @@ end
 -- /dump CUI[1]:LoadModule("RaidRoleData"):GetNumRoles("TANK")
 
 local function Update(self, event, ...)
-	self.Roles.TANK.Num 	= self:GetNumRoles("TANK")
-	self.Roles.HEALER.Num 	= self:GetNumRoles("HEALER")
-	self.Roles.DAMAGER.Num 	= self:GetNumRoles("DAMAGER")
-	
-	self.Roles.TANK.Font:SetText(self.Roles.TANK.Num.Count)
-	self.Roles.HEALER.Font:SetText(self.Roles.HEALER.Num.Count)
-	self.Roles.DAMAGER.Font:SetText(self.Roles.DAMAGER.Num.Count)
+	for k, v in pairs(Types) do
+		self.Roles[v[1]].Num = self:GetNumRoles(v[1])
+		self.Roles[v[1]].Font:SetText(self.Roles[v[1]].Num.Count)
+	end
 end
 
 function Module:InitUpdate()
@@ -124,37 +120,40 @@ function Module:Construct()
 	self.Border 	= E:CreateBorder(self)
 	
 	self.Roles = {}
+	local Tab
 	for k, v in pairs(Types) do
-		self.Roles[v[1]] = CreateFrame("Frame", string.format("RaidRoleFrame%s", v[1]), self)
-		self.Roles[v[1]]:SetSize(70, 40)
-		self.Roles[v[1]]:SetPoint(v[2], self, v[2], 8, -3)
+		Tab = CreateFrame("Frame", string.format("RaidRoleFrame%s", v[1]), self)
+		self.Roles[v[1]] = Tab
 		
-		self.Roles[v[1]]:EnableMouse(true)
-		self.Roles[v[1]]:SetScript("OnEnter", function(self)
+		Tab:SetSize(70, 40)
+		Tab:SetPoint(v[2], self, v[2], 8, -3)
+		
+		Tab:EnableMouse(true)
+		Tab:SetScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 			
 			if self.Num then
 				for k,v in pairs(self.Num) do
 					if type(v) == "table" then
-						GameTooltip:AddLine(v.Name)
+						GameTooltip:AddLine(v.Name, unpack(v.ClassColor, 1, 3))
 					end
 				end
 			end
 			
 			GameTooltip:Show()
 		end)
-		self.Roles[v[1]]:SetScript("OnLeave", function(self)
+		Tab:SetScript("OnLeave", function(self)
 			GameTooltip:Hide()
 		end)
 		
-		self.Roles[v[1]].Icon = E:CreateTextureFrame({"CENTER", self.Roles[v[1]], "CENTER", 8, 8}, self.Roles[v[1]], 16, 16, "OVERLAY")
-		self.Roles[v[1]].Icon:ClearAllPoints()
-		self.Roles[v[1]].Icon:SetPoint("LEFT", self.Roles[v[1]], "LEFT")
-		self.Roles[v[1]].Icon.T:SetTexture(UF.RoleTexture[v[1]])
+		Tab.Icon = E:CreateTextureFrame({"CENTER", Tab, "CENTER", 8, 8}, Tab, 16, 16, "OVERLAY")
+		Tab.Icon:ClearAllPoints()
+		Tab.Icon:SetPoint("LEFT", Tab, "LEFT")
+		Tab.Icon.T:SetTexture(UF.RoleTexture[v[1]])
 		
-		self.Roles[v[1]].Font = self.Roles[v[1]]:CreateFontString(nil)
-			E:InitializeFontFrame(self.Roles[v[1]].Font, "OVERLAY", "FRIZQT__.TTF", 11, {0.933, 0.886, 0.125}, 1, {-20,0}, "", 0, 0, self.Roles[v[1]], "RIGHT", {1,1})
-		self.Roles[v[1]].Font:SetText(0)
+		Tab.Font = Tab:CreateFontString(nil)
+			E:InitializeFontFrame(Tab.Font, "OVERLAY", "FRIZQT__.TTF", 11, {0.933, 0.886, 0.125}, 1, {-20,0}, "", 0, 0, Tab, "RIGHT", {1,1})
+		Tab.Font:SetText(0)
 	end
 	
 	self:InitUpdate()
@@ -165,8 +164,13 @@ function Module:Construct()
 	E:CreateMover(self, L["raidRoleFrame"], nil, nil, nil, "A frame that provides you with a quick summary of what roles are filled in your group.", "misc")
 end
 
-function Module:Init()
+-- Prototype method. Called automatically when profile was changed in some way
+function Module:UpdateDB()
 	self.db = CO.db.profile.dataframes.raidroledata
+end
+
+function Module:Init()
+	self:UpdateDB()
 
 	E:HandleFrameInPetBattles(self)
 

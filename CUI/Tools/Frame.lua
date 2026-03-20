@@ -89,6 +89,9 @@ InitShadowColor = {0,0,0,1}
 local BlizzFonts = {"FRIZQT__.TTF", "ARIALN.TTF", "SKURRI.TTF", "MORPHEUS.TTF"}
 function E:InitializeFontFrame(Frame, DrawLayer, Font, FontSize, FontColor, FontAlpha, Offset, DefaultText, Width, Height, Parent, Anchor, ShadowOffset, FontFlags, ShadowColor)
 
+	if type(DrawLayer) == "table" and not Parent then
+		Parent = DrawLayer
+	end
 	if not FontColor then FontColor = InitFontColor end
 	if not ShadowOffset then ShadowOffset = InitShadowOffset end
 	if not Font then Font = "FRIZQT__.TTF" end
