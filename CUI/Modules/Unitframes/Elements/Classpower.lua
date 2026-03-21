@@ -111,11 +111,13 @@ local function GetAltPowerMax(id)
 	local value
 	if id == 30 then
 		-- Use 1 to 100% of maximum HP for stagger (ID = 30)
-		if CO.db.profile.unitframe.units.player.alternatePower.data.BREWMASTER_StaggerMax then
+		--[[ if CO.db.profile.unitframe.units.player.alternatePower.data.BREWMASTER_StaggerMax then
 			value = UnitHealthMax("player") * ((CO.db.profile.unitframe.units.player.alternatePower.data.BREWMASTER_StaggerMax / 100) or 0.6)
 		else
 			value = UnitHealthMax("player") * 0.6
-		end
+		end ]]
+		-- Use fix value
+		value = CO.db.profile.unitframe.units.player.alternatePower.data.BREWMASTER_StaggerMax
 	elseif id == 33 then
 		value = Data.Mage.Icicles.Max
 	else
@@ -449,20 +451,27 @@ function Module:UpdateValue()
 		-- One bar
 		else
 			local Bar = self.CurrentPower.Bars[1]
-			if Bar then				
-				self:UpdateBarMinMax(Bar, 0, GetAltPowerMax(self.PowerId))
-				Bar:SetValue(self.PowerValue)
+			if Bar then
+				self.PowerMax = GetAltPowerMax(self.PowerId)
 				
 				-- For Stagger, also update color based on value
 				if self.PowerId == 30 then
+					self:UpdateBarMinMax(Bar, 0, UnitHealthMax('player')*0.6)
 					if self.CurrentPower.Color.light then
 					--	self:UpdatePowerColor()
-						Bar:SetOverlayColor(E:ColorGradient((self.PowerValue / (UnitHealthMax("player") * Data.Monk.Stagger.Percentage)),
-							self.CurrentPower.Color.light[1], self.CurrentPower.Color.light[2], self.CurrentPower.Color.light[3],
-							self.CurrentPower.Color.medium[1], self.CurrentPower.Color.medium[2], self.CurrentPower.Color.medium[3],
-							self.CurrentPower.Color.heavy[1], self.CurrentPower.Color.heavy[2], self.CurrentPower.Color.heavy[3]))
+						--Bar:SetOverlayColor(E:ColorGradient((self.PowerValue / (UnitHealthMax("player") * Data.Monk.Stagger.Percentage)),
+						if not issecretvalue(self.PowerValue) then
+							Bar:SetOverlayColor(E:ColorGradient((self.PowerValue / self.PowerMax),
+								self.CurrentPower.Color.light[1], self.CurrentPower.Color.light[2], self.CurrentPower.Color.light[3],
+								self.CurrentPower.Color.medium[1], self.CurrentPower.Color.medium[2], self.CurrentPower.Color.medium[3],
+								self.CurrentPower.Color.heavy[1], self.CurrentPower.Color.heavy[2], self.CurrentPower.Color.heavy[3]))
+						end
 					end
+				else
+					self:UpdateBarMinMax(Bar, 0, self.PowerMax)
 				end
+
+				Bar:SetValue(self.PowerValue)
 			end
 		end
 	end

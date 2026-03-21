@@ -2356,7 +2356,7 @@ function CO:SetDefaults()
 								['paddingY'] = 0,
 							},
 							['data'] = {
-								['BREWMASTER_StaggerMax'] = 60,
+								['BREWMASTER_StaggerMax'] = 50000,
 								['DEATHKNIGHT_InverseCooldown'] = false,
 								['DEATHKNIGHT_ColorBySpec'] = true,
 							},

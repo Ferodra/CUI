@@ -18,8 +18,8 @@ E.ClassPowers = {
 	--[8] = {[1] = 16,[2] = false,[3] = 33}, -- Frost[3] has special handling through Classbar logic
 	[8] = {[1] = 16,[2] = false,[3] = false}, -- Frost[3] disabled until we can properly read buffs again..
 	[9] = {[1] = 7,[2] = 7,[3] = 7},
-	--[10] = {[1] = 30,[2] = 0,[3] = 12},
-	[10] = {[1] = false,[2] = 0,[3] = 12}, -- Stagger (1) disabled until we can do calcs with health again..
+	[10] = {[1] = 30,[2] = 0,[3] = 12},
+	--[10] = {[1] = false,[2] = 0,[3] = 12}, -- Stagger (1) disabled until we can do calcs with health again..
 	[11] = {[1] = 8,[2] = 4,[3] = 1, [4] = 0},
 	[12] = {[1] = false,[2] = false},
 	[13] = {[1] = 19,[2] = 19,[3] = 19},

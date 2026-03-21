@@ -3670,9 +3670,9 @@ local function GetOptionsTable_ClassPower(groupName, context)
 					BREWMASTER_StaggerMax = {
 						order = 10,
 						type = 'range',
-						name = "Maximum Stagger Percentage",
-						desc = "Controls the maximum value of the stagger bar for Brewmaster Monks.\nThe value is a percentage of the Monks Maximum HP.\nDefault: 60%",
-						min = 1, max = 100, step = 1,
+						name = "Maximum Stagger Value",
+						desc = "Controls the value where a red bar color is reached at for Brewmaster Monks.\n Before patch 12.0, this value was used as a percentage of the players maximum HP. The color used to be driven by how much the bar is filled, which is not possible anymore.",
+						min = 1, max = 500000, step = 1,
 						hidden = function() return not (SelectedSpec == E.SpecializationIDs.MONK.BREWMASTER) end,
 					},
 					DEATHKNIGHT_InverseCooldown = {

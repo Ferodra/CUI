@@ -197,6 +197,7 @@ function Module:InitBar(Bar)
 end
 
 function Module:Create(F)
+	if true then return end
 	local Bar = F.Health
 	if not Bar then return end
 	

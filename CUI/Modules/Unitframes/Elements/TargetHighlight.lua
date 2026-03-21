@@ -37,12 +37,15 @@ end
 
 function Module:HighlightUnit(Unit)
 	for _, self in pairs(Module.Handles) do
-		--[[ if UnitIsUnit(Unit, self.unit) and self.unit ~= "target" then
-			UIFrameFadeIn(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 1)
+		if not E.IsRetail then
+			if UnitIsUnit(Unit, self.unit) and self.unit ~= "target" then
+				UIFrameFadeIn(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 1)
+			else
+				UIFrameFadeOut(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 0)
+			end
 		else
-			UIFrameFadeOut(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 0)
-		end ]]
-		self.TargetHighlight:SetAlphaFromBoolean(UnitIsUnit(Unit, self.unit), 1, 0)
+			self.TargetHighlight:SetAlphaFromBoolean(UnitIsUnit(Unit, self.unit), 1, 0)
+		end
 	end
 end
 
