@@ -465,7 +465,7 @@ InitializeChild = function(self)
 end
 
 OnAttributeChanged = function(self, attr, value)
-	if attr == 'unit' and value then	
+	if attr == 'unit' and value then
 		
 		UpdateUnit(self, value)
 		if not InitializeChild(self) then return end

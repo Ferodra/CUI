@@ -43,6 +43,7 @@ local function PowerFont_PostUpdate(self)
     --end
     
     self:SetTextColor(unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
+    --print(unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
 end
 
 local function LevelFont_PostUpdate(self)
@@ -66,10 +67,13 @@ local function Fonts_UpdateUnit(self)
     end
 end
 
-local function Fonts_Update(self)
+local function Fonts_Update(self, full)
     -- Fix for Bug that appeared first on 8.2 PTR
     if not UF:UnitExists(self.Owner.unit) then return end
     
+    if full then
+        Module:RefreshFontTags(self.Owner)
+    end
     for k, font in pairs(self.Frames) do
         if font.ForceUpdate then
             font:ForceUpdate()

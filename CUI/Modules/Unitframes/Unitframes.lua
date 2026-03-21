@@ -625,13 +625,13 @@ end
 			-- Update existing modules with ForceUpdate method
 			for _, module in pairs(self:GetRegisteredModulesForUnitframe(Unitframe)) do
 				if module.ForceUpdate then
-					module:ForceUpdate()
+					module:ForceUpdate(true)
 				end
 			end
 			
 			self:UpdateRangeIndicatorState(Unitframe)
-			Unitframe:RefreshFontStrings()
-			Unitframe:UpdateFonts()
+			--Unitframe:RefreshFontStrings()
+			--Unitframe:UpdateFonts()
 		end
 		
 		function UF:HasUnitframeModule(Unitframe, ModuleName)

@@ -28,3 +28,6 @@ E.PowerTypes = {
 	[32]	=	"RUNE_NOT_READY",
 	[33]	=	"MAGE_ICICLES",
 }
+
+-- Keyed lookup table
+--E.PowerTypesKeyed = {}

@@ -34,12 +34,12 @@ end
 
 -- Retrieve power color of unit (@param1)
 function E:GetUnitPowerColor(unit)
-	local CurrentUnitPowerType = UnitPowerType(unit)
-	if not CurrentUnitPowerType then
-		CurrentUnitPowerType = 'MANA'
+	local PowerID, PowerName = UnitPowerType(unit)
+	if not PowerName then
+		PowerName = 'MANA'
 	end
 	
-	return CO.db.profile.colors.powers[CurrentUnitPowerType] or self.PowerColors[CurrentUnitPowerType]
+	return CO.db.profile.colors.powers[PowerName] or self.PowerColors[PowerID] or self.PowerColors[0]
 end
 
 -- Retrieve alternate power color of id (@param1)
