@@ -39,7 +39,7 @@ end
 
 function CD:AddMethods(config, DBPath)
 	config.get = function(info) return E:GetTableByPath(DBPath, CO)[ info[#info] ] end
-	config.set = function(info, value) E:GetTableByPath(DBPath, CO)[ info[#info] ] = value; E:UpdateAutoFont(DBPath); UF.Modules["Fonts"]:RefreshFontTags_All() end
+	config.set = function(info, value) E:GetTableByPath(DBPath, CO)[ info[#info] ] = value; E:UpdateAutoFont(DBPath); UF.Modules["Fonts"]:RefreshFontTags_All(DBPath) end
 	
 	return config
 end

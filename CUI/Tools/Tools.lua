@@ -51,7 +51,10 @@ function E:GetTableLength(t)
     return c
 end
 
+local TablePathCache = {}
 function E:GetTableByPath(Path, Source)
+	if TablePathCache[Source] and TablePathCache[Source][Path] then return TablePathCache[Source][Path] end
+
 	local Separator = "."
     local Parts = {};
     local i = 1;
@@ -65,6 +68,9 @@ function E:GetTableByPath(Path, Source)
     for _, key in pairs(Parts) do
         Target = (Target and Target[key]) or Source[key]
     end
+
+	if not TablePathCache[Source] then TablePathCache[Source] = {} end
+	TablePathCache[Source][Path] = Target
     return Target
 end
 
