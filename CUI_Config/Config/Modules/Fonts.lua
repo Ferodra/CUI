@@ -34,9 +34,8 @@ function CD:AddFontGroup(Data, DisabledFunc)
 end
 
 function CD:AddMethods(config, DBPath)
-	
-	config.set = function(info, value) E:GetTableByPath(DBPath, CO)[ info[#info] ] = value; E:UpdateAutoFont(DBPath) end
 	config.get = function(info) return E:GetTableByPath(DBPath, CO)[ info[#info] ] end
+	config.set = function(info, value) E:GetTableByPath(DBPath, CO)[ info[#info] ] = value; E:UpdateAutoFont(DBPath) end
 	
 	return config
 end

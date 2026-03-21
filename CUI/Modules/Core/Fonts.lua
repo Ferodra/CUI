@@ -27,7 +27,7 @@ local EmptyExclusions = {}
 
 local function UpdateFont(Object, Config, Path)
 	Config = type(Config) == 'table' and Config or E:GetTableByPath(Object.ConfigPath or Path, CO)
-	
+
 	if not Config then
 		Config = E:TableDeepCopy(CO.Template_Object)
 	end

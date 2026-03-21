@@ -18,9 +18,7 @@ Scripts
 -------------------------------------------------------------------------------]]
 local function Button_OnClick(frame, ...)
 	AceGUI:ClearFocus()
-	if not frame.silentClick then
-		PlaySound(852) -- SOUNDKIT.IG_MAINMENU_OPTION
-	end
+	PlaySound(852) -- SOUNDKIT.IG_MAINMENU_OPTION
 	frame.obj:Fire("OnClick", ...)
 end
 
