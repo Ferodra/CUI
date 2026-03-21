@@ -19,6 +19,7 @@ local tinsert 			= table.insert
 local Module = {}
 Module.Handles = {}
 Module.EventHandler = CreateFrame("Frame")
+Module.ExcludeUnits = {'target'}
 
 -----------------------------------------
 
@@ -36,11 +37,12 @@ end
 
 function Module:HighlightUnit(Unit)
 	for _, self in pairs(Module.Handles) do
-		if UnitIsUnit(Unit, self.unit) and self.unit ~= "target" then
-			E:UIFrameFadeIn(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 1)
+		--[[ if UnitIsUnit(Unit, self.unit) and self.unit ~= "target" then
+			UIFrameFadeIn(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 1)
 		else
-			E:UIFrameFadeOut(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 0)
-		end
+			UIFrameFadeOut(self.TargetHighlight, Module.FadeTime, self.TargetHighlight:GetAlpha(), 0)
+		end ]]
+		self.TargetHighlight:SetAlphaFromBoolean(UnitIsUnit(Unit, self.unit), 1, 0)
 	end
 end
 
@@ -67,6 +69,10 @@ function Module:LoadConfig()
 				self.TargetHighlight.SetBorderSize(Config.targetHighlight.borderSize)
 			end
 			Module.FadeTime = Config.targetHighlight.fadeTime
+
+			for _, self in pairs(Module.Handles) do
+				self.TargetHighlight:Show()
+			end
 			
 			Module.EventHandler.Enabled = true;
 			UpdateElement()
@@ -75,11 +81,9 @@ function Module:LoadConfig()
 end
 
 function Module:Create(F)
-	if true then return end
 	F.TargetHighlight = E:CreateBorder(F.Overlay, nil, 1)
 	F.TargetHighlight:SetFrameLevel(F.Overlay:GetFrameLevel() + 25)
 	F.TargetHighlight:SetAlpha(0)
-	F.TargetHighlight:Hide()
 	
 	F.TargetHighlight.ForceUpdate = ForceUpdate
 	
