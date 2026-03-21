@@ -56,6 +56,7 @@ local function UpdateRange(F)
 	else
 		F.IsInRange = true
 	end
+	if F.unit == 'player' then F.IsInRange = true end
 	--end
 	
 	F:SetAlphaFromBoolean(F.IsInRange, CO.db.profile.unitframe.units.all.outOfRangeAlpha, 1)
