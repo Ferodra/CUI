@@ -221,11 +221,11 @@ local function ToggleIndex(state, limit)
 				
 				if state then
 					if CO.db.profile.unitframe.dummyShowIndex == true and (CD.DummyMode or limit) then
-						Frame.Fonts.Index:Show()
-						Frame.Fonts.Index:Update(Frame.RealIndex)
+						Frame.Fonts.Frames.Index:Show()
+						Frame.Fonts.Frames.Index:Update(Frame.RealIndex)
 					end
 				else
-					Frame.Fonts.Index:Hide()
+					Frame.Fonts.Frames.Index:Hide()
 				end
 			end
 		end
@@ -279,10 +279,10 @@ local function SetUnitDummys(state)
 						
 						Frame.unit = "player"
 						
-						Frame.Fonts.Level.unit = "player"
-						Frame.Fonts.Name.unit = "player"
-						Frame.Fonts.Health.unit = "player"
-						Frame.Fonts.Power.unit = "player"
+						Frame.Fonts.Frames.Level.unit = "player"
+						Frame.Fonts.Frames.Name.unit = "player"
+						Frame.Fonts.Frames.Health.unit = "player"
+						Frame.Fonts.Frames.Power.unit = "player"
 						
 						Frame:Show()
 					else
@@ -293,10 +293,10 @@ local function SetUnitDummys(state)
 						
 						Frame.unit = Frame.BackupUnit
 						
-						Frame.Fonts.Level.unit = Frame.BackupUnit	
-						Frame.Fonts.Name.unit = Frame.BackupUnit
-						Frame.Fonts.Health.unit = Frame.BackupUnit
-						Frame.Fonts.Power.unit = Frame.BackupUnit
+						Frame.Fonts.Frames.Level.unit = Frame.BackupUnit	
+						Frame.Fonts.Frames.Name.unit = Frame.BackupUnit
+						Frame.Fonts.Frames.Health.unit = Frame.BackupUnit
+						Frame.Fonts.Frames.Power.unit = Frame.BackupUnit
 					end
 					
 					-- Also temporarily override module unit(s) and push update
@@ -1988,14 +1988,15 @@ local function GetOptionsTable_MaxLevel(groupName, tableType, disabledFunc)
 end
 
 
-
+local textTypesOrder = {['name'] = 100, ['health'] = 101, ['power'] = 102, ['level'] = 103}
 -- tableType such as "name", "level" or "power" . . . .
 local function GetOptionsTable_Text(groupName, tableType)
 	local Name = GetLabel(CategoryColors['Fonts']:format(L[E:firstToUpper(tableType)]), IsGroupDisabled(groupName))
 	
 	local DisabledFunc = function() return not CO.db.profile.unitframe.units[groupName].fonts[tableType].enable end
-	
-	local config = {
+	local config = {}
+
+	--[[ local config = {
 		order = CategoryOrders["Font_" .. tableType],
 		type = 'group',
 		name = Name,
@@ -2157,7 +2158,18 @@ local function GetOptionsTable_Text(groupName, tableType)
 			},
 			doNotShowOnMaxLevel = GetOptionsTable_MaxLevel(groupName, tableType, DisabledFunc),
 		},
+	} ]]
+
+	local Fonts = {
+		{Path = "db.profile.unitframe.units." .. groupName .. ".fonts." .. tableType, Order = textTypesOrder[tableType] or 100, GroupName = Name}
 	}
+	config = CD:GetFontOptions(Fonts, DisabledFunc, true)
+
+	config.args.doNotShowOnMaxLevel = GetOptionsTable_MaxLevel(groupName, tableType)
+	
+	
+	--DevTools_Dump(config)
+	
 
 	return config
 end

@@ -25,4 +25,5 @@
 	<Script File="TargetSounds.lua"/>
 	<Script File="TargetIcon.lua"/>
 	<Script File="TargetHighlight.lua"/>
+	<Script File="Fonts.lua"/>
 </Ui>

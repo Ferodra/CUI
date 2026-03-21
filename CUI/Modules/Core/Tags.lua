@@ -394,14 +394,23 @@ function E:RegisterTagFont(font, str, unit, postUpdate)
 		end
 	end
 	
+	-- Check if object already was registered
+	local IsUpdate = false
 	for k,v in pairs(Fonts) do
 		if v.Font == font then
-			tremove(Fonts, k)
+			IsUpdate = true
 			break
 		end
 	end
+
+	-- Only refresh when this object already existed before
+	-- else insert into managed objects
+	if IsUpdate then
+		font:ForceUpdate()
+	else
+		tinsert(Fonts, Data)
+	end
 	
-	tinsert(Fonts, Data)
 	EventHandler_UpdateEvents()
 end
 

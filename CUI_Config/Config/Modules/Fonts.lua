@@ -1,8 +1,8 @@
 local E, L = unpack(CUI) -- Engine
-local CO, CD = E:LoadModules("Config", "Config_Dialog")
+local CO, CD, UF = E:LoadModules("Config", "Config_Dialog", "Unitframes")
 
 -- {{PATH, ORDER, GROUPNAME}}
-function CD:GetFontOptions(Data, DisabledFunc)
+function CD:GetFontOptions(Data, DisabledFunc, TableOnly)
 	local config = {}
 	local CurrentGroup
 	for _, group in pairs(Data) do
@@ -11,7 +11,11 @@ function CD:GetFontOptions(Data, DisabledFunc)
 			if group.GroupName then
 				CurrentGroup = self:AddFontGroup(group, DisabledFunc)
 				
-				config[group.GroupName] = CurrentGroup
+				if not TableOnly then
+					config[group.GroupName] = CurrentGroup
+				else
+					config = CurrentGroup
+				end
 			end
 		end
 	end
@@ -35,7 +39,7 @@ end
 
 function CD:AddMethods(config, DBPath)
 	config.get = function(info) return E:GetTableByPath(DBPath, CO)[ info[#info] ] end
-	config.set = function(info, value) E:GetTableByPath(DBPath, CO)[ info[#info] ] = value; E:UpdateAutoFont(DBPath) end
+	config.set = function(info, value) E:GetTableByPath(DBPath, CO)[ info[#info] ] = value; E:UpdateAutoFont(DBPath); UF.Modules["Fonts"]:RefreshFontTags_All() end
 	
 	return config
 end
@@ -43,9 +47,21 @@ end
 function CD:AddFontOptions(DBPath, Order)
 	local config = {}
 	local Exclusions = E:GetFontExclusions(DBPath)
+	local Inclusions = E:GetFontInclusions(DBPath)
 	
 	-- This config scheme enables full control over what happens, simply by setting up an Exclusions table for one of the registered font objects
 	
+	if Inclusions.textFormat then
+		config.textFormat = {
+			type = 'input',
+			order = (Order or 25) + 25,
+			name = "Text-Format",
+			desc = "A string of various format types for this font.\nPossible values:\n[health], [health-formatted], [health-max], [health-max-formatted], [health-pct], [health-missing], [health-missing-formatted], [health-missing-pct]\n\n[power], [power-formatted], [power-max], [power-max-formatted], [power-pct]\n\n[name], [level], [level-max], [level-except-max]\n\n[class], [raidgroup], [guild-name], [guild-rank-name]\n\n[newline]",
+			width = "full",
+			disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+		}
+	end
+
 	if not Exclusions.enable then
 		config.enable = {
 			type = "toggle",
@@ -167,7 +183,7 @@ function CD:AddFontOptions(DBPath, Order)
 			  disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
-		if not Exclusions.fontColor then			
+		if not Exclusions.fontColor then
 			config.fontColorUseClass = {
 				type = "toggle",
 				order = (Order or 24) + 24,
@@ -175,6 +191,7 @@ function CD:AddFontOptions(DBPath, Order)
 				desc = L["UseClassColorDesc"],
 				get = function() return E:GetTableByPath(DBPath, CO).fontColor.useClassColor end,
 				set = function(info, value) E:GetTableByPath(DBPath, CO).fontColor.useClassColor = value; E:UpdateAutoFont(DBPath) end,
+				hidden = function() return not E:GetTableByPath(DBPath, CO).fontColor end,
 			}
 			config.fontColorRgba = {
 				name = L["Color"],
@@ -192,26 +209,8 @@ function CD:AddFontOptions(DBPath, Order)
 					E:UpdateAutoFont(DBPath)
 				end,
 				disabled = function() return not E:GetTableByPath(DBPath, CO).enable or E:GetTableByPath(DBPath, CO).fontColor.useClassColor end,
-				--disabled = function() return E:GetTableByPath(DBPath, CO).fontColor.useClassColor end,
+				hidden = function() return not E:GetTableByPath(DBPath, CO).fontColor end, -- Only display when there actually are fontColor configs for this
 			}
-			
-
-			-- config.fontColor = {
-				-- name = L["FontColor"],
-				-- type = "color",
-				-- hasAlpha = true,
-				-- order = (Order or 24) + 24,
-				-- get = function(info)
-						-- local c = E:GetTableByPath(DBPath, CO).fontColor
-						-- return c[1], c[2], c[3], c[4]
-				-- end,
-				-- set = function(info, r, g, b, a)
-						-- local color = E:GetTableByPath(DBPath, CO).fontColor
-						-- color[1], color[2], color[3], color[4] = r, g, b, a
-						-- E:UpdateAutoFont(DBPath)
-				-- end,
-				-- disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
-			-- }
 		end
 	end
 	if not Exclusions.fontShadowColor or not Exclusions.xFontShadowOffset or not Exclusions.yFontShadowOffset then
@@ -262,7 +261,7 @@ function CD:AddFontOptions(DBPath, Order)
 end
 
 function CD:AddIndexFont(Frame)
-	if Frame.Fonts.Index then return end
+	if Frame.Fonts.Frames.Index then return end
 	
 	local Font = E:NewFontObject(nil, "OVERLAY", Frame.Overlay, 15)
 	Font:SetText(Frame.IndexInGroup or select(2, E:ExtractDigits(Frame.unit)))
@@ -273,7 +272,7 @@ function CD:AddIndexFont(Frame)
 	Font:SetShadowColor(0,0,0,1)
 	Font:SetShadowOffset(1, 1)
 	
-	Frame.Fonts.Index = Font
+	Frame.Fonts.Frames.Index = Font
 end
 
 

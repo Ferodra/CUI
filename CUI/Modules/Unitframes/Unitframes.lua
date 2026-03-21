@@ -119,84 +119,7 @@ end
 
 	----------------------------------------------------------
 	-- Profile handler
-	----------------------------------------------------------
-	function UF:ApplyFontStrings(self)
-		for k,v in pairs(self.Fonts) do
-			if v.Format then
-				E:RegisterTagFont(v, v.Format, self.unit)
-			end
-		end
-	end
-	local function ApplyFontConfig(self, Config)
-		Config = Config or UF.db.units[self.ConfigKey]
-		
-		local CurrentFont, CurrentFontProfile
-		for k,v in pairs(self.Fonts) do
-			CurrentFontProfile = Config.fonts[E:stringToLower(k)]
-			if CurrentFontProfile then
-				v.Enable = CurrentFontProfile.enable
-				
-				if v.Enable == false then
-					v:Hide()
-				else
-					v:Show()
-					
-					-- Font Shadow
-						if CurrentFontProfile.fontShadowColor then
-							v:SetShadowColor(CurrentFontProfile.fontShadowColor[1], CurrentFontProfile.fontShadowColor[2], CurrentFontProfile.fontShadowColor[3], CurrentFontProfile.fontShadowColor[4] or 1)
-							v:SetShadowOffset(CurrentFontProfile.xFontShadowOffset or 1, CurrentFontProfile.yFontShadowOffset or 1)
-						end
-					-- Alignment
-						if CurrentFontProfile.horizontalAlign then
-							v:SetJustifyH(CurrentFontProfile.horizontalAlign)
-						end
-						if CurrentFontProfile.verticalAlign then
-							v:SetJustifyV(CurrentFontProfile.verticalAlign)
-						end
-					-- Repositioning
-						v:ClearAllPoints()
-						v:SetPoint(CurrentFontProfile.position)
-						--E:MoveFrame(v, CurrentFontProfile.xOffset, CurrentFontProfile.yOffset)
-						-- This sometimes just.. errors out on profile change. So let's wrap this in a pcall
-						pcall(E.MoveFrame, v, CurrentFontProfile.xOffset, CurrentFontProfile.yOffset)
-					
-					-- Level hide
-						if CurrentFontProfile.doNotShowOnMaxLevel ~= nil then
-							v.ShowAtMax = CurrentFontProfile.doNotShowOnMaxLevel
-						end
-					-- Font Color
-						if CurrentFontProfile.fontColor then
-							v:SetTextColor(CurrentFontProfile.fontColor[1], CurrentFontProfile.fontColor[2], CurrentFontProfile.fontColor[3], CurrentFontProfile.fontColor[4] or 1)
-						end
-					-- Width
-						if CurrentFontProfile.width then
-							v:SetWidth(CurrentFontProfile.width)
-						end
-						if CurrentFontProfile.height then
-							v:SetHeight(CurrentFontProfile.height)
-						end
-						
-					
-					-- Flags
-						if CurrentFontProfile.fontFlags == "None" then v.Flags = E.TBL.EMPTY else v.Flags = CurrentFontProfile.fontFlags end
-						
-					-- 
-						-- (Frame, fontName, fontFlags, fontHeight, fontColor)
-						E:SetFontInfo(v, E.Media:Fetch("font", CurrentFontProfile.fontType), v.Flags, CurrentFontProfile.fontHeight, nil)
-						E:UpdateFont(v)
-						
-					-- Text Format
-						if CurrentFontProfile.textFormat then
-							v.Format = CurrentFontProfile.textFormat
-						end
-				end
-			end
-		end
-		
-		UF:ApplyFontStrings(self)
-		self:UpdateFonts()
-	end
-	
+	----------------------------------------------------------	
 	local function ApplyUFConfig(self, limit, arg2)
 		-- Needed when tthis is called through PerformForUnits
 		if arg2 then limit = arg2 end
@@ -206,7 +129,7 @@ end
 		
 		limit = limit or "all"
 		if limit == "fonts" or limit == "all" then
-			ApplyFontConfig(self, Config)
+			self.Fonts:UpdateConfig(Config)
 			-- Limit update to this module
 			if limit == "fonts" then return end
 		end
@@ -374,66 +297,6 @@ end
 	----------------------------------------------------------
 	-- Update handlers
 	----------------------------------------------------------
-		
-		local function NameFont_PostUpdate(self)
-			self:SetTextColor(unpack(E:GetUnitReactionColor(self.Owner.unit, false)))
-		end
-		
-		local function HealthFont_PostUpdate(self)
-			if not UnitIsDeadOrGhost(self.Owner.unit) then
-				if not UnitIsConnected(self.Owner.unit) then
-					self:SetText(FRIENDS_LIST_OFFLINE)
-				end
-			else
-				self:SetText(DEAD)
-			end
-		end
-		
-		local function PowerFont_OnEvent(self, event, unit)
-			if not event or (event and event == "UNIT_DISPLAYPOWER") then
-				--print(unit, self.Owner.unit, unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
-				self:SetTextColor(unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
-			end
-		end
-		
-		local function PowerFont_PostUpdate(self)
-			--if not (UnitPowerMax(self.Owner.unit) > 0) then
-			--	self:SetText("")
-			--end
-			
-			self:SetTextColor(unpack(E:GetUnitPowerColor((self.Owner.unit or unit))))
-		end
-		
-		local function LevelFont_PostUpdate(self)
-			self.Level = UnitLevel(self.Owner.unit)
-			
-			if self.ShowAtMax == true and self.Level == E.UNIT_MAXLEVEL then
-				self:SetText(E.STR.EMPTY)
-			else
-				if self.Level <= -1 then
-					--self:SetText(E:ParseString(self.Format or "[level]", self.unit))
-					self:SetText(E.STR.Boss)
-				end
-			end
-		end
-
-		local function Fonts_Update(F)
-			-- Fix for Bug that appeared first on 8.2 PTR
-			if not UF:UnitExists(F.unit) then return end
-			
-			for k,v in pairs(F.Fonts) do
-				if v.ForceUpdate then
-					v:ForceUpdate()
-				end
-			end
-		end
-		
-		local PostUpdate = {
-			["Name"] = NameFont_PostUpdate,
-			["Health"] = HealthFont_PostUpdate,
-			["Power"] = PowerFont_PostUpdate,
-			["Level"] = LevelFont_PostUpdate,
-		}
 
 		-- This gets called by the OnEvent handler, which basically fires whenever a frame shows up and is missing data.
 		-- The OnUpdate handler handles the periodic update calls for units we do not receive any events for. (targettarget, focustarget etc.)
@@ -459,7 +322,9 @@ end
 				if self.AltPower then
 					self.AltPower:ForceUpdate()
 				end
-				Fonts_Update(self)
+				if self.Fonts then
+					self.Fonts:ForceUpdate()
+				end
 				
 				-- Modules we dont want to include in the OnUpdate ticks, as the internal events work just fine for them
 				if not event or (event and (event ~= "OnUpdate" and event ~= "UNIT_FACTION")) then
@@ -631,13 +496,6 @@ end
 				--end
 			--end
 			
-			-- Update Fonts
-			for _, font in pairs(self.Fonts) do
-				if font.UpdateUnit then
-					font:UpdateUnit(modUnit)
-				end
-			end
-			
 			UF:UpdateModuleUnits(self)
 			
 			return true
@@ -751,24 +609,6 @@ end
 			Unitframe.TextOverlay:SetAllPoints(Unitframe.Overlay)
 		end
 		
-		local FontsToCreate = {"Health", "Power", "Level", "Name"}
-		function UF:CreateFonts(Unitframe)			
-			if not Unitframe.Fonts then Unitframe.Fonts = {} end
-			
-			for k,v in pairs(FontsToCreate) do
-				-- We have to declare this variable here, since Lua only uses table referencing
-				local Font = E:NewFontObject(format("%s%sFont", Unitframe:GetName(), v), "OVERLAY", Unitframe.TextOverlay, 10)
-				Font.Owner = Unitframe
-
-				Unitframe.Fonts[v] = Font
-				
-				E:RegisterTagFontPostUpdate(Font, PostUpdate[v])
-			end
-			
-			Unitframe.UpdateFontConfig 	= ApplyFontConfig
-			Unitframe.UpdateFonts		= Fonts_Update
-		end
-		
 		function UF:UpdateRangeIndicatorState(Unitframe)
 			if UnitIsConnected(Unitframe.unit) then
 				self:AddRangeIndicator(Unitframe)
@@ -790,7 +630,7 @@ end
 			end
 			
 			self:UpdateRangeIndicatorState(Unitframe)
-			self:ApplyFontStrings(Unitframe)
+			Unitframe:RefreshFontStrings()
 			Unitframe:UpdateFonts()
 		end
 		
@@ -964,7 +804,8 @@ end
 			[16] = 'AltPower',
 			[17] = 'RestingIndicator',
 			[18] = 'CombatIndicator',
-			[19] = 'Castbar'
+			[19] = 'Castbar',
+			[20] = 'Fonts',
 		}
 		
 		function UF:AddModulesToUnitframe(Unitframe)
@@ -984,7 +825,6 @@ end
 		local RawUnit, UnitNum = E:ExtractDigits(Unit)
 		local FrameName = format("CUI_%s", Unit)
 		local F = CreateFrame("Frame", FrameName, E.Parent)
-		F.Fonts = {}
 		
 		-- The table key we use to work with this frame's configs
 		
@@ -1036,10 +876,6 @@ end
 		-- Add UF Modules
 			
 			self:AddModulesToUnitframe(F)
-			
-		-- Add UF Fonts
-		
-			self:CreateFonts(F)
 
 		-- Set Required attributes
 		

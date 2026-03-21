@@ -298,10 +298,10 @@ local function UpdateUnit(self, value)
 	self.unit = realUnit
 	
 	if self.Fonts then
-		self.Fonts.Level.unit = realUnit	
-		self.Fonts.Name.unit = realUnit
-		self.Fonts.Health.unit = realUnit
-		self.Fonts.Power.unit = realUnit
+		self.Fonts.Frames.Level.unit = realUnit	
+		self.Fonts.Frames.Name.unit = realUnit
+		self.Fonts.Frames.Health.unit = realUnit
+		self.Fonts.Frames.Power.unit = realUnit
 	end
 	
 	if self.Castbar then
@@ -440,13 +440,13 @@ InitializeChild = function(self)
 	
 	UF:SetHoverScript(self, true)
 	
-	UF:CreateFonts(self)
-	self:UpdateFontConfig()
+	--UF:CreateFonts(self)
+	--self.Fonts:UpdateConfig()
 	UF:RegisterUpdateFunction(self)
 	UF:RegisterForClique(self)
 	
-	if self.Fonts.Index then
-		self.Fonts.Index:Update(self.RealIndex)
+	if self.Fonts.Frames.Index then
+		self.Fonts.Frames.Index:Update(self.RealIndex)
 	end
 	
 	-- Update Methods

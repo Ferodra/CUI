@@ -22,7 +22,8 @@ local wipe						= wipe
 ---------------------------------------------------
 
 E.AutoFonts = {}
-local GlobalExclusions = {} -- Used to automate the font config process
+local GlobalExclusions = {} -- Used to automate the font config process for opt-out features
+local GlobalInclusions = {} -- Used to automate the font config process for opt-in features
 local EmptyExclusions = {}
 
 local function UpdateFont(Object, Config, Path)
@@ -33,8 +34,13 @@ local function UpdateFont(Object, Config, Path)
 	end
 	
 	local Exclusions = E:GetFontExclusions(Object.ConfigPath or Path) or Object.Exclusions
+	local Inclusions = E:GetFontInclusions(Object.ConfigPath or Path) or Object.Inclusions
 	
-	if not Config.enable then if not Exclusions.enable then Object:Hide() end	else
+	Object.Enable = Config.enable
+	if not Config.enable then
+		if not Exclusions.enable then
+			Object:Hide() end
+		else
 		
 		-- Font Shadow
 			if Config.fontShadowColor and not Exclusions.fontShadowColor then
@@ -95,9 +101,16 @@ local function UpdateFont(Object, Config, Path)
 				Object:SetDrawLayer("OVERLAY")
 			end
 			
-			if not Exclusions.enable and not issecretvalue(Object:GetText()) then
+			--[[ if not Exclusions.enable and not issecretvalue(Object:GetText()) then
 				if Object:GetText() == RANGE_INDICATOR then Object:Hide() else Object:Show() end
+			end ]]
+
+		-- Text Format
+			if Config.textFormat then
+				Object.Format = Config.textFormat
 			end
+
+			Object:Show()
 		end
 	
 	--if #Exclusions > 0 then
@@ -115,23 +128,38 @@ local function UpdateFont(Object, Config, Path)
 			end
 		end
 	end
+	if Inclusions then
+		for k, v in pairs(Inclusions) do
+			if type(v) == "function" then
+				v()
+			end
+		end
+	end
 end
 
 -- Exclusion Format:
 -- {type = funcRef or boolean}
-function E:RegisterAutoFont(Object, Path, Exclusions)
+function E:RegisterAutoFont(Object, Path, Exclusions, Inclusions)
 	if not self.AutoFonts[Path] then
 		self.AutoFonts[Path] = {}
 	end
 	
 	Object.Exclusions = Object.Exclusions or Exclusions or {}
 	Exclusions = Object.Exclusions
+	Object.Inclusions = Object.Inclusions or Inclusions or {}
+	Inclusions = Object.Inclusions
 	
 	self:RegisterFontExclusions(Path, Exclusions)
+	self:RegisterFontInclusions(Path, Inclusions)
 	
 	if Exclusions then
 		for k,v in pairs(Exclusions) do
 			Object.Exclusions[k] = v
+		end
+	end
+	if Inclusions then
+		for k,v in pairs(Inclusions) do
+			Object.Inclusions[k] = v
 		end
 	end
 	
@@ -139,6 +167,11 @@ function E:RegisterAutoFont(Object, Path, Exclusions)
 	
 	tinsert(self.AutoFonts[Path], Object)
 	UpdateFont(Object, nil, Path)
+end
+
+function E:GetAutoFontPathForObject(Object)
+	if not Object then return end
+	return Object.ConfigPath or false
 end
 
 function E:UnregisterAutoFont(Path)
@@ -172,7 +205,10 @@ end
 -- /dump CUI[1]:GetFontExclusions("db.profile.blizzard.chatBubbles.name")
 
 -- This is used to set exclusions in advance, to make sure the config will get the correct data from the get go
+-- Those are handling opt-out config features
 function E:RegisterFontExclusions(Path, Exclusions)
+	if not Exclusions then return end
+	
 	if not GlobalExclusions[Path] then
 		GlobalExclusions[Path] = {}
 	end
@@ -183,4 +219,21 @@ function E:RegisterFontExclusions(Path, Exclusions)
 end
 function E:GetFontExclusions(Path)
 	return GlobalExclusions[Path] or EmptyExclusions
+end
+
+-- INCLUSIONS
+-- Those are handling opt-in config features
+function E:RegisterFontInclusions(Path, Inclusions)
+	if not Inclusions then return end
+
+	if not GlobalInclusions[Path] then
+		GlobalInclusions[Path] = {}
+	end
+	
+	for k,v in pairs(Inclusions) do
+		GlobalInclusions[Path][k] = v
+	end
+end
+function E:GetFontInclusions(Path)
+	return GlobalInclusions[Path] or EmptyExclusions
 end
