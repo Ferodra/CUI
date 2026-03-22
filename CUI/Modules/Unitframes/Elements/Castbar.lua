@@ -446,14 +446,29 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 		element:SetTimerDuration(duration, element.smoothing or StatusBarInterpolation.Immediate, direction)
 	end ]]
 
-	local name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, spellID, barID = UnitCastingInfo(unit)
-	local Duration = UnitCastingDuration(unit)
-
-	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.Immediate, Enum.StatusBarTimerDirection.ElapsedTime)
 	self.IsCasting, self.IsChanneling = IsUnitCasting(unit)
+
+	if not (self.IsCasting or self.IsChanneling) then self:Hide(); return end
+
+	local name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, spellID, barID, empowering, castID
+	if self.IsCasting then
+		name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, spellID, barID = UnitCastingInfo(unit)
+	elseif self.IsChanneling then
+		name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, empowering, _, castID = UnitChannelInfo(unit)
+	end
+
+	--print(issecretvalue(notInterruptible))
+
+	self:SetMinMaxValues(0, 1)
+	self:SetValue(self.IsChanneling and 0 or 1)
+
+	local Duration = empowering and UnitEmpoweredChannelDuration(unit) or (self.IsChanneling and UnitChannelDuration(unit) or UnitCastingDuration(unit))
+	local Direction = (self.IsChanneling and not empowering) and Enum.StatusBarTimerDirection.RemainingTime or Enum.StatusBarTimerDirection.ElapsedTime
+	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.ExponentialEaseOut, Direction)
+	
 	self.IsInterrupted = nil
 
-	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true)
+	UpdateBarVisuals(self, name, texture, notInterruptible and Module.DBColors.NotInterruptible or Module.DBColors.Interruptible, true)
 	self:SetAlpha(1)
 
 	self:Show()
@@ -510,9 +525,17 @@ local function CastUpdate(self, event, unit)
 	if not (IsCasting or IsChanneling) then return end
 
 	-- Refresh casting status
-	local Duration = UnitCastingDuration(unit)
+	local empowering
+	if self.IsChanneling then
+		empowering = select(9, UnitChannelInfo(unit))
+	end
 
-	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.Immediate, Enum.StatusBarTimerDirection.ElapsedTime)
+	self:SetMinMaxValues(0, 1)
+	self:SetValue(self.IsChanneling and 0 or 1)
+
+	local Duration = empowering and UnitEmpoweredChannelDuration(unit) or (self.IsChanneling and UnitChannelDuration(unit) or UnitCastingDuration(unit))
+	local Direction = self.IsChanneling and Enum.StatusBarTimerDirection.RemainingTime or Enum.StatusBarTimerDirection.ElapsedTime
+	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.ExponentialEaseOut, Direction)
 end
 
 local function CastOwnerTargetUpdate(self, event, unit)
@@ -863,7 +886,7 @@ function Module:OnUpdate(elapsed)
 	if self.ForceMoverEnabled then return end
 	
 	if E.IsRetail then
-		if self.IsCasting then
+		if self.IsCasting or self.IsChanneling then
 			local durationObject = self.Overlay:GetTimerDuration() -- can be nil
 
 			if durationObject then
