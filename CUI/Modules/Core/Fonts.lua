@@ -28,6 +28,8 @@ local EmptyExclusions = {}
 
 local function UpdateFont(Object, Config, Path)
 	Config = type(Config) == 'table' and Config or E:GetTableByPath(Object.ConfigPath or Path, CO)
+	Path = Path or Object.ConfigPath
+	if not Path then error("No AutoFont path found!") return end
 
 	if not Config then
 		Config = E:TableDeepCopy(CO.Template_Object)
@@ -58,7 +60,7 @@ local function UpdateFont(Object, Config, Path)
 		-- Repositioning
 			if not Exclusions.position then
 				Object:ClearAllPoints()
-				
+
 				if Config.positionOuter then
 					Object:SetPoint(E:InversePosition(Config.position), Object:GetParent() or E.Parent, Config.position, Config.xOffset, Config.yOffset)
 				else
@@ -124,17 +126,18 @@ local function UpdateFont(Object, Config, Path)
 	if Exclusions then
 		for k, v in pairs(Exclusions) do
 			if type(v) == "function" then
-				v()
+				v(Object)
 			end
 		end
 	end
+	-- Optional post-process functions
 	if Inclusions then
 		for k, v in pairs(Inclusions) do
 			if type(v) == "function" then
-				v()
+				v(Object)
 			end
 		end
-	end
+	end		
 end
 
 -- Exclusion Format:

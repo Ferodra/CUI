@@ -17,6 +17,7 @@ local GetBindingKey				= GetBindingKey
 local hooksecurefunc			= hooksecurefunc
 local InCombatLockdown			= InCombatLockdown
 local GetCVarBool 				= C_CVar.GetCVarBool
+local RANGE_INDICATOR			= RANGE_INDICATOR
 
 
 local LAB10 = LibStub('LibActionButton-1.0-CUI')
@@ -674,6 +675,25 @@ local function ButtonKeybind_OnEnter(self)
 	end
 end
 
+function Module:UpdateFontsAutoManaged(actionButton)
+	if not actionButton.HotKey then return end
+
+	E:UpdateAutoFont(actionButton.HotKey.ConfigPath)
+	E:UpdateAutoFont(actionButton.cooldown.cooldownText.ConfigPath)
+	E:UpdateAutoFont(actionButton.Count.ConfigPath)
+	E:UpdateAutoFont(actionButton.Name.ConfigPath)
+end
+
+local function Fonts_HotKeyPostUpdate(self)
+	if self:GetText() == RANGE_INDICATOR and not self.KeepRangeIndicatorText then
+		self:SetText('')
+	end
+end
+
+local Fonts_PostUpdate = {
+	['HotKey'] = {['NullFix'] = Fonts_HotKeyPostUpdate}
+}
+
 function Module:CreateActionBars()
 
 	local barName, actionBar, buttonName, actionButton
@@ -742,6 +762,7 @@ function Module:CreateActionBars()
 		-- Cache parent because we will have to reference to it pretty often
 			actionButton.Parent = actionBar
 			actionButton.cooldown.Parent = actionBar
+			actionButton.MasqueSkinned = true -- Prevents LAB10 from changing our button style
 		
 			for k = 1, NUM_ACTIONBAR_MAXPAGES do
 				actionButton:SetState(k, 'action', (k - 1) * 12 + i)
@@ -766,7 +787,7 @@ function Module:CreateActionBars()
 			
 			-- Register Fonts with corresponding database path to automate updates
 			actionButton.HotKey.__MSQ_Hooked = true -- Trick Masque into thinking it already has control over the text position
-			E:RegisterAutoFont(actionButton.HotKey, 'db.profile.actionbar.bar' .. b .. '.hotkey')
+			E:RegisterAutoFont(actionButton.HotKey, 'db.profile.actionbar.bar' .. b .. '.hotkey', nil, Fonts_PostUpdate.HotKey)
 			E:RegisterAutoFont(actionButton.cooldown.cooldownText, 'db.profile.actionbar.bar' .. b .. '.cooldown')
 			E:RegisterAutoFont(actionButton.Count, 'db.profile.actionbar.bar' .. b .. '.count')
 			E:RegisterAutoFont(actionButton.Name, 'db.profile.actionbar.bar' .. b .. '.macro')
@@ -776,6 +797,9 @@ function Module:CreateActionBars()
 			actionButton.SetKey 		= self.ActionButton_SetKey
 			actionButton.ClearBindings 	= self.ActionButton_ClearBindings
 			actionButton.GetBindings 	= self.ActionButton_GetBindings
+		
+		-- Prevent LibAB from messing up our fonts
+			actionButton.FontsUnmanaged = true
 			
 		-- Workaround for tooltips of macros, pets and toys
 			actionButton:HookScript('OnEnter', self.ActionButton_OnEnter)
@@ -909,6 +933,8 @@ function Module:UpdateConfig(Bar)
 			Bar.buttonConfig.keyBoundTarget = Binding
 			
 			Button:UpdateConfig(Bar.buttonConfig)
+			-- Force autofont update after LAB changed things. We want to avoid modifying LAB for update reasons
+			Module:UpdateFontsAutoManaged(Button)
 		end
 	end
 end
