@@ -13,6 +13,15 @@ local GetNetStats					= GetNetStats
 local GetTime						= GetTime
 local CastingBarFrame_ApplyAlpha	= CastingBarFrame_ApplyAlpha
 local INTERRUPTED					= INTERRUPTED
+local FAILED						= FAILED
+local UnitCastingInfo 				= UnitCastingInfo
+local UnitChannelInfo				= UnitChannelInfo
+local UnitChannelDuration 			= UnitChannelDuration
+local UnitCastingDuration 			= UnitCastingDuration
+local UnitEmpoweredChannelDuration 	= UnitEmpoweredChannelDuration
+local UnitEmpoweredStagePercentages = UnitEmpoweredStagePercentages
+local GetUnitEmpowerHoldAtMaxTime 	= GetUnitEmpowerHoldAtMaxTime
+local GetPlayerAuraBySpellID 		= C_UnitAuras.GetPlayerAuraBySpellID
 
 -- string.format usage:
 -- string.format("CUI_%sCastbar%s", unit, index)
@@ -335,6 +344,22 @@ local function Castingbar_ResetFlash(self)
 	end
 end
 
+local function Castingbar_PlayFlash(self, state)
+	local Color = (state == true or state == nil) and Module.DBColors.Success or Module.DBColors.Failed
+
+	if self.Flash then
+		self.Flash:SetVertexColor(Color[1], Color[2], Color[3])
+		self.Flash:SetAlpha(0)
+		self.Flash:Show()
+
+		if E:UIFrameIsFlashing(self.Flash) then
+			E:UIFrameFlashStop(self.Flash)
+		end
+			
+		E:UIFrameFlash(self.Flash, self.flashFadeInTime, self.flashFadeOutTime, self.flashFadeInTime + self.flashFadeOutTime, false, 0, 0)
+	end
+end
+
 local function Castingbar_FinishCast(self, state, holdTime)
 	
 	local Color = (state == true or state == nil) and Module.DBColors.Success or Module.DBColors.Failed
@@ -350,7 +375,7 @@ local function Castingbar_FinishCast(self, state, holdTime)
 		if E:UIFrameIsFlashing(self.Flash) then
 			E:UIFrameFlashStop(self.Flash)
 		end
-				
+			
 		E:UIFrameFlash(self.Flash, self.flashFadeInTime, self.flashFadeOutTime, self.flashFadeInTime + self.flashFadeOutTime, false, 0, 0)
 	end
 	
@@ -375,11 +400,153 @@ function Module:RemoveEventHandler(bar)
 	bar.active = nil
 end
 
-local InterruptStr = "%s [%s]"
-local function Bar_OnEvent(self, event, ...)
-	if not self.Owner:IsVisible() and event ~= "ForceUpdate" then return end
-	-- Probably the most efficient way we can go
-	
+local function UpdateBarVisuals(self, name, texture, barColor, showSpark)
+	if name then
+		self.Name:SetText(name)
+	end
+	if texture then
+		self.Icon.Tex:SetTexture(texture)
+	end
+	if barColor then
+		self:SetOverlayColor(unpack(barColor))
+	end
+	if showSpark ~= nil then
+		if showSpark then
+			self.Spark:Show()
+		else
+			self.Spark:Hide()
+		end
+	end
+end
+
+local function IsUnitCasting(unit)
+	local IsCasting, IsChanneling = false, false
+	--print("Is Casting?", unit)
+	local name = UnitCastingInfo(unit)
+
+	if not name then
+		name = UnitChannelInfo(unit)
+		if name then
+			IsChanneling = true
+		end
+	else
+		IsCasting = true
+	end
+
+	return IsCasting, IsChanneling
+end
+
+local function CastStart(self, event, unit, castGUID, spellID, castTime)
+	--print("CastStart", event, unit, castGUID, spellID, castTime, "Secrets? ", issecretvalue(event), issecretvalue(unit), issecretvalue(castGUID), issecretvalue(spellID), issecretvalue(castTime))
+	--print(self:GetName(), self.Overlay.SetTimerDuration)
+
+	--[[ local duration = element.empowering and UnitEmpoweredChannelDuration(unit) or (element.channeling and UnitChannelDuration(unit) or UnitCastingDuration(unit))
+	if duration then
+		local direction = element.channeling and StatusBarTimerDirection.RemainingTime or StatusBarTimerDirection.ElapsedTime
+		element:SetTimerDuration(duration, element.smoothing or StatusBarInterpolation.Immediate, direction)
+	end ]]
+
+	local name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, spellID, barID = UnitCastingInfo(unit)
+	local Duration = UnitCastingDuration(unit)
+
+	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.Immediate, Enum.StatusBarTimerDirection.ElapsedTime)
+	self.IsCasting, self.IsChanneling = IsUnitCasting(unit)
+	self.IsInterrupted = nil
+
+	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true)
+	self:SetAlpha(1)
+
+	self:Show()
+end
+
+local function CastStop(self, event, unit, ...)
+	--print("CastInterruptible", event, unit, ...)
+	if self.IsInterrupted ~= nil then return end
+	self.IsCasting = false
+	self.IsChanneling = false
+	self.IsInterrupted = false
+
+	self:SetMinMaxValues(0, 1)
+	self:SetValue(1)
+
+	UpdateBarVisuals(self, nil, nil, Module.DBColors.Success, false)
+	Castingbar_PlayFlash(self, true)
+
+	self.Time:SetText('')
+	self.HoldTime = 0
+end
+
+local function CastFail(self, event, unit, ...)
+	--print("CastInterruptible", event, unit, ...)
+	self.IsCasting = false
+	self.IsChanneling = false
+	self.IsInterrupted = true
+
+	self:SetMinMaxValues(0, 1)
+	self:SetValue(1)
+
+	UpdateBarVisuals(self, event == 'UNIT_SPELLCAST_FAILED' and FAILED or INTERRUPTED, nil, Module.DBColors.Failed, false)
+	Castingbar_PlayFlash(self, false)
+
+	self.HoldTime = 0
+end
+
+local function CastInterruptible(self, event, unit)
+	--print("CastInterruptible", event, unit)
+	CastStart(self, event, unit)
+
+	self.Interruptible = event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE'
+	self:SetStatusBarColor(self.Interruptible and Module.DBColors.Interruptible or Module.DBColors.NotInterruptible)
+end
+
+local function CastUpdate(self, event, unit)
+	--print("CastUpdate", event, unit)
+	if not self:IsShown() then return end
+
+	local IsCasting, IsChanneling = IsUnitCasting(unit)
+
+	if not (IsCasting or IsChanneling) then return end
+
+	-- Refresh casting status
+	local Duration = UnitCastingDuration(unit)
+
+	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.Immediate, Enum.StatusBarTimerDirection.ElapsedTime)
+end
+
+local function CastOwnerTargetUpdate(self, event, unit)
+	--print("CastOwnerUpdate", event, unit)
+	--print("Unit Exists?", UnitExists(self.unit), self.unit)
+
+	if not UnitExists(self.unit) then
+		self:SetValue(0)
+		self:Hide()
+	else
+		local IsCasting, IsChanneling = IsUnitCasting(self.unit)
+		if IsCasting or IsChanneling then
+			CastStart(self, 'ForceUpdate', self.unit)
+		end
+	end
+end
+
+local function Bar_OnEvent_Retail(self, event, ...)
+	-- We're going for a much cleaner approach for retail
+	-- Original concept from oUF
+	if event == 'UNIT_SPELLCAST_START' or event == 'UNIT_SPELLCAST_CHANNEL_START' or event == 'UNIT_SPELLCAST_EMPOWER_START' then
+		CastStart(self, event, ...)
+	elseif event == 'UNIT_SPELLCAST_STOP' or event == 'UNIT_SPELLCAST_CHANNEL_STOP' or event == 'UNIT_SPELLCAST_EMPOWER_STOP' then
+		CastStop(self, event, ...)
+	elseif event == 'UNIT_SPELLCAST_DELAYED' or event == 'UNIT_SPELLCAST_CHANNEL_UPDATE' or event == 'UNIT_SPELLCAST_EMPOWER_UPDATE' then
+		CastUpdate(self, event, ...)
+	elseif event == 'UNIT_SPELLCAST_FAILED' or event == 'UNIT_SPELLCAST_INTERRUPTED' then
+		CastFail(self, event, ...)
+	elseif event == 'UNIT_SPELLCAST_INTERRUPTIBLE' or event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE' then
+		CastInterruptible(self, event, ...)
+	elseif event == 'UNIT_TARGET' or event == 'PLAYER_TARGET_CHANGED' or event == 'ForceUpdate' then
+		CastOwnerTargetUpdate(self, event, ...)
+	end
+end
+
+local function Bar_OnEvent_Legacy(self, event, ...)
 	-- Interruptor handler START
 	----------------------------
 	if event == "COMBAT_LOG_EVENT_UNFILTERED" then		
@@ -477,7 +644,7 @@ local function Bar_OnEvent(self, event, ...)
 		
 	elseif event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED" then
 		if ( self:IsShown() and
-		     (self.casting and select(2, ...) == self.castID) and not self.fadeOut ) then
+			(self.casting and select(2, ...) == self.castID) and not self.fadeOut ) then
 			if self.Name then
 				if event == "UNIT_SPELLCAST_FAILED" then
 					self.Name:SetText(FAILED);
@@ -514,7 +681,7 @@ local function Bar_OnEvent(self, event, ...)
 			self:Hide()
 		end
 		if ( (self.casting and event == "UNIT_SPELLCAST_STOP") or
-		     (self.channeling and event == "UNIT_SPELLCAST_CHANNEL_STOP") ) then
+			(self.channeling and event == "UNIT_SPELLCAST_CHANNEL_STOP") ) then
 			Castingbar_FinishCast(self, true)		
 		end
 		
@@ -573,7 +740,18 @@ local function Bar_OnEvent(self, event, ...)
 			self:SetMinMaxValues(0, self.maxValue);
 			self:SetValue(self.value);
 		end
-		
+	end
+end
+
+local InterruptStr = "%s [%s]"
+local function Bar_OnEvent(self, event, ...)
+	if (not self.Owner:IsVisible() and event ~= "ForceUpdate") or (not self.enable) then return end
+	-- Probably the most efficient way we can do this
+	
+	if E.IsRetail then
+		Bar_OnEvent_Retail(self, event, ...)
+	else
+		Bar_OnEvent_Legacy(self, event, ...)
 	end
 end
 
@@ -583,15 +761,17 @@ local function Bar_ForceUpdate(self)
 end
 
 local function Bar_OnShow(self)
-	if self.casting then
-		local _, _, _, startTime = UnitCastingInfo(self.Owner.unit);
-		if startTime then
-			self.value = (GetTime() - (startTime / 1000));
-		end
-	else
-		local _, _, _, _, endTime = UnitChannelInfo(self.Owner.unit);
-		if endTime then
-			self.value = ((endTime / 1000) - GetTime());
+	if not E.IsRetail then
+		if self.casting then
+			local _, _, _, startTime = UnitCastingInfo(self.Owner.unit);
+			if startTime then
+				self.value = (GetTime() - (startTime / 1000));
+			end
+		else
+			local _, _, _, _, endTime = UnitChannelInfo(self.Owner.unit);
+			if endTime then
+				self.value = ((endTime / 1000) - GetTime());
+			end
 		end
 	end
 end
@@ -680,62 +860,84 @@ end
 function Module:OnUpdate(elapsed)
 	if self.ForceMoverEnabled then return end
 	
-	if ( self.casting ) then
-		
-		self.value = self.value + elapsed;
-		if ( self.value >= self.endTime ) then
-			self:SetValue(self.endTime);
-			Castingbar_FinishCast(self)
-			return;
-		end
-		self:SetValue(self.value)
-		self.Time:SetText(E:Round(self.endTime - self.value, 1))
-		-- if ( self.Flash ) then
-			-- self.Flash:Hide();
-		-- end
-		
-	elseif ( self.channeling ) then
-		self.value = self.value - elapsed;
-		if ( self.value <= self.minValue ) then
-			Castingbar_FinishCast(self)
-			self.channeling = nil;
-			self.fadeOut = true;
-			return;
-		end
-		
-		self:SetValue(self.value);
-		self.Time:SetText(E:Round(self.value, 1))
-		-- if ( self.Flash ) then
-			-- self.Flash:Hide();
-		-- end
-	elseif ( GetTime() < self.holdTime ) then
-		return;
-	--elseif ( self.flash ) then
-		-- local alpha = 0;
-		-- if ( self.Flash ) then
-			-- alpha = self.Flash:GetAlpha() + 0.15;
-		-- end
-		-- if ( alpha < 1 ) then
-			-- if ( self.Flash ) then
-				-- self.Flash:SetAlpha(alpha);
-			-- end
-		-- else
-			-- if ( self.Flash ) then
-				-- self.Flash:SetAlpha(1.0);
-			-- end
-			-- self.flash = nil;
-		-- end
-	elseif ( self.fadeOut ) then
-		local alpha = self:GetAlpha() - 0.015;
-		if ( alpha > 0 ) then
-			self:SetAlpha(alpha)
-			
-			-- if self.Flash then
-				-- self.Flash:SetAlpha(self.Flash:GetAlpha() - 0.125)
-			-- end
+	if E.IsRetail then
+		if self.IsCasting then
+			local durationObject = self.Overlay:GetTimerDuration() -- can be nil
+
+			if durationObject then
+				self.Time:SetFormattedText('%.2f', durationObject:GetRemainingDuration() or 0)
+			else
+				self.Time:SetText("")
+			end
 		else
-			self.fadeOut = nil;
-			self:Hide();
+			if self:IsShown() and self:GetAlpha() > 0 then
+				self.HoldTime = (self.HoldTime or 0) + elapsed
+				if self.HoldTime > 1 then
+					-- Fade castbar over 30 frames
+					self:SetAlpha(self:GetAlpha()-((self.HoldTime-1)/30))
+				end
+			else
+				self:Hide()
+			end
+		end
+	else
+		if ( self.casting ) then
+			
+			self.value = self.value + elapsed;
+			if ( self.value >= self.endTime ) then
+				self:SetValue(self.endTime);
+				Castingbar_FinishCast(self)
+				return;
+			end
+			self:SetValue(self.value)
+			self.Time:SetText(E:Round(self.endTime - self.value, 1))
+			-- if ( self.Flash ) then
+				-- self.Flash:Hide();
+			-- end
+			
+		elseif ( self.channeling ) then
+			self.value = self.value - elapsed;
+			if ( self.value <= self.minValue ) then
+				Castingbar_FinishCast(self)
+				self.channeling = nil;
+				self.fadeOut = true;
+				return;
+			end
+			
+			self:SetValue(self.value);
+			self.Time:SetText(E:Round(self.value, 1))
+			-- if ( self.Flash ) then
+				-- self.Flash:Hide();
+			-- end
+		elseif ( GetTime() < self.holdTime ) then
+			return;
+		--elseif ( self.flash ) then
+			-- local alpha = 0;
+			-- if ( self.Flash ) then
+				-- alpha = self.Flash:GetAlpha() + 0.15;
+			-- end
+			-- if ( alpha < 1 ) then
+				-- if ( self.Flash ) then
+					-- self.Flash:SetAlpha(alpha);
+				-- end
+			-- else
+				-- if ( self.Flash ) then
+					-- self.Flash:SetAlpha(1.0);
+				-- end
+				-- self.flash = nil;
+			-- end
+		elseif ( self.fadeOut ) then
+			local alpha = self:GetAlpha() - 0.015;
+			if ( alpha > 0 ) then
+				self:SetAlpha(alpha)
+				
+				-- if self.Flash then
+					-- self.Flash:SetAlpha(self.Flash:GetAlpha() - 0.125)
+				-- end
+			else
+				self.fadeOut = nil;
+				self:Hide();
+			end
 		end
 	end
 end

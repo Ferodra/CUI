@@ -56,7 +56,7 @@ local GetAddOnMetadata = C_AddOns.GetAddOnMetadata
 local AddOnName, E							= ... -- AddOn-Name, Engine
 local AceAddon = _G.LibStub('AceAddon-3.0')
 ---@class E
-local AddOn = AceAddon:NewAddon(AddOnName, 'AceHook-3.0')
+local AddOn = AceAddon:NewAddon(AddOnName, 'AceHook-3.0', 'AceEvent-3.0')
 AddOn.AddOnName = AddOnName
 
 E[1] = AddOn
@@ -73,6 +73,7 @@ AddOn.IsClassic = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 AddOn.Libs = {
 	['AceAddon'] 	= AceAddon,
 	['AceLocale'] 	= LibStub("AceLocale-3.0"),
+	['AceEvent'] 	= LibStub("AceEvent-3.0"),
 	['Callbacks'] 	= LibStub('CallbackHandler-1.0'):New(E),
 	['LibSmooth'] 	= LibStub('LibSmoothStatusBar-1.0'),
 	['Masque'] 		= LibStub('Masque', true)

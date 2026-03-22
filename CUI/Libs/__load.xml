@@ -5,6 +5,7 @@
 	<Include file="AceHook-3.0\AceHook-3.0.xml"/>
 	<Include file="AceDB-3.0\AceDB-3.0.xml"/>
 	<Include file="AceLocale-3.0\AceLocale-3.0.xml"/>
+	<Include file="AceEvent-3.0\AceEvent-3.0.xml"/>
 	
 	<Script File="LibSharedMedia-3.0\LibSharedMedia-3.0.lua"/>
 	

@@ -659,6 +659,10 @@ end
 			-- Only for edge cases, but why not
 			Module.PreventAddingToUnitframe = PreventAddingToUnitframe
 			Module.Name = Name
+
+			-- Add AceEvent to module
+			Module.RegisterEvent = E.RegisterEvent
+			Module.UnregisterEvent = E.UnregisterEvent
 			
 			self.Modules[Name] = Module
 			Module.db = self.db
