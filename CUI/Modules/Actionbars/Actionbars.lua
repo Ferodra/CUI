@@ -865,7 +865,7 @@ function Module:ActionButton_SetKey(key)
 	
 	-- /dump SetBinding("SHIFT-G", "EXTRABAR6BUTTON2")
 	local Success = SetBinding(key, BindButton .. ButtonIndex)
-	print(Success, BindButton, ButtonIndex, key)
+	E:debugprint(Success, BindButton, ButtonIndex, key)
 	
 	Module:ReassignBindings()
 end
