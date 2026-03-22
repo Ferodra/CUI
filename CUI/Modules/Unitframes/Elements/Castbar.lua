@@ -87,6 +87,10 @@ function Module:LoadSingleBar(Frame, GlobalConfig, Config)
 		if Module.DBColors.Interruptible then
 			Bar.OverlayInterruptible:SetStatusBarColor(unpack(Module.DBColors.Interruptible))
 		end
+
+		-- Adjust for border
+		--Bar.OverlayInterruptible:SetPoint("TOPLEFT", Bar.Overlay:GetStatusBarTexture(), "TOPLEFT", Config.barBorderSize, -Config.barBorderSize)
+		--Bar.OverlayInterruptible:SetPoint("BOTTOMRIGHT", Bar.Overlay:GetStatusBarTexture(), "BOTTOMRIGHT", -Config.barBorderSize, Config.barBorderSize)
 		
 		Bar.Overlay:SetReverseFill(Config.barInverseFill)
 		Bar.Overlay:SetOrientation(Config.barOrientation)
@@ -405,7 +409,11 @@ function Module:RemoveEventHandler(bar)
 	bar.active = nil
 end
 
-local function UpdateBarVisuals(self, name, texture, barColor, showSpark, isInterruptible)
+local function CastMatch(self, castID)
+	return self.CastID == castID
+end
+
+local function UpdateBarVisuals(self, name, texture, barColor, showSpark, notInterruptible)
 	if name then
 		self.Name:SetText(name)
 	end
@@ -423,8 +431,11 @@ local function UpdateBarVisuals(self, name, texture, barColor, showSpark, isInte
 		end
 	end
 
-	if isInterruptible ~= nil then
-		self.OverlayInterruptible:SetAlphaFromBoolean(isInterruptible, 1, 0)
+	if notInterruptible ~= nil then
+		self.OverlayInterruptible:SetAlphaFromBoolean(notInterruptible, 0, 1)
+	else
+		-- If we don't pass any value into notInterruptible, it's because the cast already is finished. So we don't need it anymore
+		self.OverlayInterruptible:SetAlpha(0)
 	end
 end
 
@@ -466,8 +477,6 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 		name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, empowering, _, castID = UnitChannelInfo(unit)
 	end
 
-	print(notInterruptible)
-
 	self:SetMinMaxValues(0, 1)
 	self:SetValue(self.IsChanneling and 0 or 1)
 
@@ -476,8 +485,9 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.ExponentialEaseOut, Direction)
 	
 	self.IsInterrupted = nil
+	self.CastID = castID or barID
 
-	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true)
+	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true, notInterruptible)
 	self:SetAlpha(1)
 
 	self:Show()
@@ -486,7 +496,7 @@ end
 local function CastStop(self, event, unit, ...)
 	--print("CastInterruptible", event, unit, ...)
 	-- This is called multiple times after a cast was interrupted, so we have to prevent CastStop updates when this is the case
-	if self.IsInterrupted ~= nil then return end
+	if self.IsInterrupted ~= nil or not self:IsShown() then return end
 
 	self.IsCasting = false
 	self.IsChanneling = false
@@ -504,6 +514,16 @@ end
 
 local function CastFail(self, event, unit, ...)
 	--print("CastInterruptible", event, unit, ...)
+	
+	local castID, interruptedBy, _
+	if(event == 'UNIT_SPELLCAST_INTERRUPTED') then
+		_, _, interruptedBy, castID = ...
+	elseif(event == 'UNIT_SPELLCAST_FAILED') then
+		_, _, castID = ...
+	end
+
+	if not self:IsShown() or not CastMatch(self, castID) then return end
+
 	self.IsCasting = false
 	self.IsChanneling = false
 	self.IsInterrupted = true -- True = Cast failed / Was interrupted
@@ -522,7 +542,7 @@ local function CastInterruptible(self, event, unit)
 	CastStart(self, event, unit)
 
 	self.Interruptible = event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE'
-	UpdateBarVisuals(self, nil, nil, self.Interruptible and Module.DBColors.Interruptible or Module.DBColors.NotInterruptible)
+	UpdateBarVisuals(self, nil, nil, self.Interruptible and Module.DBColors.Interruptible or Module.DBColors.NotInterruptible, true, self.Interruptible)
 end
 
 local function CastUpdate(self, event, unit)
@@ -999,6 +1019,8 @@ function Module:CreateBar(Frame, doNotLoad)
 	Bar.OverlayInterruptible:SetMinMaxValues(0, 1)
 	Bar.OverlayInterruptible:SetValue(1)
 	E:RegisterStatusBar(Bar.OverlayInterruptible)
+
+	Bar.Border:SetFrameLevel(Bar.Border:GetFrameLevel()+5)
 
 	Bar.Owner = Frame
 	
