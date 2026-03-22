@@ -1,6 +1,6 @@
 local E, L = unpack(CUI) -- Engine
 local CO, CD, UF, BA, NP = E:LoadModules("Config", "Config_Dialog", "Unitframes", "Bar_Auras", "Nameplates")
-local UAUR = UF.Modules["Auras"]
+local UAUR, UCSTB = UF.Modules["Auras"], UF.Modules["Castbar"]
 
 local _
 local IsAddOnLoaded			= C_AddOns.IsAddOnLoaded
@@ -136,6 +136,9 @@ local function GetOptionsTable_CastBar(type, index)
 			local c = CO.db.profile.colors.castbar[type]
 			
 			c[1], c[2], c[3] = r, g, b
+
+			-- Push update
+			UCSTB:LoadConfig()
 	  end,
 	}
 

@@ -82,6 +82,11 @@ function Module:LoadSingleBar(Frame, GlobalConfig, Config)
 			Bar:SetParent(Bar.Owner)
 			Bar:SetPoint(BarSmartPosition, Bar.Owner, Config.barPosition, Config.barOffsetX, Config.barOffsetY)
 		end
+
+		-- This somehow doesn't exist yet on initial call
+		if Module.DBColors.Interruptible then
+			Bar.OverlayInterruptible:SetStatusBarColor(unpack(Module.DBColors.Interruptible))
+		end
 		
 		Bar.Overlay:SetReverseFill(Config.barInverseFill)
 		Bar.Overlay:SetOrientation(Config.barOrientation)
@@ -279,7 +284,7 @@ function Module:UpdateLagBar(o, s)
 end
 
 function Module:AddSpark(o)
-	o.Spark = o.Overlay:CreateTexture(nil, "OVERLAY")
+	o.Spark = o.OverlayInterruptible:CreateTexture(nil, "OVERLAY")
 	o.Spark:SetTexture([[Interface\CastingBar\UI-CastingBar-Spark]])
 	o.Spark:SetBlendMode("ADD")
 	
@@ -400,7 +405,7 @@ function Module:RemoveEventHandler(bar)
 	bar.active = nil
 end
 
-local function UpdateBarVisuals(self, name, texture, barColor, showSpark)
+local function UpdateBarVisuals(self, name, texture, barColor, showSpark, isInterruptible)
 	if name then
 		self.Name:SetText(name)
 	end
@@ -416,6 +421,10 @@ local function UpdateBarVisuals(self, name, texture, barColor, showSpark)
 		else
 			self.Spark:Hide()
 		end
+	end
+
+	if isInterruptible ~= nil then
+		self.OverlayInterruptible:SetAlphaFromBoolean(isInterruptible, 1, 0)
 	end
 end
 
@@ -457,7 +466,7 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 		name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, empowering, _, castID = UnitChannelInfo(unit)
 	end
 
-	--print(issecretvalue(notInterruptible))
+	print(notInterruptible)
 
 	self:SetMinMaxValues(0, 1)
 	self:SetValue(self.IsChanneling and 0 or 1)
@@ -468,7 +477,7 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 	
 	self.IsInterrupted = nil
 
-	UpdateBarVisuals(self, name, texture, notInterruptible and Module.DBColors.NotInterruptible or Module.DBColors.Interruptible, true)
+	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true)
 	self:SetAlpha(1)
 
 	self:Show()
@@ -534,7 +543,7 @@ local function CastUpdate(self, event, unit)
 	self:SetValue(self.IsChanneling and 0 or 1)
 
 	local Duration = empowering and UnitEmpoweredChannelDuration(unit) or (self.IsChanneling and UnitChannelDuration(unit) or UnitCastingDuration(unit))
-	local Direction = self.IsChanneling and Enum.StatusBarTimerDirection.RemainingTime or Enum.StatusBarTimerDirection.ElapsedTime
+	local Direction = (self.IsChanneling and not empowering) and Enum.StatusBarTimerDirection.RemainingTime or Enum.StatusBarTimerDirection.ElapsedTime
 	self.Overlay:SetTimerDuration(Duration, Enum.StatusBarInterpolation.ExponentialEaseOut, Direction)
 end
 
@@ -982,6 +991,15 @@ function Module:CreateBar(Frame, doNotLoad)
 	local Bar = E:CreateBar(format("CUI_%sCastbar%s", Unit, Attach and "" or self:GetIndex(Unit)), "LOW", 235, 25, {"CENTER", E.Parent, "CENTER"}, E.Parent)
 	E.Libs.LibSmooth:ResetBar(Bar.Overlay) -- Leaving the smooth anim on somehow causes the bar to not go at a 100%. This results in the LagBar simply being useless and just looks weird
 	Bar:SetBackgroundColor(nil, nil, nil, 0.95)
+
+	-- Interruptible Bar
+	Bar.OverlayInterruptible = CreateFrame('StatusBar', nil, Bar.Overlay)
+	Bar.OverlayInterruptible:SetPoint("TOPLEFT", Bar.Overlay:GetStatusBarTexture(), "TOPLEFT")
+	Bar.OverlayInterruptible:SetPoint("BOTTOMRIGHT", Bar.Overlay:GetStatusBarTexture(), "BOTTOMRIGHT")
+	Bar.OverlayInterruptible:SetMinMaxValues(0, 1)
+	Bar.OverlayInterruptible:SetValue(1)
+	E:RegisterStatusBar(Bar.OverlayInterruptible)
+
 	Bar.Owner = Frame
 	
 	Frame.Castbar = Bar
