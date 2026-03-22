@@ -60,7 +60,7 @@ local function UpdateRange(F)
 		if UnitIsPlayer(F.unit) then
 			if UnitIsConnected(F.unit) then
 				local phaseReason = UnitPhaseReason(F.unit)
-				if phaseReason == PhaseReason.TimerunningHwt then
+				if phaseReason == Enum.PhaseReason.TimerunningHwt then
 					if not IsInInstance() then -- phased in open world (hero / nonhero) but not phased in dungeons
 						F.IsInRange = false
 					end
