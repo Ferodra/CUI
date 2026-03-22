@@ -17,6 +17,7 @@ local UnitStagger 				= UnitStagger
 local UnitAura					= C_TooltipInfo.GetUnitAura
 local GetAuraDataByIndex 		= C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
 local UnpackAuraData 			= AuraUtil and AuraUtil.UnpackAuraData
+local GetPlayerAuraBySpellID 	= C_UnitAuras.GetPlayerAuraBySpellID
 ----------------------------------------------------------
 
 --[[------------------------------------------------
@@ -73,16 +74,9 @@ function Module:UpdateSeparatedPowers()
 end
 
 local function GetAltPower_Mage_Frost()
-	local i = 1
-	local ID, Count
-	while true do
-		_,_, Count,_,_,_,_,_,_, ID = UnpackAuraData(GetAuraDataByIndex("player", i, "HELPFUL"))
-		if not ID or ID == Data.Mage.Icicles.ID then break end
-		
-		i = i + 1
-	end
+	local aura = GetPlayerAuraBySpellID(Data.Mage.Icicles.ID)
 	
-	return Count or 0
+	return aura and aura.applications or 0
 end
 
 local function GetAltPower_Warlock()
