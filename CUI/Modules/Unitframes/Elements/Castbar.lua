@@ -461,10 +461,12 @@ end
 
 local function CastStop(self, event, unit, ...)
 	--print("CastInterruptible", event, unit, ...)
+	-- This is called multiple times after a cast was interrupted, so we have to prevent CastStop updates when this is the case
 	if self.IsInterrupted ~= nil then return end
+
 	self.IsCasting = false
 	self.IsChanneling = false
-	self.IsInterrupted = false
+	self.IsInterrupted = false -- False = Cast stopped
 
 	self:SetMinMaxValues(0, 1)
 	self:SetValue(1)
@@ -480,7 +482,7 @@ local function CastFail(self, event, unit, ...)
 	--print("CastInterruptible", event, unit, ...)
 	self.IsCasting = false
 	self.IsChanneling = false
-	self.IsInterrupted = true
+	self.IsInterrupted = true -- True = Cast failed / Was interrupted
 
 	self:SetMinMaxValues(0, 1)
 	self:SetValue(1)
@@ -496,7 +498,7 @@ local function CastInterruptible(self, event, unit)
 	CastStart(self, event, unit)
 
 	self.Interruptible = event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE'
-	self:SetStatusBarColor(self.Interruptible and Module.DBColors.Interruptible or Module.DBColors.NotInterruptible)
+	UpdateBarVisuals(self, nil, nil, self.Interruptible and Module.DBColors.Interruptible or Module.DBColors.NotInterruptible)
 end
 
 local function CastUpdate(self, event, unit)
