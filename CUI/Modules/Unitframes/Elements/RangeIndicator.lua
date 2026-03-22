@@ -47,19 +47,36 @@ local function UpdateRange(F)
 	
 	F.IsInRange = false
 	
-	if not UnitCanAttack("player", F.unit) then
-		if not F.unit:find('pet') then
-			F.IsInRange = UnitIsConnected(F.unit) and UnitInRange(F.unit)
-		else
-			F.IsInRange = PetIsInRange(F.unit)
-		end
+	--[[ if not UnitCanAttack("player", F.unit) then
+		-- Friendly
+		F.IsInRange = select(1, UnitInRange(F.unit))
 	else
+		-- Hostile
+		F.IsInRange = EnemyIsInRange(F.unit)
+	end ]]
+	if F.unit == 'player' then
 		F.IsInRange = true
+	else
+		if UnitIsPlayer(F.unit) then
+			if UnitIsConnected(F.unit) then
+				local phaseReason = UnitPhaseReason(F.unit)
+				if phaseReason == PhaseReason.TimerunningHwt then
+					if not IsInInstance() then -- phased in open world (hero / nonhero) but not phased in dungeons
+						F.IsInRange = false
+					end
+				elseif phaseReason then
+					F.IsInRange = false
+				else
+					F.IsInRange = CheckRange(F.unit)
+				end
+			else
+				F.IsInRange = false
+			end
+		else
+			F.IsInRange = CheckRange(F.unit)
+		end
 	end
-	if F.unit == 'player' then F.IsInRange = true end
 	--end
-	
-	F:SetAlphaFromBoolean(F.IsInRange, CO.db.profile.unitframe.units.all.outOfRangeAlpha, 1)
 	
 	-- For now, leave that disabled, since it seems to trigger some random issues with parties and raids
 	-- Prevent rapid unnecessary updates
@@ -75,6 +92,14 @@ local function UpdateRange(F)
 		
 		--F.LastRangeState = F.IsInRange
 	--end
+	if F.IsInRange then
+		--F:SetAlpha(1)
+		E:UIFrameFadeIn(F, 0.2, F:GetAlpha(), 1)
+	else
+		--F:SetAlpha(CO.db.profile.unitframe.units.all.outOfRangeAlpha)
+		E:UIFrameFadeOut(F, 0.2, F:GetAlpha(), CO.db.profile.unitframe.units.all.outOfRangeAlpha)
+	end
+	--F:SetAlphaFromBoolean(F.IsInRange, 1, CO.db.profile.unitframe.units.all.outOfRangeAlpha)
 end
 
 function UF:AddRangeIndicator(F)
