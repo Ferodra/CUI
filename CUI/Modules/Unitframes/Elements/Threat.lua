@@ -31,7 +31,11 @@ local function UpdateElement(Element, elapsed)
 		local Value = select(3, UnitDetailedThreatSituation('player', Element.Owner.unit)) or 0
 		
 		Element:SetValue(Value)
-		Element:SetOverlayColor(E:ColorGradient((Value / 100), 0.11, 0.98, 0.38, 0.37, 0.76, 1, 0.91,0.27,0.36))
+		if not issecretvalue(Value) then
+			Element:SetOverlayColor(E:ColorGradient((Value / 100), 0.11, 0.98, 0.38, 0.37, 0.76, 1, 0.91,0.27,0.36))
+		else
+			Element:SetOverlayColor(E:ColorGradient((1), 0.11, 0.98, 0.38, 0.37, 0.76, 1, 0.91,0.27,0.36))
+		end
 		
 		Element.lastUpdate = 0
 	end

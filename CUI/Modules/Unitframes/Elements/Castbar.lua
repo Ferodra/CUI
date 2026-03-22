@@ -46,6 +46,7 @@ function Module:LoadSingleBar(Frame, GlobalConfig, Config)
 	GlobalConfig, Config = GlobalConfig or Module.db.unitframe.units.all.castbar, Config or Module.db.unitframe.units[Frame.ConfigKey].castbar
 	if not GlobalConfig or not Config then return end
 
+	Bar.enable = Config.enable
 	if not Config.enable then
 		Bar:Hide()
 		Bar.MoverEnabled = false
@@ -604,6 +605,8 @@ end
 -- Without doing this for them, we won't get casts for those units
 function Module:UpdateEvents(Bar, SkipUpdate)
 	Bar:UnregisterAllEvents()
+
+	if not Bar.enable then return end
 	
 	-- Register a bunch (all) of spellcast events (all we need)
 	Bar:RegisterUnitEvent("UNIT_SPELLCAST_START", Bar.Owner.unit)

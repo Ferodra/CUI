@@ -54,14 +54,14 @@ local function AuraButton_OnLeave(self)
 end
 
 function BA:LoadConfig()
-	
 	self.db = CO.db.profile.auras
 	
 	for Unit, Header in pairs(self.Containers) do
 		local profileData = CO.db.profile.auras.units[Unit].aurabars
 		
 		Header.BarNum = profileData.barNum
-		if profileData.enable == false then
+		if not profileData.enable then
+			self:UnregisterAllEvents()
 			Header:Hide()
 		else
 			Header.NumberFormat = profileData.cooldownIdentifier
@@ -109,10 +109,13 @@ function BA:LoadConfig()
 					Header[i].Visible = true
 				end
 			end
+
+			self:RegisterUnitEvent("UNIT_AURA", "player", "target")
+			self:RegisterEvent("PLAYER_TARGET_CHANGED")
 			
-			BA:UpdateHeader(Header)
-			BA:UpdateAuraCache(Unit)
-			BA:UpdateAuras(Unit)
+			self:UpdateHeader(Header)
+			self:UpdateAuraCache(Unit)
+			self:UpdateAuras(Unit)
 			
 			Header:Show()
 		end
@@ -610,8 +613,6 @@ function BA:Init()
 	if not CO.db.char.unitframe.enable then return end
 	self.db = CO.db.profile.auras
 	
-	self:RegisterUnitEvent("UNIT_AURA", "player", "target")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED")
 	self:SetScript("OnEvent", function(self, event, ...)
 		if event == "UNIT_AURA" then
 			self:UpdateAuraCache(...)
