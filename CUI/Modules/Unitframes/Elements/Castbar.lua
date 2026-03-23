@@ -14,6 +14,7 @@ local GetTime						= GetTime
 local CastingBarFrame_ApplyAlpha	= CastingBarFrame_ApplyAlpha
 local INTERRUPTED					= INTERRUPTED
 local FAILED						= FAILED
+local UnitNameFromGUID 				= UnitNameFromGUID
 local UnitCastingInfo 				= UnitCastingInfo
 local UnitChannelInfo				= UnitChannelInfo
 local UnitChannelDuration 			= UnitChannelDuration
@@ -409,6 +410,13 @@ function Module:RemoveEventHandler(bar)
 	bar.active = nil
 end
 
+local function ResetBarAttributes(self)
+	self.IsCasting = nil
+	self.IsChanneling = nil
+	self.IsInterrupted = nil
+	self.CastID = nil
+end
+
 local function CastMatch(self, castID)
 	return self.CastID == castID
 end
@@ -417,7 +425,7 @@ local function GetInterruptedText(event, interruptedBy)
 	if event == 'UNIT_SPELLCAST_FAILED' or not interruptedBy then
 		return FAILED
 	elseif interruptedBy then
-		return format('%s (%s)', INTERRUPTED, interruptedBy)
+		return format('%s (%s)', INTERRUPTED, UnitNameFromGUID(interruptedBy))
 	else
 		return INTERRUPTED
 	end
@@ -467,13 +475,6 @@ end
 
 local function CastStart(self, event, unit, castGUID, spellID, castTime)
 	--print("CastStart", event, unit, castGUID, spellID, castTime, "Secrets? ", issecretvalue(event), issecretvalue(unit), issecretvalue(castGUID), issecretvalue(spellID), issecretvalue(castTime))
-	--print(self:GetName(), self.Overlay.SetTimerDuration)
-
-	--[[ local duration = element.empowering and UnitEmpoweredChannelDuration(unit) or (element.channeling and UnitChannelDuration(unit) or UnitCastingDuration(unit))
-	if duration then
-		local direction = element.channeling and StatusBarTimerDirection.RemainingTime or StatusBarTimerDirection.ElapsedTime
-		element:SetTimerDuration(duration, element.smoothing or StatusBarInterpolation.Immediate, direction)
-	end ]]
 
 	self.IsCasting, self.IsChanneling = IsUnitCasting(unit)
 
@@ -549,7 +550,7 @@ local function CastFail(self, event, unit, ...)
 end
 
 local function CastInterruptible(self, event, unit)
-	--print("CastInterruptible", event, unit)
+	print("CastInterruptible", event, unit)
 	CastStart(self, event, unit)
 
 	self.Interruptible = event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE'
@@ -589,6 +590,9 @@ local function CastOwnerTargetUpdate(self, event, unit)
 		local IsCasting, IsChanneling = IsUnitCasting(self.unit)
 		if IsCasting or IsChanneling then
 			CastStart(self, 'ForceUpdate', self.unit)
+		else
+			self:SetValue(0)
+			self:Hide()
 		end
 	end
 end
@@ -932,17 +936,20 @@ function Module:OnUpdate(elapsed)
 			if durationObject then
 				self.Time:SetFormattedText('%.2f', durationObject:GetRemainingDuration() or 0)
 			else
+				-- Cast does not exist anymore. Reset attributes so we can run cast end
+				ResetBarAttributes(self)
 				self.Time:SetText("")
 			end
 		else
 			if self:IsShown() and self:GetAlpha() > 0 then
 				self.HoldTime = (self.HoldTime or 0) + elapsed
 				if self.HoldTime > 1 then
-					-- Fade castbar over 30 frames
-					self:SetAlpha(self:GetAlpha()-((self.HoldTime-1)/30))
+					-- Fade castbar over 1 second
+					self:SetAlpha(self:GetAlpha()-((self.HoldTime-1)/GetFramerate()))
 				end
 			else
 				self:Hide()
+				ResetBarAttributes(self)
 			end
 		end
 	else

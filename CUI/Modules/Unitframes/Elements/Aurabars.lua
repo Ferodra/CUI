@@ -57,15 +57,15 @@ function BA:LoadConfig()
 	self.db = CO.db.profile.auras
 	
 	for Unit, Header in pairs(self.Containers) do
-		local profileData = CO.db.profile.auras.units[Unit].aurabars
+		local Config = CO.db.profile.auras.units[Unit].aurabars
 		
-		Header.BarNum = profileData.barNum
-		if not profileData.enable then
-			self:UnregisterAllEvents()
+		Header.BarNum = Config.barNum
+		Header.enable = Config.enable
+		if not Config.enable then
 			Header:Hide()
 		else
-			Header.NumberFormat = profileData.cooldownIdentifier
-			Header.filterType	= profileData.filterType or -1
+			Header.NumberFormat = Config.cooldownIdentifier
+			Header.filterType	= Config.filterType or -1
 			
 			E:RegisterNumberFormatDBPath("db.profile.auras.units." .. Unit .. ".aurabars.cooldownIdentifier")
 			E:CacheNumberFormat(Header.NumberFormat)
@@ -78,40 +78,37 @@ function BA:LoadConfig()
 					Header[i]:Hide()
 					Header[i].Visible = false
 				else
-					Header[i]:SetSize(profileData.width, profileData.height)
-					Header[i].Bar:SetSize(profileData.width, profileData.height)
+					Header[i]:SetSize(Config.width, Config.height)
+					Header[i].Bar:SetSize(Config.width, Config.height)
 					
-					Header[i].autoColorBarBorder = profileData.autoColorBarBorder
-					Header[i].autoColorIconBorder = profileData.autoColorIconBorder
+					Header[i].autoColorBarBorder = Config.autoColorBarBorder
+					Header[i].autoColorIconBorder = Config.autoColorIconBorder
 					
-					if not profileData.autoColorBarBorder then
-						Header[i].Bar.Border:SetBackdropBorderColor(profileData.barBorderColor.r, profileData.barBorderColor.g, profileData.barBorderColor.b, profileData.barBorderColor.a)
+					if not Config.autoColorBarBorder then
+						Header[i].Bar.Border:SetBackdropBorderColor(Config.barBorderColor.r, Config.barBorderColor.g, Config.barBorderColor.b, Config.barBorderColor.a)
 					end
-					if not profileData.autoColorIconBorder then
-						--E:SkinButtonIcon(Header[i].Icon.Tex, profileData.iconBorderColor)
-						E:ColorizeAuraButton(Header[i].Icon, nil, nil, nil, nil, nil, profileData.iconBorderColor)
+					if not Config.autoColorIconBorder then
+						--E:SkinButtonIcon(Header[i].Icon.Tex, Config.iconBorderColor)
+						E:ColorizeAuraButton(Header[i].Icon, nil, nil, nil, nil, nil, Config.iconBorderColor)
 					end
 					
-					Header[i].Bar.Background.Tex:SetColorTexture(profileData.backgroundColor[1], profileData.backgroundColor[2], profileData.backgroundColor[3], profileData.backgroundColor[4])
+					Header[i].Bar.Background.Tex:SetColorTexture(Config.backgroundColor[1], Config.backgroundColor[2], Config.backgroundColor[3], Config.backgroundColor[4])
 					
 					Header[i]:ClearAllPoints()
-					if profileData.invertGrowth then
+					if Config.invertGrowth then
 						Header[i]:SetPoint("TOPLEFT", Header, "TOPLEFT")
-						E:MoveFrame(Header[i], 0, (((profileData.height + profileData.gapY) * (i - 1)) * (-1)) - profileData.gapY)
+						E:MoveFrame(Header[i], 0, (((Config.height + Config.gapY) * (i - 1)) * (-1)) - Config.gapY)
 					else
 						Header[i]:SetPoint("BOTTOMLEFT", Header, "BOTTOMLEFT")
-						E:MoveFrame(Header[i], 0, ((profileData.height + profileData.gapY) * (i - 1)) - profileData.gapY)
+						E:MoveFrame(Header[i], 0, ((Config.height + Config.gapY) * (i - 1)) - Config.gapY)
 					end
 					
-					Header[i].Icon:SetSize(profileData.iconSize, profileData.iconSize)
+					Header[i].Icon:SetSize(Config.iconSize, Config.iconSize)
 					
 					Header[i]:Show()
 					Header[i].Visible = true
 				end
 			end
-
-			self:RegisterUnitEvent("UNIT_AURA", "player", "target")
-			self:RegisterEvent("PLAYER_TARGET_CHANGED")
 			
 			self:UpdateHeader(Header)
 			self:UpdateAuraCache(Unit)
@@ -120,6 +117,22 @@ function BA:LoadConfig()
 			Header:Show()
 		end
 	end
+
+	self:UnregisterAllEvents()
+
+	if self:HasActiveHeaders() then
+		self:RegisterUnitEvent("UNIT_AURA", "player", "target")
+		self:RegisterEvent("PLAYER_TARGET_CHANGED")
+	end
+end
+
+function BA:HasActiveHeaders()
+	local i = 0
+	for _, header in pairs(self.Containers) do
+		if header.enable then i = i + 1 end
+	end
+
+	return i>0
 end
 
 function BA:UpdateHeader(Header)
@@ -392,8 +405,6 @@ function BA:CreateBarContainer(Unit)
 	if not Container:GetScript("OnUpdate") then
 		Container:SetScript("OnUpdate", BA.Bar_OnUpdate)
 	end
-	
-	self:UpdateAuraCache(Unit)
 end
 
 function BA:CreateIcon(F, Name)
