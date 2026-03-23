@@ -413,6 +413,16 @@ local function CastMatch(self, castID)
 	return self.CastID == castID
 end
 
+local function GetInterruptedText(event, interruptedBy)
+	if event == 'UNIT_SPELLCAST_FAILED' or not interruptedBy then
+		return FAILED
+	elseif interruptedBy then
+		return format('%s (%s)', INTERRUPTED, interruptedBy)
+	else
+		return INTERRUPTED
+	end
+end
+
 local function UpdateBarVisuals(self, name, texture, barColor, showSpark, notInterruptible)
 	if name then
 		self.Name:SetText(name)
@@ -430,7 +440,6 @@ local function UpdateBarVisuals(self, name, texture, barColor, showSpark, notInt
 			self.Spark:Hide()
 		end
 	end
-
 	if notInterruptible ~= nil then
 		self.OverlayInterruptible:SetAlphaFromBoolean(notInterruptible, 0, 1)
 	else
@@ -519,9 +528,11 @@ local function CastFail(self, event, unit, ...)
 	if(event == 'UNIT_SPELLCAST_INTERRUPTED') then
 		_, _, interruptedBy, castID = ...
 	elseif(event == 'UNIT_SPELLCAST_FAILED') then
-		_, _, castID = ...
+		castID = select(3, ...)
 	end
 
+	-- Abort if the castID of this cast does not match what's on the bar
+	-- This happens when the player is repeatedly pressing a spell, for example
 	if not self:IsShown() or not CastMatch(self, castID) then return end
 
 	self.IsCasting = false
@@ -531,7 +542,7 @@ local function CastFail(self, event, unit, ...)
 	self:SetMinMaxValues(0, 1)
 	self:SetValue(1)
 
-	UpdateBarVisuals(self, event == 'UNIT_SPELLCAST_FAILED' and FAILED or INTERRUPTED, nil, Module.DBColors.Failed, false)
+	UpdateBarVisuals(self, GetInterruptedText(event, interruptedBy), nil, Module.DBColors.Failed, false)
 	Castingbar_PlayFlash(self, false)
 
 	self.HoldTime = 0

@@ -452,7 +452,16 @@ function Module:Enable()
 					type = "execute",
 					name = L["Reset"],
 					order = 1001,
-					func = function() for k,v in pairs(E.ConfigDefaults.profile.colors.castbar) do for key, color in pairs(v) do CO.db.profile.colors.castbar[k][key] = color end end end,
+					func = function()
+						for k,v in pairs(E.ConfigDefaults.profile.colors.castbar) do
+							for key, color in pairs(v) do
+								CO.db.profile.colors.castbar[k][key] = color
+							end
+						end
+
+						-- Push update
+						UCSTB:LoadConfig()
+					end,
 				},
 			},
 		},
