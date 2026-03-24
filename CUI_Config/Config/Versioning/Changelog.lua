@@ -607,7 +607,7 @@ CD.Options.args.changelog = {
 		Header_0930_90300 = {
 			order = 5936,
 			type = "header",
-			name = "Minor • 0.9.3.0 Release • Rev. 90300 [Mar 12th 2026]",
+			name = "Minor • 0.9.3.0 Release • Rev. 90300 [Mar 24th 2026]",
 		},
 		Content_0930_90300 = {
 			order = 5936,
