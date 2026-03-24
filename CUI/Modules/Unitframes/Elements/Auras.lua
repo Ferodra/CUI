@@ -177,7 +177,6 @@ end
 
 function AUR:UpdateEnchant(self, index)
 	local InfoOffset = (strmatch(self:GetName(), '2$') and 6) or 2
-	local duration, remaining = 600, 0
 	local expiration = select(InfoOffset, GetWeaponEnchantInfo())
 	local charges = select(InfoOffset+1, GetWeaponEnchantInfo())
 	
@@ -208,7 +207,7 @@ function AUR:UpdateEnchant(self, index)
 		 
 		local remaining = (expiration * 0.001) or 0
 		local duration = (remaining <= 600 and 600) or (remaining <= 1800 and 1800) or (ceil(remaining / 3600)*3600)
-		local expiration = remaining + GetTime()
+		expiration = remaining + GetTime()
 		
 		self.AuraExpirationTime, self.AuraDuration = remaining, duration
 		
