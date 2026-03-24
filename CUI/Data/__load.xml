@@ -1,4 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script File="AuraColors.lua"/>
+
 	<Script File="ClassNames.lua"/>
 	<Script File="ClassColors.lua"/>
 	<Script File="ClassPowers.lua"/>

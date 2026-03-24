@@ -415,16 +415,20 @@ end
 
 function E:ValidateColorTable(Color)
 	if Color then
-		if not Color.r and not Color.g and not Color.b then
-			Color[1] = Color[1] or 1
-			Color[2] = Color[2] or 1
-			Color[3] = Color[3] or 1
-			Color[4] = Color[4] or 1
+		if not Color.GetRGB then
+			if not Color.r and not Color.g and not Color.b then
+				Color[1] = Color[1] or 1
+				Color[2] = Color[2] or 1
+				Color[3] = Color[3] or 1
+				Color[4] = Color[4] or 1
+			else
+				Color.r = Color.r or 1
+				Color.g = Color.g or 1
+				Color.b = Color.b or 1
+				Color.a = Color.a or 1
+			end
 		else
-			Color.r = Color.r or 1
-			Color.g = Color.g or 1
-			Color.b = Color.b or 1
-			Color.a = Color.a or 1
+			Color.r, Color.g, Color.b, Color.a = Color:GetRGBA()
 		end
 		
 		return Color
@@ -495,10 +499,14 @@ function E:ColorizeAuraButton(Slot, DType, Unit, UnitAuraClass, AuraName, SpellI
 		local Color = OverrideColor or self:GetAuraColor(DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor)
 		
 		if Color then
-			if not Color.r then
-				NormalTexture:SetVertexColor(Color[1], Color[2], Color[3], Color[4] or 1)
+			if not Color.GetRGB then
+				if not Color.r then
+					NormalTexture:SetVertexColor(Color[1], Color[2], Color[3], Color[4] or 1)
+				else
+					NormalTexture:SetVertexColor(Color.r, Color.g, Color.b, Color.a or 1)
+				end
 			else
-				NormalTexture:SetVertexColor(Color.r, Color.g, Color.b, Color.a or 1)
+				NormalTexture:SetVertexColor(Color:GetRGBA())
 			end
 		end
 	else

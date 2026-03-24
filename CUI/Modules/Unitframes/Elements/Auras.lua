@@ -243,9 +243,9 @@ local function UpdateAura(self, index)
 	if self.AuraName then
 		if self.filter == "HARMFUL" then
 			if self.AuraDType then
-				self.debuffColor = DebuffTypeColor[self.AuraDType]
+				self.debuffColor = E.DebuffTypeColor[self.AuraDType]
 			else
-				self.debuffColor = DebuffTypeColor["none"]
+				self.debuffColor = E.DebuffTypeColor["none"]
 			end
 			
 			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, nil, self.debuffColor)
