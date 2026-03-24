@@ -243,7 +243,7 @@ local function UpdateAura(self, index)
 	
 	if self.AuraName then
 		if self.filter == "HARMFUL" then
-			if self.AuraDType then
+			if self.AuraDType and not issecretvalue(self.AuraDType) then
 				self.debuffColor = E.DebuffTypeColor[self.AuraDType]
 			else
 				self.debuffColor = E.DebuffTypeColor["none"]
