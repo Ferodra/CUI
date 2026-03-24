@@ -11,6 +11,9 @@ function CO:GetCharacterDefaults()
 			['generalAurabars'] = {
 				['useMasque'] = false,
 			},
+			['playerAuras'] = {
+				['enable'] = true,
+			},
 		},
 		['bags'] = {
 			['useMasque'] = false,

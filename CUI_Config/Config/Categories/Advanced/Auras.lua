@@ -15,6 +15,7 @@ local function GetOptionsTable_PlayerAuras(displayName, type, index)
 		childGroups = "tab",
 		get = function(info) return CO.db.profile.unitframe[type][ info[#info] ] end,
 		set = function(info, value) CO.db.profile.unitframe[type][ info[#info] ] = value; E:LoadModule("Auras"):LoadConfig() end,
+		disabled = function() return not CO.db.char.auras.playerAuras.enable end,
 		args = {
 			buttonGroup = {
 				order = 1,
@@ -174,6 +175,14 @@ function Module:Enable()
 		disabled = false,
 		childGroups = "tab",
 		args = {
+			enableModule = {
+				type = "toggle",
+				order = 0,
+				name = L["EnableModule"],
+				desc = 'Controls the state of this module. When disabled, you\'re just left with Blizzard frames instead of customizable ones.',
+				get = function() return CO.db.char.auras.playerAuras.enable end,
+				set = function(info, value) CO.db.char.auras.playerAuras.enable = value; CD:ShowNotification("CHARACTERSETTING_NOTIFICATION") end,
+			},
 			buffs = GetOptionsTable_PlayerAuras("Buffs", "buffs", 1),
 			debuffs = GetOptionsTable_PlayerAuras("Debuffs", "debuffs", 2),
 		},

@@ -113,10 +113,12 @@ function Module:RefreshFontTags_All(DBPath)
             self:RefreshFontTags(unitframe)
         end
     else
-        -- We want to limit the updated frames
-        for k, font in pairs(E.AutoFonts[DBPath]) do
-            if font.Owner and font.Format then
-                self:RefreshFontTags(font.Owner)
+        if E.AutoFonts[DBPath] then
+            -- We want to limit the updated frames
+            for k, font in pairs(E.AutoFonts[DBPath]) do
+                if font.Owner and font.Format then
+                    self:RefreshFontTags(font.Owner)
+                end
             end
         end
     end

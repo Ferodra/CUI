@@ -691,6 +691,22 @@ function E:TableMerge(target, source)
     return target
 end
 
+function E:TableMergeAdvanced(target, source, default)
+	for k,v in pairs(default) do
+		if type(v) ~= "table" then
+			if source and source[k] ~= nil then
+				target[k] = source[k]
+			else
+				target[k] = v
+			end
+		else
+			if type(target[k]) ~= "table" then target[k] = {} else wipe(target[k]) end
+			self:TableMergeAdvanced(target[k], type(source) == "table" and source[k], v)
+		end
+	end
+	return target
+end
+
 -- Provides an easy way to retrieve color information from a table
 function E:GetRGB(Data)
 	return Data.r or Data[1], Data.g or Data[2], Data.b or Data[3], Data.a or Data[4]

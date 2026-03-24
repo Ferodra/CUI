@@ -57,7 +57,7 @@ function E:UIFrameFade(frame, fadeInfo)
 end
 
 -- Convenience function to do a simple fade in
-function E:UIFrameFadeIn(frame, timeToFade, startAlpha, endAlpha)
+function E:UIFrameFadeIn(frame, timeToFade, startAlpha, endAlpha, finishedFunc, finishedArg1)
 	if not frame or frame:IsForbidden() then return end
 	
 	frame.FadeData = frame.FadeData or {}
@@ -67,11 +67,14 @@ function E:UIFrameFadeIn(frame, timeToFade, startAlpha, endAlpha)
 	frame.FadeData.timeToFade = timeToFade
 	frame.FadeData.startAlpha = startAlpha
 	frame.FadeData.endAlpha = endAlpha
+	frame.FadeData.finishedFunc = finishedFunc
+	frame.FadeData.finishedArg1 = finishedArg1
+	
 	self:UIFrameFade(frame, frame.FadeData)
 end
 
 -- Convenience function to do a simple fade out
-function E:UIFrameFadeOut(frame, timeToFade, startAlpha, endAlpha)
+function E:UIFrameFadeOut(frame, timeToFade, startAlpha, endAlpha, finishedFunc, finishedArg1)
 	if not frame or frame:IsForbidden() then return end
 	
 	frame.FadeData = frame.FadeData or {}
@@ -81,6 +84,9 @@ function E:UIFrameFadeOut(frame, timeToFade, startAlpha, endAlpha)
 	frame.FadeData.timeToFade = timeToFade
 	frame.FadeData.startAlpha = startAlpha
 	frame.FadeData.endAlpha = endAlpha
+	frame.FadeData.finishedFunc = finishedFunc
+	frame.FadeData.finishedArg1 = finishedArg1
+	
 	self:UIFrameFade(frame, frame.FadeData)
 end
 

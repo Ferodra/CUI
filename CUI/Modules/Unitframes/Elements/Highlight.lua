@@ -36,29 +36,57 @@ local function ForceUpdate(self)
 	UpdateElement(self)
 end
 
+local function Highlight_OnFadeFinished(self)
+	self.IsFading = false
+	print("FINISHED")
+end
+
+local function Highlight_OnModAlpha(self, state)
+	if issecretvalue(state) then return end
+	self.IsFading = true
+	print(state)
+	if state ~= self.LastState then
+		print(state, self.LastState)
+		if state then
+			self:SetAlpha(0)
+			E:UIFrameFadeIn(self, 0.5, self:GetAlpha(), 1, Highlight_OnFadeFinished, self)
+			self.LastState = state
+		else
+			self:SetAlpha(1)
+			E:UIFrameFadeOut(self, 0.5, self:GetAlpha(), 0, Highlight_OnFadeFinished, self)
+			self.LastState = state
+		end
+	else
+		print("None")
+	end
+	
+end
+
 ----------
 
 function Module:HighlightUnit(Unit)
 	for _, self in pairs(Module.Handles) do
-		if self:IsVisible() then			
-			self.Highlight.Tex:SetAlphaFromBoolean(UnitIsUnit(Unit, self.unit), 1, 0)
-			self.Highlight.Tex:Show()
-			--if UnitIsUnit(Unit, self.unit) then
-				-- Thanks Blizzard for breaking such things. Really fun.
-				
-				
-				--if self.Highlight.Tex:GetAlpha() < 1 then
-					--E:UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
-					--UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
+		if self:IsVisible() then
+			if E.IsRetail then
+				--if not self.Highlight.Tex.IsFading then
+					self.Highlight.Tex:SetAlphaFromBoolean(UnitIsUnit(Unit, self.unit), 1, 0)
+					self.Highlight.Tex:Show()
 				--end
-				--self.Highlight.Tex:SetAlpha(1)
-			--else
-				--if self.Highlight.Tex:GetAlpha() > 0 then
-					--E:UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
-					--UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
-				--end
-				--self.Highlight.Tex:SetAlpha(0)
-			--end
+			else
+				if UnitIsUnit(Unit, self.unit) then
+					if self.Highlight.Tex:GetAlpha() < 1 then
+						E:UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
+						UIFrameFadeIn(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 1)
+					end
+					self.Highlight.Tex:SetAlpha(1)
+				else
+					if self.Highlight.Tex:GetAlpha() > 0 then
+						E:UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
+						UIFrameFadeOut(self.Highlight.Tex, Module.FadeTime, self.Highlight.Tex:GetAlpha(), 0)
+					end
+					self.Highlight.Tex:SetAlpha(0)
+				end
+			end
 		end
 	end
 end
@@ -105,6 +133,7 @@ function Module:Create(F)
 	F.Highlight.Tex = F.Highlight:CreateTexture(nil, "OVERLAY")
 	F.Highlight.Tex:SetAllPoints(true)
 	F.Highlight.Tex:Hide()
+	--hooksecurefunc(F.Highlight.Tex, "SetAlphaFromBoolean", Highlight_OnModAlpha)
 	
 	F.Highlight.ForceUpdate = ForceUpdate
 	

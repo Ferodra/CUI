@@ -144,7 +144,7 @@ function CO:InitGlobalCharDB()
 		-- Retrieve char db from global scope
 		-- Yes, this will create a lot of uneccesary DB clutter, but is probably the best way to go about it,
 		-- since disabling it again will leave the player with the last globally set config
-		self.db.char = E:TableDeepCopy(self.db.global.charDB)
+		self.db.char = E:TableMergeAdvanced(self.db.char, self.db.global.charDB, self:GetCharacterDefaults())
 	end
 end
 

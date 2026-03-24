@@ -220,6 +220,22 @@ CD.Options.args.character = {
 						},
 					},
 				},
+
+				playerAuraGroup = {
+					type = 'group',
+					name = L["Buffs and Debuffs"],
+					order = 30,
+					args = {
+						enable = {
+							type = "toggle",
+							order = 1,
+							name = L['EnableModule'],
+							desc = 'Controls the state of this module. When disabled, you\'re just left with Blizzard frames instead of customizable ones.',
+							get = function() return CO.db.char.auras.playerAuras.enable end,
+							set = function(info, value) CO.db.char.auras.playerAuras.enable = value; CD:ShowNotification("CHARACTERSETTING_NOTIFICATION") end,
+						},
+					},
+				},
 			},
 		},
 	},

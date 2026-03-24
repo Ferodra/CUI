@@ -577,6 +577,7 @@ L["Reload"] 				= "Neu Laden"
 L["Later"] 					= "Später"
 L["Nofification_Reload"] 	= "Die vorgenommenen Änderungen erfordern ein Neuladen der Benutzeroberfläche, um vollständig wirksam zu werden!"
 L["Nofification_Charactersetting"] = "Die vorgenommene Einstellung betrifft nur diesen Charakter und wird nicht im Profil selbst gespeichert!\nDiese Änderung erfordert ein Neuladen der Benutzeroberläche, um vollständig wirksam zu werden."
+L["Nofification_Charactersetting_Global"] = "Die vorgenommene Einstellung betrifft aufgrund eingeschalteter globaler Charaktereinstellungen alle Charaktere!\nDiese Änderung erfordert ein Neuladen der Benutzeroberläche, um vollständig wirksam zu werden."
 L["Nofification_Relog"] 	= "Die vorgenommene Einstellung erfordert einen Relog, um vollständig wirksam zu werden!"
 L['Nofification_FilterDelete'] = 'Möchten Sie diesen Filter Eintrag wirklich löschen?'
 L["NewVersion"]				= "Eine neue Version ist verfügbar! ['%s' vom %s, Revision: %s]"

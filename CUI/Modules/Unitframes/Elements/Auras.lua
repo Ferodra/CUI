@@ -109,14 +109,35 @@ local function SetTooltip(button)
 	end
 end
 
-local TimeLeftFormatter = CreateFromMixins(SecondsFormatterMixin);
---TimeLeftFormatter:Init(0, SecondsFormatter.Abbreviation.Truncate, true);
+local function RegisterDurationText(self, filter)
+	E:RegisterAutoFont(self, format("CO.db.profile.unitframe.%s.time", (filter == 'HARMFUL') and 'buffs' or 'debuffs'))
+	E:UpdateAutoFont(format("CO.db.profile.unitframe.%s.time", (filter == 'HARMFUL') and 'buffs' or 'debuffs'))
+end
 
-TimeLeftFormatter:Init(
+local TimeLeftFormatter = CreateFromMixins(SecondsFormatterMixin);
+TimeLeftFormatter:Init(0, SecondsFormatter.Abbreviation.OneLetter, true, true);
+function TimeLeftFormatter:GetMinInterval(seconds)
+	if not seconds then
+		return SecondsFormatter.Interval.Days;
+	elseif seconds > SECONDS_PER_DAY then
+		return SecondsFormatter.Interval.Days;
+	elseif seconds > SECONDS_PER_HOUR then
+		return SecondsFormatter.Interval.Hours;
+	elseif seconds > SECONDS_PER_MIN then
+		return SecondsFormatter.Interval.Minutes;
+	end
+
+	return SecondsFormatter.Interval.Seconds;
+end
+function TimeLeftFormatter:FormatZero(abbreviation, toLower)
+	return ''
+end
+
+--[[ TimeLeftFormatter:Init(
 	SECONDS_PER_HOUR, 
 	SecondsFormatter.Abbreviation.None,
 	SecondsFormatterConstants.DontRoundUpLastUnit, 
-	SecondsFormatterConstants.DontConvertToLower)
+	SecondsFormatterConstants.DontConvertToLower) ]]
 
 local function Button_OnUpdate(self, elapsed)
 	self.elapsed = self.elapsed - elapsed;
@@ -126,25 +147,11 @@ local function Button_OnUpdate(self, elapsed)
 		-- OnUpdate Code BEGIN
 		
 		if self.RunOnUpdate then
-			--if not self.HasTempEnchant then
-			--	self.timeLeftBase = E:makePositive(E:Round(GetTime() - self.AuraExpirationTime, 2))
-			--	
-			--else
-			--	self.timeLeftBase = self.AuraExpirationTime
-			--end
-			
-			--if self.timeLeftBase > 10 then self.timeLeft = E:FormatTime(self.timeLeftBase, 0); else self.timeLeft = E:FormatTime(self.timeLeftBase, 1); end
-			
-			
-			
-			--self.time:SetText(E:FormatTime(self.time.DurationObject:GetRemainingDuration(), 1))
-			
-			--print(issecretvalue(self.time.DurationObject:GetRemainingDuration(), false, false, 1))
-			--self.time:SetText(SecondsToTime(self.time.DurationObject:GetRemainingDuration(), false, false, 1))
-			--print(self.time.DurationObject:GetRemainingDuration(), SecondsToTimeAbbrev(self.time.DurationObject:GetRemainingDuration()))
-			--self.time:SetText(SecondsToTimeAbbrev(self.time.DurationObject:GetRemainingDuration()))
-			
-			--self.time:SetText(TimeLeftFormatter:Format(self.time.DurationObject:GetRemainingDuration()))
+			--[[ local Duration = self.time.DurationObject:GetRemainingDuration()
+			local IsZero = self.time.DurationObject:IsZero()
+
+			print(TimeLeftFormatter:Format(Duration), Duration)
+			self.time:SetFormattedText(TimeLeftFormatter:Format(Duration)) ]]
 		end
 		
 		if GameTooltip:IsOwned(self) then
@@ -199,19 +206,19 @@ function AUR:UpdateEnchant(self, index)
 		self.AuraExpirationTime, self.AuraDuration = remaining, duration
 		
 		if duration <= 0.05 then
-			self.time:SetText('')
+			--self.time:SetText('')
 			
-			self.RunOnUpdate = false
+			--self.RunOnUpdate = false
 			self.Cooldown:Hide()
 		else
-			self.RunOnUpdate = true
+			--self.RunOnUpdate = true
 			self.Cooldown:Show()
 			
 			self.Cooldown:SetCooldown((((expiration * 0.001) + GetTime())) - self.AuraDuration, self.AuraDuration)
 		end
 	else
-		self.time:SetText('')
-		self.RunOnUpdate = false
+		--self.time:SetText('')
+		--self.RunOnUpdate = false
 		self.Cooldown:Hide()
 	end
 end
@@ -260,19 +267,14 @@ local function UpdateAura(self, index)
 		
 		local Duration = GetAuraDuration("player", Data.auraInstanceID)
 		if Duration then
-			self.RunOnUpdate = true
+			--self.RunOnUpdate = true
 			self.Cooldown:SetCooldownFromDurationObject(Duration, true)
-			self.time.DurationObject = Duration
-			self.time:Show()
-		else
-			self.time:SetText(E.STR.EMPTY)
-			self.time:Hide()
-			
-			self.RunOnUpdate = false
+		else			
+			--self.RunOnUpdate = false
 			self.Cooldown:Clear()
 		end
 	else
-		self.RunOnUpdate = false
+		--self.RunOnUpdate = false
 		self.Cooldown:Hide()
 	end
 end
@@ -324,6 +326,8 @@ function AUR:SetupCooldown(Button)
 	Button.Cooldown:SetAllPoints(Button)
 	Button.Cooldown:SetReverse(true)
 	Button.Cooldown:Show()
+
+	Button.time = Button.Cooldown:GetRegions()
 end
 
 local CreateIconFont = "FRIZQT__.TTF"
@@ -356,23 +360,17 @@ function AUR:CreateIcon(button)
 	button.count:ClearAllPoints()
 	button.count:SetParent(button.FontHolder)
 
-	button.time = button.FontHolder:CreateFontString(nil, "ARTWORK")
-	E:InitializeFontFrame(button.time, "ARTWORK", CreateIconFont, 11, {1,0.96,0.41}, 1, {0,0}, "", 0, 0, button.FontHolder, "CENTER", {1,1})
-	button.time:SetParent(button.FontHolder)
+	--button.time = button.FontHolder:CreateFontString(nil, "ARTWORK")
+	--E:InitializeFontFrame(button.time, "ARTWORK", CreateIconFont, 11, {1,0.96,0.41}, 1, {0,0}, "", 0, 0, button.FontHolder, "CENTER", {1,1})
+	--button.time:SetParent(button.FontHolder)
 	
-	if button:GetParent():GetAttribute("filter") == "HARMFUL" then
-		E:RegisterAutoFont(button.count, "CO.db.profile.unitframe.debuffs.count")
-		E:RegisterAutoFont(button.time, "CO.db.profile.unitframe.debuffs.time")
-		
-		E:UpdateAutoFont("CO.db.profile.unitframe.debuffs.count")
-		E:UpdateAutoFont("CO.db.profile.unitframe.debuffs.time")
-	else
-		E:RegisterAutoFont(button.count, "CO.db.profile.unitframe.buffs.count")
-		E:RegisterAutoFont(button.time, "CO.db.profile.unitframe.buffs.time")
-		
-		E:UpdateAutoFont("CO.db.profile.unitframe.buffs.count")
-		E:UpdateAutoFont("CO.db.profile.unitframe.buffs.time")
-	end
+	local Filter = button:GetParent():GetAttribute("filter")
+	
+	E:RegisterAutoFont(button.count, format("CO.db.profile.unitframe.%s.count", (Filter == 'HARMFUL') and 'debuffs' or 'buffs'))
+	E:RegisterAutoFont(button.time, format("CO.db.profile.unitframe.%s.time", (Filter == 'HARMFUL') and 'debuffs' or 'buffs'))
+	
+	E:UpdateAutoFont(format("CO.db.profile.unitframe.%s.count", (Filter == 'HARMFUL') and 'debuffs' or 'buffs'))
+	E:UpdateAutoFont(format("CO.db.profile.unitframe.%s.time", (Filter == 'HARMFUL') and 'debuffs' or 'buffs'))
 		
 	button.elapsed = 0
 	button.header = button:GetParent()
@@ -596,8 +594,10 @@ end
 function AUR:Init()	
 	self.db = CO.db.profile.unitframe.auras
 	
-	--self:InitializeAuras()
-	--self:LoadConfig()
+	if CO.db.char.auras.playerAuras.enable then
+		self:InitializeAuras()
+		self:LoadConfig()
+	end
 end
 
 E:AddModule("Auras", AUR)

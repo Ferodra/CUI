@@ -577,6 +577,7 @@ L["Reload"] 				= "Reload"
 L["Later"] 					= "Later"
 L["Nofification_Reload"] 	= "The modifications you made may not fully apply until the Interface has been reloaded!"
 L["Nofification_Charactersetting"] = "The modification you made only affects this character and is not being saved in the current profile!\nThis modification requires you to reload your UI to make it fully apply."
+L["Nofification_Charactersetting_Global"] = "The modification you made affects all characters, due to enabled global character settings!\nThis modification requires you to reload your UI to make it fully apply."
 L["Nofification_Relog"] 	= "The modification you made requires a relog to fully apply!"
 L['Nofification_FilterDelete'] = 'Are you sure you want to delete this filter entry?'
 L["NewVersion"]				= "A new Version is available! ['%s' from %s, Revision: %s]"

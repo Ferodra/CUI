@@ -68,8 +68,19 @@ end
 	  hideOnEscape = true,
 	  preferredIndex = 3,
 	}
+
+	local CharSetting_Title
+
+	do
+		if not CO.db.global.useGlobalCharacterDB then
+			CharSetting_Title = L["Nofification_Charactersetting"]
+		else
+			CharSetting_Title = L["Nofification_Charactersetting_Global"]
+		end
+	end
+
 	StaticPopupDialogs["CHARACTERSETTING_NOTIFICATION"] = {
-	  text = L["Nofification_Charactersetting"],
+	  text = CharSetting_Title,
 	  button1 = L["Reload"],
 	  button2 = L["Later"],
 	  OnAccept = function() ReloadUI(); CurrentShownNotification = nil end,
@@ -105,7 +116,7 @@ end
 		if not self.StickyMovers then
 			self.StickyMovers = CreateFrame("CheckButton", "StickyMovers", self, "UICheckButtonTemplate")
 			_G[self.StickyMovers:GetName() .. 'Text']:SetText("Sticky Movers")
-			
+
 			self.StickyMovers:SetSize(32, 32)
 			self.StickyMovers:SetPoint("LEFT", self.Tooltips, "RIGHT", 135, 0)
 
