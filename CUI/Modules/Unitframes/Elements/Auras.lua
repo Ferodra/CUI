@@ -6,6 +6,7 @@ AUR.E = CreateFrame("Frame", "CUI_PlayerAurasEventHandler")
 
 ------------------------------------
 local format		= string.format
+local ceil			= math.ceil
 local GetTime		= GetTime
 local UnitAura				= C_TooltipInfo.GetUnitAura
 local GetAuraDataByIndex 	= C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
@@ -141,12 +142,20 @@ end
 
 local function Button_OnUpdate(self, elapsed)
 	self.elapsed = self.elapsed - elapsed;
+	self.totalElapsed = (self.totalElapsed or 0) + elapsed
 
 	if ( self.elapsed <= 0 ) then
 		--------------------------------------------------------------
 		-- OnUpdate Code BEGIN
 		
 		if self.RunOnUpdate then
+			--if self.HasTempEnchant then
+			--	self.EnchantTimePassed = (self.EnchantTimePassed or 0) + self.totalElapsed
+				--print(self.EnchantTimePassed, self.AuraExpirationTime - self.EnchantTimePassed)
+			--	print(E:FormatTime(self.AuraExpirationTime - self.EnchantTimePassed))
+				--self.time:SetText(E:FormatTime(self.AuraExpirationTime - self.EnchantTimePassed))
+			--end
+
 			--[[ local Duration = self.time.DurationObject:GetRemainingDuration()
 			local IsZero = self.time.DurationObject:IsZero()
 
@@ -161,7 +170,8 @@ local function Button_OnUpdate(self, elapsed)
 
 		-- OnUpdate Code END
 		--------------------------------------------------------------
-		self.elapsed = 0.07;
+		self.elapsed = 0.25;
+		self.totalElapsed = 0
 	end
 end
 
@@ -183,7 +193,7 @@ function AUR:UpdateEnchant(self, index)
 	end
 	
 	self.Tex:SetTexture(GetInventoryItemTexture('player', index))
-	
+
 	if expiration then
 		
 		local quality = GetInventoryItemQuality('player', index)
@@ -195,31 +205,24 @@ function AUR:UpdateEnchant(self, index)
 		else
 			E:ColorizeAuraButton(self, nil, nil, nil, nil, nil, self.header.useClassColor)
 		end
-		
-		remaining = expiration / 1000
-		if remaining <= 3600 and remaining > 1800 then
-			duration = 3600
-		elseif remaining <= 1800 and remaining > 600 then
-			duration = 1800
-		end
+		 
+		local remaining = (expiration * 0.001) or 0
+		local duration = (remaining <= 600 and 600) or (remaining <= 1800 and 1800) or (ceil(remaining / 3600)*3600)
+		local expiration = remaining + GetTime()
 		
 		self.AuraExpirationTime, self.AuraDuration = remaining, duration
 		
 		if duration <= 0.05 then
-			--self.time:SetText('')
-			
-			--self.RunOnUpdate = false
 			self.Cooldown:Hide()
+			self.RunOnUpdate = false
 		else
-			--self.RunOnUpdate = true
 			self.Cooldown:Show()
-			
-			self.Cooldown:SetCooldown((((expiration * 0.001) + GetTime())) - self.AuraDuration, self.AuraDuration)
+			self.Cooldown:SetCooldown(expiration - duration, duration)
+			self.RunOnUpdate = true
 		end
 	else
-		--self.time:SetText('')
-		--self.RunOnUpdate = false
 		self.Cooldown:Hide()
+		--self.RunOnUpdate = false
 	end
 end
 
@@ -235,9 +238,8 @@ local function UpdateAura(self, index)
 	self.filter = self.header:GetAttribute("filter")
 	
 	local Data = GetAuraDataByIndex("player", index, self.filter)
-	--self.AuraName, self.AuraTexture, self.AuraCount, self.AuraDType, self.AuraDuration, self.AuraExpirationTime, self.AuraSpellID = 
-	--local Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.sourceUnit, Data.isStealable, Data.nameplateShowPersonal, Data.spellId, Data.canApplyAura, Data.isBossAura, Data.isFromPlayerOrPlayerPet, Data.nameplateShowAll, Data.timeMod
-	
+	if not Data then return end
+
 	self.AuraName, self.AuraTexture, self.AuraCount, self.AuraDType, self.AuraDuration, self.AuraExpirationTime, self.AuraSpellID = Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.spellId
 	
 	if self.AuraName then
@@ -251,18 +253,9 @@ local function UpdateAura(self, index)
 			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, nil, self.debuffColor)
 		else
 			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, self.header.useClassColor)
-			--Module:ColorizeAura(Slot, DType, Unit, UnitAuraClass, AuraName, SpellID)
-			--E:SkinButtonIcon(self.texture, E:ParseDBColor(self.header.useClassColor))
 		end
-		
-		
-		self.count:SetText(GetAuraApplicationDisplayCount("player", Data.auraInstanceID, 2, 99))
-		--if self.AuraCount and self.AuraCount > 1 then
-			--self.count:SetText(self.AuraCount)
-		--else
-			--self.count:SetText(E.STR.EMPTY)
-		--end
-		
+
+		self.count:SetText(GetAuraApplicationDisplayCount("player", Data.auraInstanceID, 2, 99))		
 		self.Tex:SetTexture(self.AuraTexture)
 		
 		local Duration = GetAuraDuration("player", Data.auraInstanceID)

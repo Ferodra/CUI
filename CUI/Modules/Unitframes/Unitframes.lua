@@ -605,7 +605,7 @@ end
 			Unitframe.Overlay:SetAllPoints(Unitframe)
 			
 			Unitframe.TextOverlay = CreateFrame("Frame", TextOverlayName or "CUI_UnitTextOverlay", Unitframe.Overlay)
-			Unitframe.TextOverlay:SetFrameLevel(Unitframe.TextOverlay:GetFrameLevel() + 50)
+			Unitframe.TextOverlay:SetFrameLevel(Unitframe.TextOverlay:GetFrameLevel() + 10)
 			Unitframe.TextOverlay:SetAllPoints(Unitframe.Overlay)
 		end
 		
