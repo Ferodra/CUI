@@ -254,7 +254,7 @@ local function UpdateAura(self, index)
 			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, self.header.useClassColor)
 		end
 
-		self.count:SetText(GetAuraApplicationDisplayCount("player", Data.auraInstanceID, 2, 99))		
+		self.count:SetText(GetAuraApplicationDisplayCount("player", Data.auraInstanceID, 2, 99))
 		self.Tex:SetTexture(self.AuraTexture)
 		
 		local Duration = GetAuraDuration("player", Data.auraInstanceID)
