@@ -777,7 +777,7 @@ function Module:CreateActionBars()
 			actionButton.Overlay = CreateFrame('Frame', "CUI_ActionButtonOverlayFrame", actionButton)
 			actionButton.Overlay:SetAllPoints(actionButton)
 			self:CreateCooldownText(actionButton)
-			hooksecurefunc(actionButton.cooldown, 'SetCooldown', self.OnSetCooldown)
+			--hooksecurefunc(actionButton.cooldown, 'SetCooldown', self.OnSetCooldown)
 			actionButton.cooldown:SetHideCountdownNumbers(true)
 			
 			actionButton.cooldown:Hide()
@@ -1014,7 +1014,8 @@ function Module:CreateCooldownText(self)
 	local Cooldown = self.Cooldown or self.cooldown
 	
 	if not Cooldown.cooldownText then
-		Cooldown.cooldownText = E:NewFontObject(nil, "ARTWORK", Cooldown, 10, 5)
+		--Cooldown.cooldownText = E:NewFontObject(nil, "ARTWORK", Cooldown, 10, 5)
+		Cooldown.cooldownText = Cooldown:GetRegions()
 		
 		Cooldown.update = 0
 	end

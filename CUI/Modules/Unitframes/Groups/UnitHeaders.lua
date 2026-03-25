@@ -351,6 +351,10 @@ local function UpdateAllChildModules(self, forceUpdate)
 		-- If we were to continue, we would be stuck with false initial data
 		return false
 	end
+
+	if not InCombatLockdown() then
+		self:RegisterForClicks('AnyUp')
+	end
 	
 	UF:LoadAllUnitframeModules(self)
 	UF:LoadConfig(self, true)
@@ -453,8 +457,8 @@ InitializeChild = function(self)
 	self.ScheduleDelayedUpdate = ScheduleDelayedUpdate
 	self.Update = UpdateAllChildModules
 	
-	self:RegisterForClicks('AnyUp')
 	if not InCombatLockdown() or not self:IsProtected() then
+		self:RegisterForClicks('AnyUp')
 		self:SetSize(UF.db.units[self.ConfigKey].health.width, UF.db.units[self.ConfigKey].health.height)
 	end
 	
