@@ -30,7 +30,7 @@ function AB:InitExtraActionButton()
 		Button.Overlay:SetAllPoints(Button)
 		
 		self:CreateCooldownText(Button)
-		hooksecurefunc(Cooldown, 'SetCooldown', self.OnSetCooldown)
+		--hooksecurefunc(Cooldown, 'SetCooldown', self.OnSetCooldown)
 		
 		Button:HookScript("OnEnter", function(self)
 			LibKeyBound:Set(self)

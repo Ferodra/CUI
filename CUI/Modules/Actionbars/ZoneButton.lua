@@ -47,7 +47,7 @@ function AB:InitZoneActionButton()
 					spellButton.Cooldown:SetHideCountdownNumbers(true)
 					
 					AB:CreateCooldownText(spellButton)
-					hooksecurefunc(spellButton.cooldown, 'SetCooldown', AB.OnSetCooldown)
+					--hooksecurefunc(spellButton.cooldown, 'SetCooldown', AB.OnSetCooldown)
 					
 					if spellButton.HotKey then
 						E:RegisterAutoFont(spellButton.HotKey, "db.profile.actionbar.zonebar.hotkey")
@@ -68,7 +68,7 @@ function AB:InitZoneActionButton()
 				Button.cooldown.Parent = Button
 				
 				AB:CreateCooldownText(Button)
-				hooksecurefunc(Button.cooldown, 'SetCooldown', AB.OnSetCooldown)
+				--hooksecurefunc(Button.cooldown, 'SetCooldown', AB.OnSetCooldown)
 				
 				E:RegisterAutoFont(Button.HotKey, "db.profile.actionbar.zonebar.hotkey")
 				E:RegisterAutoFont(Button.Count, "db.profile.actionbar.zonebar.count")
