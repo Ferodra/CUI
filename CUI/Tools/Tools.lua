@@ -53,6 +53,7 @@ end
 
 local TablePathCache = {}
 function E:GetTableByPath(Path, Source)
+	if not Path then return end
 	if TablePathCache[Source] and TablePathCache[Source][Path] then return TablePathCache[Source][Path] end
 
 	local Separator = "."

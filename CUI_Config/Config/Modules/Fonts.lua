@@ -45,6 +45,8 @@ function CD:AddMethods(config, DBPath)
 end
 
 function CD:AddFontOptions(DBPath, Order)
+	--if not DBPath then error('AddFontOptions requires a valid DBPath!') return end
+
 	local config = {}
 	local Exclusions = E:GetFontExclusions(DBPath)
 	local Inclusions = E:GetFontInclusions(DBPath)
@@ -58,7 +60,7 @@ function CD:AddFontOptions(DBPath, Order)
 			name = "Text-Format",
 			desc = "A string of various format types for this font.\nPossible values:\n[health], [health-formatted], [health-max], [health-max-formatted], [health-pct], [health-missing], [health-missing-formatted], [health-missing-pct]\n\n[power], [power-formatted], [power-max], [power-max-formatted], [power-pct]\n\n[name], [level], [level-max], [level-except-max]\n\n[class], [raidgroup], [guild-name], [guild-rank-name]\n\n[newline]",
 			width = "full",
-			disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+			disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 		}
 	end
 
@@ -77,7 +79,7 @@ function CD:AddFontOptions(DBPath, Order)
 			name = L["Width"],
 			desc = L["WidthFontDesc"],
 			min = 0, max = 500, step = 1,
-			disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+			disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 		}
 	end
 	if not Exclusions.height then
@@ -87,7 +89,7 @@ function CD:AddFontOptions(DBPath, Order)
 			name = L["Height"],
 			desc = L["HeightFontDesc"],
 			min = 0, max = 500, step = 1,
-			disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+			disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 		}
 	end
 	if not Exclusions.position or not Exclusions.xOffset or not Exclusions.yOffset or not Exclusions.horizontalAlign or not Exclusions.verticalAlign then
@@ -103,7 +105,7 @@ function CD:AddFontOptions(DBPath, Order)
 				order = (Order or 11) + 11,
 				name = L["Position"],
 				values = E.Positions,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.xOffset then
@@ -113,7 +115,7 @@ function CD:AddFontOptions(DBPath, Order)
 				name = L["XOffset"],
 				min = -5000, max = 5000,
 				softMin = -300, softMax = 300, step = 1,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.yOffset then
@@ -123,7 +125,7 @@ function CD:AddFontOptions(DBPath, Order)
 				name = L["YOffset"],
 				min = -5000, max = 5000,
 				softMin = -300, softMax = 300, step = 1,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.horizontalAlign then
@@ -134,7 +136,7 @@ function CD:AddFontOptions(DBPath, Order)
 				order = (Order or 14) + 14,
 				-- style = "dropdown",
 				values = CD.FontHorizontalAlign,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.verticalAlign then
@@ -145,7 +147,7 @@ function CD:AddFontOptions(DBPath, Order)
 				order = (Order or 14) + 14,
 				-- style = "dropdown",
 				values = CD.FontVerticalAlign,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 	end
@@ -161,7 +163,7 @@ function CD:AddFontOptions(DBPath, Order)
 				type = 'range',
 				name = L["FontHeight"],
 				min = 3, max = 90, step = 1,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.fontType then
@@ -171,7 +173,7 @@ function CD:AddFontOptions(DBPath, Order)
 			  type = "select",
 			  order = (Order or 22) + 22,
 			  values = CO.AceGUIWidgetLSMlists["font"],
-			  disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+			  disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 			if not Exclusions.fontFlags then
@@ -180,7 +182,7 @@ function CD:AddFontOptions(DBPath, Order)
 			  type = "select",
 			  order = (Order or 23) + 23,
 			  values = CD.FontFlags,
-			  disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+			  disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.fontColor then
@@ -191,25 +193,25 @@ function CD:AddFontOptions(DBPath, Order)
 				desc = L["UseClassColorDesc"],
 				get = function() return E:GetTableByPath(DBPath, CO).fontColor.useClassColor end,
 				set = function(info, value) E:GetTableByPath(DBPath, CO).fontColor.useClassColor = value; E:UpdateAutoFont(DBPath) end,
-				hidden = function() return not E:GetTableByPath(DBPath, CO).fontColor end,
+				hidden = DBPath and function() return not E:GetTableByPath(DBPath, CO).fontColor end,
 			}
 			config.fontColorRgba = {
 				name = L["Color"],
 				type = "color",
 				hasAlpha = true,
 				order = (Order or 25) + 25,
-				get = function(info)
+				get = DBPath and function(info)
 					local c = E:ParseDBColor(E:GetTableByPath(DBPath, CO).fontColor)
 					return c[1], c[2], c[3], c[4] or 1
 				end,
-				set = function(info, r, g, b, a)
+				set = DBPath and function(info, r, g, b, a)
 					local c = E:ParseDBColor(E:GetTableByPath(DBPath, CO).fontColor)
 					c[1], c[2], c[3], c[4] = r, g, b, a or 1
 					
 					E:UpdateAutoFont(DBPath)
 				end,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable or E:GetTableByPath(DBPath, CO).fontColor.useClassColor end,
-				hidden = function() return not E:GetTableByPath(DBPath, CO).fontColor end, -- Only display when there actually are fontColor configs for this
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable or E:GetTableByPath(DBPath, CO).fontColor.useClassColor end,
+				hidden = DBPath and function() return not E:GetTableByPath(DBPath, CO).fontColor end, -- Only display when there actually are fontColor configs for this
 			}
 		end
 	end
@@ -225,16 +227,16 @@ function CD:AddFontOptions(DBPath, Order)
 			  type = "color",
 			  hasAlpha = true,
 			  order = (Order or 31) + 31,
-			  get = function(info)
+			  get = DBPath and function(info)
 					local c = E:GetTableByPath(DBPath, CO).fontShadowColor
 						return c[1], c[2], c[3], c[4]
 			  end,
-			  set = function(info, r, g, b, a)
+			  set = DBPath and function(info, r, g, b, a)
 					local color = E:GetTableByPath(DBPath, CO).fontShadowColor
 					color[1], color[2], color[3], color[4] = r, g, b, a
 					E:UpdateAutoFont(DBPath)
 			  end,
-			  disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+			  disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.xFontShadowOffset then
@@ -243,7 +245,7 @@ function CD:AddFontOptions(DBPath, Order)
 				type = 'range',
 				name = L["XOffset"],
 				min = -10, max = 10, step = 1,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 		if not Exclusions.yFontShadowOffset then
@@ -252,7 +254,7 @@ function CD:AddFontOptions(DBPath, Order)
 				type = 'range',
 				name = L["YOffset"],
 				min = -10, max = 10, step = 1,
-				disabled = function() return not E:GetTableByPath(DBPath, CO).enable end,
+				disabled = DBPath and function() return not E:GetTableByPath(DBPath, CO).enable end,
 			}
 		end
 	end
