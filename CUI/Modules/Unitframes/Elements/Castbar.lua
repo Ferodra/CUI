@@ -235,7 +235,8 @@ function Module:AddFlash(b)
 end
 
 function Module:AddText(Bar, Name)
-	local Font = E:NewFontObject(nil, "OVERLAY", Bar.Overlay, 10)
+	local Font = E:NewFontObject(nil, "OVERLAY", Bar.TextOverlay, 10)
+	
 	Bar[Name] = Font
 	
 	return Font
@@ -549,6 +550,7 @@ local function CastFail(self, event, unit, ...)
 	self.HoldTime = 0
 end
 
+-- Called whenever a cast turns interruptible/non-interruptible
 local function CastInterruptible(self, event, unit)
 	print("CastInterruptible", event, unit)
 	CastStart(self, event, unit)
@@ -1029,6 +1031,10 @@ function Module:CreateBar(Frame, doNotLoad)
 	local Bar = E:CreateBar(format("CUI_%sCastbar%s", Unit, Attach and "" or self:GetIndex(Unit)), "LOW", 235, 25, {"CENTER", E.Parent, "CENTER"}, E.Parent)
 	E.Libs.LibSmooth:ResetBar(Bar.Overlay) -- Leaving the smooth anim on somehow causes the bar to not go at a 100%. This results in the LagBar simply being useless and just looks weird
 	Bar:SetBackgroundColor(nil, nil, nil, 0.95)
+
+	Bar.TextOverlay = CreateFrame('Frame', format("CUI_%sCastbar%sTextOverlay", Unit, Attach and "" or self:GetIndex(Unit)), Bar.Overlay)
+	Bar.TextOverlay:SetAllPoints(Bar.Overlay)
+	Bar.TextOverlay:SetFrameLevel(Bar.TextOverlay:GetFrameLevel()+5)
 
 	-- Interruptible Bar
 	Bar.OverlayInterruptible = CreateFrame('StatusBar', nil, Bar.Overlay)

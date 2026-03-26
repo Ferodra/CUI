@@ -15,6 +15,7 @@ local CO, UF = E:LoadModules('Config', 'Unitframes')
 
 --------------------------------------------
 local format				= string.format
+local gmatch				= string.gmatch
 local match					= string.match
 local tinsert				= table.insert
 local tremove				= table.remove
@@ -427,6 +428,20 @@ function E:GetTagFunction(str)
 		end
 	end 
 end
+
+
+-- oUF style prototype
+--[[ local BracketPattern = '%[..-%]+'
+local Data = {}
+local tagstr = 'HP: [health][newline]Mana:[power]'
+local FormatString = tagstr:gsub('%%', '%%%%'):gsub(BracketPattern, '%%s')
+
+for bracket in tagstr:gmatch(BracketPattern) do
+	print(bracket)
+	table.insert(Data, #Data+1)
+end
+
+print(FormatString:format(unpack(Data))) ]]
 
  -- Registers a string for a cache-like system so we don't have to iterate through every possible property on every update
 function E:RegisterString(str)
