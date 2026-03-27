@@ -374,9 +374,11 @@ end
 		function UF:UpdateAllUF()
 			for k, frames in pairs(self.Frames) do
 				for _, frame in pairs(frames) do
-					-- Header Unitframes don't have this
+					-- Header Unitframes don't have this because they work differently
 					if frame.ForceUpdate then
 						frame:ForceUpdate()
+					else
+						UF_Update(frame, "ForceUpdate")
 					end
 				end
 			end
