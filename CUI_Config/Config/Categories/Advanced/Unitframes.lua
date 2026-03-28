@@ -424,7 +424,7 @@ function ToggleSummonIndicator(unit, frame)
 	if Element then
 		if not Element.TestState then
 			
-			Element.T:SetAtlas('Raid-Icon-SummonPending')
+			Element.T:SetAtlas('RaidFrame-Icon-SummonPending')
 			Element:Show()
 			
 			Element.TestState = true

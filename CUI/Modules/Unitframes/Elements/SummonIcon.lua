@@ -31,11 +31,11 @@ local function UpdateElement(self, unit)
 		local SummonStatus = IncomingSummonStatus(self.Owner.unit)
 		
 		if(SummonStatus == SUMMON_STATUS_PENDING) then
-			self.T:SetAtlas('Raid-Icon-SummonPending')
+			self.T:SetAtlas('RaidFrame-Icon-SummonPending')
 		elseif(SummonStatus == SUMMON_STATUS_ACCEPTED) then
-			self.T:SetAtlas('Raid-Icon-SummonAccepted')
+			self.T:SetAtlas('RaidFrame-Icon-SummonAccepted')
 		elseif(SummonStatus == SUMMON_STATUS_DECLINED) then
-			self.T:SetAtlas('Raid-Icon-SummonDeclined')
+			self.T:SetAtlas('RaidFrame-Icon-SummonDeclined')
 		end
 
 		self:Show()
@@ -82,7 +82,7 @@ function Module:LoadConfig()
 end
 
 function Module:Create(F)
-	local Element = E:CreateTextureFrame(nil, F, 20, 20, "ARTWORK")
+	local Element = E:CreateTextureFrame(nil, F.Overlay, 20, 20, "ARTWORK")
 	Element:SetFrameLevel(10)
 	Element.ForceUpdate = UpdateElement
 	Element.Owner = F
