@@ -27,7 +27,7 @@ function E:RegisterCallback(Name)
 	end
 end
 
-function E:InitCallbacks()
+function E:UpdateCallbacks()
 	
 	local Func, FuncName
 	
@@ -44,6 +44,3 @@ function E:InitCallbacks()
 		end
 	end
 end
-
--- For more convenient updating
-E.UpdateCallbacks = E.InitCallbacks

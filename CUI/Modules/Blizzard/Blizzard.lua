@@ -282,8 +282,7 @@ local gameMenuLastButtons = {
 -- Dirty, but gets the job done
 local button, statsButton
 local totalGameMenuOffset = 0
-function Module:AddGameMenuButtons()
-	
+function Module:AddGameMenuButtons()	
 	local function CreateConfigButton()
 		if configButton then configButton:Show(); return end
 		if IsAddOnLoadOnDemand("CUI_Config") then	
@@ -330,6 +329,8 @@ function Module:AddGameMenuButtons()
 	
 	GameMenuFrame.MenuButtons = {}
 	local function PositionMainMenuButtons()
+		if not E.InitComplete then E:print("Failed to load! Disabling config modules to prevent database corruption.") return end
+		
 		if not C_AddOns_IsAddOnLoaded("CUI_Statistics") then
 			if statsButton then statsButton:Hide() end
 		else

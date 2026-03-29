@@ -178,13 +178,17 @@ function CO:GetConfigTable(type, context)
 	end
 end
 
+function CO:FinishInit()
+	if E.InitComplete then
+		self.db.RegisterCallback(self, 'OnProfileChanged', 'ProfileUpdate')
+		self.db.RegisterCallback(self, 'OnProfileCopied', 'ProfileUpdate')
+		self.db.RegisterCallback(self, 'OnProfileReset', 'ProfileUpdate')
+		self.db.RegisterCallback(self, 'OnDatabaseShutdown', 'OnDatabaseShutdown')
+	end
+end
+
 function CO:InitConfig()
 	self.db	= LibStub('AceDB-3.0'):New('CUIDB', E.ConfigDefaults)
-	
-	self.db.RegisterCallback(self, 'OnProfileChanged', 'ProfileUpdate')
-	self.db.RegisterCallback(self, 'OnProfileCopied', 'ProfileUpdate')
-	self.db.RegisterCallback(self, 'OnProfileReset', 'ProfileUpdate')
-	self.db.RegisterCallback(self, 'OnDatabaseShutdown', 'OnDatabaseShutdown')
 	
 	self:DBConversion()
 	local LibDualSpec = LibStub('LibDualSpec-1.0')

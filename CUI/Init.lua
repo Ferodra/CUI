@@ -201,7 +201,7 @@ end
 
 function AddOn:OnEnable()
 	
-	self:InitCallbacks()
+	self:UpdateCallbacks()
 	self:UpdateCVars()
 	
 	_, self.PlayerClassName, self.PlayerClass = UnitClass("player")	
@@ -217,15 +217,12 @@ function AddOn:OnEnable()
 	self:RebuildNumberFormatCache()
 	
 	-- Core functionality modules. Those need to have a specific load-order, that's why we cannot autoload them!
-	--self:InitializeModule('Minimap', 'Worldmap', 'Chat', 'Filters', 'Tooltip', 'Unitframes', 'Auras', 'Bar_Auras', 'Bar_Experience', 'Castbar', 'Bar_Reputation', 'Bar_Honor', 'Layout', 'Actionbars')
 	self:InitializeModule('Minimap', 'Worldmap', 'Chat', 'Filters', 'Tooltip', 'Unitframes', 'Auras', 'Bar_Auras', 'Bar_Experience', 'Bar_Reputation', 'Bar_Honor', 'Layout', 'Actionbars')
 	local B	 = self:LoadModule('Blizzard', true)
-	-- PO	 = self:LoadModule('Performance_Optimizer', true)
 	
 	
 	--[[ This is responsible for loading all kinds of plug-ins. We can add plug-ins to the queue via:
-	-- Module.Autoload = true
-		
+		-- Module.Autoload = true
 	]]--
 	self:LoadModuleAutoloadQueue()
 	
@@ -254,4 +251,5 @@ function AddOn:OnEnable()
 	self:SafeLoadMovers()
 	
 	self.InitComplete = true
+	self:LoadModule('Config'):FinishInit()
 end
