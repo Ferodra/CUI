@@ -321,7 +321,7 @@ function Module:AddGameMenuButtons()
 					E:print("Statistics module is disabled!")
 				end
 			end)
-			statsButton:SetText(format("|cff7394ceCUI %s|r", STATISTICS))
+			statsButton:SetText(format("|cff7394ceCUI %s|r", STATISTICS or "Statistics"))
 			totalGameMenuOffset = totalGameMenuOffset + 35
 		end
 	end

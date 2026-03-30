@@ -162,13 +162,15 @@ function Module:CreateIcon(Slot, Type)
 	self:SetupInteraction(Slot)
 	self:SetupCooldown(Slot)
 	
-	Slot.Cooldown.Time = CreateFrame("Frame", nil, Slot.Cooldown)
-	Slot.Cooldown.Time:Hide()
-	Slot.Cooldown.Time:SetAllPoints()
-	Slot.Cooldown.Time:SetScript("OnUpdate", self.Cooldown_OnUpdate)
-	Slot.Cooldown.Time.Text = self:InitFont(Slot, Slot.Cooldown.Time, "Time")
+	--Slot.Cooldown.Time = CreateFrame("Frame", nil, Slot.Cooldown)
+	--Slot.Cooldown.Time:Hide()
+	--Slot.Cooldown.Time:SetAllPoints()
+	--Slot.Cooldown.Time:SetScript("OnUpdate", self.Cooldown_OnUpdate)
+	--Slot.Cooldown.Time.Text = self:InitFont(Slot, Slot.Cooldown.Time, "Time")
+
 	
-	hooksecurefunc(Slot.Cooldown, "SetCooldown", Module.Cooldown_Set)
+	
+	--hooksecurefunc(Slot.Cooldown, "SetCooldown", Module.Cooldown_Set)
 	
 		Slot.FontOverlay = CreateFrame("Frame", nil, Slot)
 		Slot.FontOverlay:SetAllPoints(true)
@@ -452,11 +454,13 @@ end
 ----------------------------------
 function Module:SetupCooldown(Slot)
 	Slot.Cooldown = CreateFrame("Cooldown", nil, Slot, "CooldownFrameTemplate")
-	Slot.Cooldown:SetHideCountdownNumbers(true)
+	Slot.Cooldown:SetHideCountdownNumbers(false)
 	Slot.Cooldown:SetParent(Slot)
 	Slot.Cooldown:SetAllPoints(Slot)
 	Slot.Cooldown:SetReverse(true)
 	Slot.Cooldown:Show()
+
+	Slot.Cooldown.Time = Slot.Cooldown:GetRegions()
 end
 
 function Module:Cooldown_Set(start, duration)
@@ -608,26 +612,28 @@ end
 
 	-- We use this method to create slots on the fly while updating auras
 	function Module:CreateSlot(Holder, Index, ConfigKey)
-		if not Holder.AuraSlot[Index] then
+		local Slot = Holder.AuraSlot[Index]
+
+		if not Slot then
 			
-			Holder.AuraSlot[Index] = CreateFrame("Button", format("CUI_AuraIcon%s", Index), Holder)
-			Holder.AuraSlot[Index]:SetSize(Holder.SlotSize, Holder.SlotSize)
-			self:CreateIcon(Holder.AuraSlot[Index], Holder.Type)
+			Slot = CreateFrame("Button", format("CUI_AuraIcon%s", Index), Holder)
+			Slot:SetSize(Holder.SlotSize, Holder.SlotSize)
+			self:CreateIcon(Slot, Holder.Type)
 			
-			Holder.AuraSlot[Index]:SetAlpha(Holder.SlotAlpha or 1)
-			Holder.AuraSlot[Index]:EnableMouse(not Holder.ClickThrough)
+			Slot:SetAlpha(Holder.SlotAlpha or 1)
+			Slot:EnableMouse(not Holder.ClickThrough)
 			
-			E:RegisterAutoFont(Holder.AuraSlot[Index].Cooldown.Time.Text, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'time'))
-			E:RegisterAutoFont(Holder.AuraSlot[Index].Count, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'count'))
+			E:RegisterAutoFont(Slot.Cooldown.Time, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'time'))
+			E:RegisterAutoFont(Slot.Count, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'count'))
 			
 			Holder.CurrentColumn = 0
 			Holder.CurrentRow = 0
-			
+			Holder.AuraSlot[Index] = Slot
+
 			self:RepositionSlot(Holder, Index)
-			
 		end
 		
-		return Holder.AuraSlot[Index]
+		return Slot
 	end
 	
 	function Module:PopulateSlot(Slot, Unit, RealIndex, AuraType, AuraUnitFaction, Texture, Count, DType, ExpirationTime, UnitCaster, Duration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID, AuraInstanceID)
@@ -657,6 +663,15 @@ end
 		-- end
 		
 		Slot.Tex:SetTexture(Texture)
+
+		local Duration = GetAuraDuration(Unit, AuraInstanceID)
+		if Duration then
+			--self.RunOnUpdate = true
+			Slot.Cooldown:SetCooldownFromDurationObject(Duration, true)
+		else			
+			--self.RunOnUpdate = false
+			Slot.Cooldown:Clear()
+		end
 		--if CO.db.profile.unitframe.desaturateOtherDebuffs and AuraType == 'HARMFUL' and AuraUnitFaction == AuraType and UnitCaster ~= 'player' then
 		-- if not IsCastByPlayer then
 			-- Slot.Tex:SetDesaturated(true)
@@ -710,19 +725,23 @@ end
 	end
 
 	function Module:CreateHolder(Frame, Type)
-		if not Frame[Type] then
+		local Holder = Frame[Type]
+
+		if not Holder then
 			-- Profile unit holds the unit + index for raid40. Name is required, so the user can attach stuff to this holder
-			Frame[Type] = CreateFrame("Frame", format("%s%sHolder", Frame.ConfigKey, Type), Frame.Overlay)
-			Frame[Type]:SetFrameStrata("MEDIUM")
-			Frame[Type].Owner = Frame
-			Frame[Type].unit = Frame.unit
-			Frame[Type].ConfigKey = Frame.ConfigKey
-			Frame[Type].Type = Type
-			Frame[Type].ActiveSlots = 0
-			Frame[Type].AuraSlot = {}
+			Holder = CreateFrame("Frame", format("%s%sHolder", Frame.ConfigKey, Type), Frame.Overlay)
+			Holder:SetFrameStrata("MEDIUM")
+			Holder.Owner = Frame
+			Holder.unit = Frame.unit
+			Holder.ConfigKey = Frame.ConfigKey
+			Holder.Type = Type
+			Holder.ActiveSlots = 0
+			Holder.AuraSlot = {}
 			
 			if not Frame.AuraHolders then Frame.AuraHolders = {} end
-			tinsert(Frame.AuraHolders, Frame[Type])
+			tinsert(Frame.AuraHolders, Holder)
+
+			Frame[Type] = Holder
 		end
 	end
 	
