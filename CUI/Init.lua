@@ -133,6 +133,9 @@ function AddOn:ResizeEParent(state)
 end
 
 function AddOn:HandleCommandBar()
+	-- OrderHallCommandBar was removed in retail
+	if not OrderHallCommandBar then return end
+
 	OrderHallCommandBar:HookScript('OnShow', function() AddOn:ResizeEParent('new') end)
 	OrderHallCommandBar:HookScript('OnHide', function() AddOn:ResizeEParent('original') end)
 end
