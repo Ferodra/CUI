@@ -19,6 +19,7 @@ local UnitIsPlayer 				= UnitIsPlayer
 local UnitIsFriend 				= UnitIsFriend
 local UnitIsEnemy 				= UnitIsEnemy
 local UnitReaction 				= UnitReaction
+local GetAuraDispelTypeColor	= C_UnitAuras.GetAuraDispelTypeColor
 ---------------------------------------------------
 local UnitReactionDefault = {1, 1, 1}
 
@@ -257,8 +258,8 @@ local DTypeColors = {
 	['none'] = {0.8,0,0}
 }
 
-function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor)
-	if SpellID and not issecretvalue(SpellID) then
+function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor, AuraInstanceID, Curve)
+	if not E.IsRetail and SpellID and not issecretvalue(SpellID) then
 		if not SpellID then
 			SpellID = AuraName and select(7, E.GetSpellInfo(AuraName)) or SpellID
 		end
@@ -267,13 +268,17 @@ function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor)
 		if Color then return Color end
 	end
 	-- If no custom color entry exists, continue
-	
+	--print(AuraType, not DefaultColor or DefaultColor and DefaultColor.useClassColor and Unit)
 	if AuraType == 'HARMFUL' then
 		-- Blizz already provides a list of possible colors
 		if DType and not issecretvalue(DType) then
 			return DTypeColors[DType]
 		else
-			return DTypeColors.none
+			if AuraInstanceID and Curve then
+				return GetAuraDispelTypeColor(Unit, AuraInstanceID, Curve)
+			else
+				return DTypeColors.none
+			end
 		end
 	else
 		if not DefaultColor or DefaultColor and DefaultColor.useClassColor and Unit then

@@ -492,11 +492,11 @@ function E:ColorizeButton(Button, Color)
 	E:ColorizeAuraButton(Button, nil, nil, nil, nil, nil, nil, Color)
 end
 
-function E:ColorizeAuraButton(Slot, DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor, OverrideColor)
+function E:ColorizeAuraButton(Slot, DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor, OverrideColor, AuraInstanceID, Curve)
 	local NormalTexture = Slot.__MSQ_Normal
 	
 	if NormalTexture then
-		local Color = OverrideColor or self:GetAuraColor(DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor)
+		local Color = OverrideColor or self:GetAuraColor(DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor, AuraInstanceID, Curve)
 		
 		if Color then
 			if not Color.GetRGB then
@@ -510,7 +510,8 @@ function E:ColorizeAuraButton(Slot, DType, Unit, UnitAuraClass, AuraName, SpellI
 			end
 		end
 	else
-		E:SkinButtonIcon(Slot, OverrideColor or self:GetAuraColor(DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor))
+		--DevTools_Dump(self:GetAuraColor(DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor, AuraInstanceID, Curve))
+		E:SkinButtonIcon(Slot, OverrideColor or self:GetAuraColor(DType, Unit, UnitAuraClass, AuraName, SpellID, DefaultColor, AuraInstanceID, Curve))
 	end
 end
 

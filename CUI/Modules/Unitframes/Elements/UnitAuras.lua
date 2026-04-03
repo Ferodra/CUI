@@ -20,6 +20,7 @@ local UnitExists		= UnitExists
 local UnitCanAttack		= UnitCanAttack
 local GetAuraDuration 		= C_UnitAuras.GetAuraDuration
 local GetAuraApplicationDisplayCount = C_UnitAuras.GetAuraApplicationDisplayCount
+local GetAuraDispelTypeColor	= C_UnitAuras.GetAuraDispelTypeColor
 ----------------------------------------------
 
 local MouseOverUpdater = CreateFrame("Frame", "CUI_UnitAurasMouseoverUpdater")
@@ -678,15 +679,8 @@ end
 		-- else
 			-- Slot.Tex:SetDesaturated(false)
 		-- end
-			
-		E:ColorizeAuraButton(Slot, DType, Unit, AuraType, AuraName, SpellID, CO.db.profile.unitframe.aurasDefaultBorderColor)
 		
-		-- if Slot.Cooldown and ExpirationTime and Duration and Duration > 0 then
-			-- Slot.Cooldown:SetCooldown(ExpirationTime - Duration, Duration)
-			-- Slot.Cooldown:Show()
-		-- else
-			-- Slot.Cooldown:Hide()
-		-- end
+		E:ColorizeAuraButton(Slot, DType, Unit, AuraType, AuraName, SpellID, CO.db.profile.unitframe.aurasDefaultBorderColor, nil, AuraInstanceID, E.Curves.Auras)
 	end
 
 ----------------------------------
