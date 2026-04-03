@@ -432,7 +432,60 @@ local function GetInterruptedText(event, interruptedBy)
 	end
 end
 
-local function UpdateBarVisuals(self, name, texture, barColor, showSpark, notInterruptible)
+local function CreateEmpowerPip(self)
+	return CreateFrame('Frame', nil, self, 'CastingBarFrameStagePipTemplate')
+end
+
+local function UpdateEmpowerPips(self, stages)
+	if true then return end
+
+	local isHoriz = self.Overlay:GetOrientation() == 'HORIZONTAL'
+	local elementSize = isHoriz and self.Overlay:GetWidth() or self.Overlay:GetHeight()
+
+	local lastOffset = 0
+	for stage, stageSection in next, (stages or self.EmpowerStages) do
+		local offset = lastOffset + (elementSize * stageSection)
+		lastOffset = offset
+
+		if not self.Pips then self.Pips = {} end
+		local pip = self.Pips[stage]
+		if(not pip) then
+			pip = CreateEmpowerPip(self)
+			self.Pips[stage] = pip
+		end
+
+		pip:ClearAllPoints()
+		pip:Show()
+
+		if(isHoriz) then
+			if(pip.RotateTextures) then
+				pip:RotateTextures(0)
+			end
+
+			if(self:GetReverseFill()) then
+				pip:SetPoint('TOP', self, 'TOPRIGHT', -offset, 0)
+				pip:SetPoint('BOTTOM', self, 'BOTTOMRIGHT', -offset, 0)
+			else
+				pip:SetPoint('TOP', self, 'TOPLEFT', offset, 0)
+				pip:SetPoint('BOTTOM', self, 'BOTTOMLEFT', offset, 0)
+			end
+		else
+			if(pip.RotateTextures) then
+				pip:RotateTextures(1.5708)
+			end
+
+			if(self:GetReverseFill()) then
+				pip:SetPoint('LEFT', self, 'TOPLEFT', 0, -offset)
+				pip:SetPoint('RIGHT', self, 'TOPRIGHT', 0, -offset)
+			else
+				pip:SetPoint('LEFT', self, 'BOTTOMLEFT', 0, offset)
+				pip:SetPoint('RIGHT', self, 'BOTTOMRIGHT', 0, offset)
+			end
+		end
+	end
+end
+
+local function UpdateBarVisuals(self, name, texture, barColor, showSpark, notInterruptible, stages)
 	if name then
 		self.Name:SetText(name)
 	end
@@ -454,6 +507,9 @@ local function UpdateBarVisuals(self, name, texture, barColor, showSpark, notInt
 	else
 		-- If we don't pass any value into notInterruptible, it's because the cast already is finished. So we don't need it anymore
 		self.OverlayInterruptible:SetAlpha(0)
+	end
+	if stages ~= nil then
+		UpdateEmpowerPips(self, stages)
 	end
 end
 
@@ -488,6 +544,8 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 		name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellID, empowering, _, castID = UnitChannelInfo(unit)
 	end
 
+	local stages = empowering and UnitEmpoweredStagePercentages(unit) or nil
+
 	self:SetMinMaxValues(0, 1)
 	self:SetValue(self.IsChanneling and 0 or 1)
 
@@ -497,8 +555,9 @@ local function CastStart(self, event, unit, castGUID, spellID, castTime)
 	
 	self.IsInterrupted = nil
 	self.CastID = castID or barID
+	self.EmpowerStages = stages
 
-	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true, notInterruptible)
+	UpdateBarVisuals(self, name, texture, Module.DBColors.NotInterruptible, true, notInterruptible, stages)
 	self:SetAlpha(1)
 
 	self:Show()

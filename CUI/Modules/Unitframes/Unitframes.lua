@@ -360,6 +360,9 @@ end
 					if self.Threat then
 						self.Threat:ForceUpdate()
 					end
+					if self.Castbar then
+						self.Castbar:ForceUpdate()
+					end
 				end
 				
 				if UnitIsConnected(self.unit) then
@@ -565,6 +568,9 @@ end
 		local function UnitFrame_OnHide(self)
 			if self.RangeIndicator then
 				UF:RemoveRangeIndicator(self)
+			end
+			if self.Castbar then
+				self.Castbar:Hide()
 			end
 		end
 
