@@ -298,6 +298,11 @@ end
 	-- Update handlers
 	----------------------------------------------------------
 
+		local UpdateModules = {
+			['Eventless'] = {'Health', 'HealPrediction', 'Power', 'AltPower', 'Fonts'},
+			['General'] = {'Portrait', 'Auras', 'RangeIndicator', 'LeaderIcon', 'Role', 'TargetIcon', 'TargetHighlight', 'ResurrectIndicator', 'SummonIndicator', 'Threat', 'Castbar'}
+		}
+
 		-- This gets called by the OnEvent handler, which basically fires whenever a frame shows up and is missing data.
 		-- The OnUpdate handler handles the periodic update calls for units we do not receive any events for. (targettarget, focustarget etc.)
 		-- Every other update is performed by the individual modules
@@ -306,62 +311,19 @@ end
 			-- Instead of "UnitExists". Bugfix for "No Chambers displayed at Mother (Uldir)"
 			if not UF:UnitExists(self.unit) then return end
 				
-				-- Base modules that definetely exist
-				if self.Health then
-					self.Health:ForceUpdate()
-					if self.Health.Absorb then
-						self.Health.Absorb:ForceUpdate()
+				-- Base module updating
+				for _, Module in pairs (UpdateModules.Eventless) do
+					if self[Module] then
+						self[Module]:ForceUpdate()
 					end
-				end
-				if self.HealPrediction then
-					self.HealPrediction:ForceUpdate()
-				end
-				if self.Power then
-					self.Power:ForceUpdate()
-				end
-				if self.AltPower then
-					self.AltPower:ForceUpdate()
-				end
-				if self.Fonts then
-					self.Fonts:ForceUpdate()
 				end
 				
 				-- Modules we dont want to include in the OnUpdate ticks, as the internal events work just fine for them
 				if not event or (event and (event ~= "OnUpdate" and event ~= "UNIT_FACTION")) then
-					if self.Portrait then
-						self.Portrait:ForceUpdate()
-					end
-					if self.Auras then
-						self.Auras:ForceUpdate()
-					end
-					if self.RangeIndicator then
-						self.RangeIndicator:ForceUpdate()
-					end
-					if self.LeaderIcon then
-						self.LeaderIcon:ForceUpdate()
-					end
-					if self.Role then
-						self.Role:ForceUpdate()
-					end
-					if self.TargetIcon then
-						self.TargetIcon:ForceUpdate()
-					end
-					if self.TargetHighlight then
-						self.TargetHighlight:ForceUpdate()
-					end
-					
-					-- Optional modules that probably exist
-					if self.ResurrectIndicator then
-						self.ResurrectIndicator:ForceUpdate()
-					end
-					if self.SummonIndicator then
-						self.SummonIndicator:ForceUpdate()
-					end
-					if self.Threat then
-						self.Threat:ForceUpdate()
-					end
-					if self.Castbar then
-						self.Castbar:ForceUpdate()
+					for _, Module in pairs (UpdateModules.General) do
+						if self[Module] then
+							self[Module]:ForceUpdate()
+						end
 					end
 				end
 				

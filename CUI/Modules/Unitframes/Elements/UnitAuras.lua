@@ -679,7 +679,7 @@ end
 			-- Slot.Tex:SetDesaturated(false)
 		-- end
 			
-		-- E:ColorizeAuraButton(Slot, DType, Unit, AuraType, AuraName, SpellID, CO.db.profile.unitframe.aurasDefaultBorderColor)
+		E:ColorizeAuraButton(Slot, DType, Unit, AuraType, AuraName, SpellID, CO.db.profile.unitframe.aurasDefaultBorderColor)
 		
 		-- if Slot.Cooldown and ExpirationTime and Duration and Duration > 0 then
 			-- Slot.Cooldown:SetCooldown(ExpirationTime - Duration, Duration)

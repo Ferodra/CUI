@@ -258,7 +258,7 @@ local DTypeColors = {
 }
 
 function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor)
-	if SpellID then
+	if SpellID and not issecretvalue(SpellID) then
 		if not SpellID then
 			SpellID = AuraName and select(7, E.GetSpellInfo(AuraName)) or SpellID
 		end
@@ -270,7 +270,7 @@ function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor)
 	
 	if AuraType == 'HARMFUL' then
 		-- Blizz already provides a list of possible colors
-		if DType then
+		if DType and not issecretvalue(DType) then
 			return DTypeColors[DType]
 		else
 			return DTypeColors.none
