@@ -54,6 +54,37 @@ local function UpdateRange(F)
 		-- Hostile
 		F.IsInRange = EnemyIsInRange(F.unit)
 	end ]]
+
+
+
+
+	local inRange, wasChecked
+	local connected = UnitIsConnected(F.unit)
+	local isEligible = connected and (UnitInParty(F.unit) or UnitInRaid(F.unit))
+	if(isEligible) then
+		inRange, wasChecked = UnitInRange(F.unit)
+
+		if E.IsRetail then
+			F:SetAlphaFromBoolean(inRange, 1, CO.db.profile.unitframe.units.all.outOfRangeAlpha)
+		elseif(wasChecked and not inRange) then
+			F:SetAlpha(CO.db.profile.unitframe.units.all.outOfRangeAlpha)
+		else
+			F:SetAlpha(1)
+		end
+	else
+		F:SetAlpha(1)
+	end
+
+	-- LibRange is broken again..
+	if true then return end
+
+
+
+
+
+
+
+
 	if F.unit == 'player' then
 		F.IsInRange = true
 	else

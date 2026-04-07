@@ -62,7 +62,7 @@ function Module:LoadSingleBar(Frame, GlobalConfig, Config)
 		Bar.MoverEnabled = false
 		Bar.ForceMoverEnabled = nil
 		Module:RemoveEventHandler(Bar)
-	else		
+	else
 		Bar.MoverEnabled = true
 		Module:AddEventHandler(Bar)
 		

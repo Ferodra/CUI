@@ -249,15 +249,6 @@ function E:GetCustomAuraColor(SpellID)
 	end
 end
 
-local DTypeColors = {
-	['Curse'] = {0.6,0,1},
-	['Disease'] = {0.6,0.4,0},
-	['Magic'] = {0.2,0.6,1},
-	['Poison'] = {0,0.6,0},
-	['Others'] = {0.8,0,0},
-	['none'] = {0.8,0,0}
-}
-
 function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor, AuraInstanceID, Curve)
 	if not E.IsRetail and SpellID and not issecretvalue(SpellID) then
 		if not SpellID then
@@ -268,20 +259,19 @@ function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor, 
 		if Color then return Color end
 	end
 	-- If no custom color entry exists, continue
-	--print(AuraType, not DefaultColor or DefaultColor and DefaultColor.useClassColor and Unit)
 	if AuraType == 'HARMFUL' then
-		-- Blizz already provides a list of possible colors
+		-- Use predefined colors
 		if DType and not issecretvalue(DType) then
-			return DTypeColors[DType]
+			return E.DebuffTypeColorRaw[DType]
 		else
 			if AuraInstanceID and Curve then
 				return GetAuraDispelTypeColor(Unit, AuraInstanceID, Curve)
 			else
-				return DTypeColors.none
+				return E.DebuffTypeColorRaw.None
 			end
 		end
 	else
-		if not DefaultColor or DefaultColor and DefaultColor.useClassColor and Unit then
+		if not DefaultColor or (DefaultColor and DefaultColor.useClassColor and Unit) then
 			return E:GetUnitReactionColor(Unit)
 		else
 			return E:ParseDBColor(DefaultColor)
