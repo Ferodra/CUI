@@ -1002,11 +1002,17 @@ function Module:OnUpdate(elapsed)
 				self.Time:SetText("")
 			end
 		else
-			if self:IsShown() and self:GetAlpha() > 0 then
-				self.HoldTime = (self.HoldTime or 0) + elapsed
-				if self.HoldTime > 1 then
-					-- Fade castbar over 1 second
-					self:SetAlpha(self:GetAlpha()-((self.HoldTime-1)/GetFramerate()))
+			
+			if not issecretvalue(self:GetAlpha()) and not issecretvalue(self:IsShown()) then
+				if self:IsShown() and self:GetAlpha() > 0 then
+					self.HoldTime = (self.HoldTime or 0) + elapsed
+					if self.HoldTime > 1 then
+						-- Fade castbar over 1 second
+						self:SetAlpha(self:GetAlpha()-((self.HoldTime-1)/GetFramerate()))
+					end
+				else
+					self:Hide()
+					ResetBarAttributes(self)
 				end
 			else
 				self:Hide()
