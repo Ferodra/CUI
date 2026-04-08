@@ -416,6 +416,7 @@ local function ResetBarAttributes(self)
 	self.IsChanneling = nil
 	self.IsInterrupted = nil
 	self.CastID = nil
+	self.TrackedAlpha = 1
 end
 
 local function CastMatch(self, castID)
@@ -1003,21 +1004,23 @@ function Module:OnUpdate(elapsed)
 			end
 		else
 			
-			if not issecretvalue(self:GetAlpha()) and not issecretvalue(self:IsShown()) then
-				if self:IsShown() and self:GetAlpha() > 0 then
+			--if not issecretvalue(self:GetAlpha()) and not issecretvalue(self:IsShown()) then
+				-- We're using a variable to track alpha now, since GetAlpha can return secret values
+				if self.TrackedAlpha > 0 then
 					self.HoldTime = (self.HoldTime or 0) + elapsed
 					if self.HoldTime > 1 then
 						-- Fade castbar over 1 second
-						self:SetAlpha(self:GetAlpha()-((self.HoldTime-1)/GetFramerate()))
+						self.TrackedAlpha = (self.TrackedAlpha-((self.HoldTime-1)/GetFramerate()))
+						self:SetAlpha(self.TrackedAlpha)
 					end
 				else
 					self:Hide()
 					ResetBarAttributes(self)
 				end
-			else
-				self:Hide()
-				ResetBarAttributes(self)
-			end
+			--else
+			--	self:Hide()
+			--	ResetBarAttributes(self)
+			--end
 		end
 	else
 		if ( self.casting ) then
@@ -1108,6 +1111,9 @@ function Module:CreateBar(Frame, doNotLoad)
 	Bar.OverlayInterruptible:SetMinMaxValues(0, 1)
 	Bar.OverlayInterruptible:SetValue(1)
 	E:RegisterStatusBar(Bar.OverlayInterruptible)
+
+	-- Using our own variable to track alpha now, since GetAlpha can return secrets for some reason
+	Bar.TrackedAlpha = 1
 
 	Bar.Border:SetFrameLevel(Bar.Border:GetFrameLevel()+5)
 
