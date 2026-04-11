@@ -29,6 +29,8 @@ local Masque = E.Libs.Masque
 local MasqueGroup_Buffs = Masque and Masque:Group("CUI", format("%s %s", L["player"],  L["Buffs"]))
 local MasqueGroup_Debuffs = Masque and Masque:Group("CUI", format("%s %s", L["player"],  L["Debuffs"]))
 
+local Curves_Auras = E.Curves.Auras
+
 function AUR:LoadConfig()
 	
 	self.db = CO.db.profile.unitframe
@@ -249,7 +251,7 @@ local function UpdateAura(self, index)
 				self.debuffColor = E.DebuffTypeColor["none"]
 			end
 			
-			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, nil, self.debuffColor)
+			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, nil, self.debuffColor, nil, Data.auraInstanceID, Curves_Auras)
 		else
 			E:ColorizeAuraButton(self, self.AuraDType, "player", self.filter, self.AuraName, self.AuraSpellID, self.header.useClassColor)
 		end

@@ -265,6 +265,7 @@ function E:GetAuraColor(DType, Unit, AuraType, AuraName, SpellID, DefaultColor, 
 			return E.DebuffTypeColorRaw[DType]
 		else
 			if AuraInstanceID and Curve then
+				--print(Unit, AuraInstanceID, Curve, GetAuraDispelTypeColor(Unit, AuraInstanceID, Curve))
 				return GetAuraDispelTypeColor(Unit, AuraInstanceID, Curve)
 			else
 				return E.DebuffTypeColorRaw.None

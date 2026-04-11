@@ -364,7 +364,7 @@ end
 
 local Updater = CreateFrame('Frame', 'CUI_UnitHeadersUpdaterFrame')
 Updater.Queue = {}
-UpdateDelay = 0.05 -- Let's just keep this fairly low, so we're not stuck for long with the default look or frames
+UpdateDelay = 0.1 -- Let's just keep this fairly low, so we're not stuck for long with the default look or frames
 
 -- Staggered update for header unitframes to alleviate client freezes when joining raids
 local function UpdaterTick(self, elapsed)
@@ -479,19 +479,24 @@ OnAttributeChanged = function(self, attr, value)
 		-- Prevent unecessary updates, which cause us to slow down dramatically when people are joining raids
 		if not GUID or (self.LastGUID == GUID and self.LastStatus == Status) then return end
 		
-		self.LastGUID = GUID
-		
-		-- Update immediately, so we won't get messed up frames
-		--self:Update()
-		-- If no data is available, schedule update
-		--if UnitExists(self.unit) and UnitLevel(self.unit) == 0 then
-			-- Stagger updates and prevent client freezes
-			self:ScheduleDelayedUpdate()
-		--end
-		
-		self.LastStatus = Status
-		
-		-- Schedule update for next frame, as some data sometimes somehow is not available immediately
+		-- If GUID is secret then just immediately update
+		if not issecretvalue(GUID) then
+			self.LastGUID = GUID
+			
+			-- Update immediately, so we won't get messed up frames
+			--self:Update()
+			-- If no data is available, schedule update
+			--if UnitExists(self.unit) and UnitLevel(self.unit) == 0 then
+				-- Stagger updates and prevent client freezes
+				self:ScheduleDelayedUpdate()
+			--end
+			
+			self.LastStatus = Status
+			
+			-- Schedule update for next frame, as some data sometimes somehow is not available immediately
+		else
+			self:Update()
+		end
 	end
 end
 

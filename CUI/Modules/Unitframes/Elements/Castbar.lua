@@ -987,41 +987,45 @@ function Module:AddEventHandler(bar)
 	bar.active = true
 end
 
+local function OnUpdate_Retail(self, elapsed)
+	if self.IsCasting or self.IsChanneling then
+		local durationObject = self.Overlay:GetTimerDuration() -- can be nil
+
+		if durationObject then
+			self.Time:SetFormattedText('%.2f', durationObject:GetRemainingDuration() or 0)
+		else
+			-- Cast does not exist anymore. Reset attributes so we can run cast end
+			ResetBarAttributes(self)
+			self.Time:SetText("")
+		end
+	else
+		
+		--if not issecretvalue(self:GetAlpha()) and not issecretvalue(self:IsShown()) then
+			-- We're using a variable to track alpha now, since GetAlpha can return secret values
+			if self.TrackedAlpha > 0 then
+				self.HoldTime = (self.HoldTime or 0) + elapsed
+				if self.HoldTime > 1 then
+					-- Fade castbar over 1 second
+					self.TrackedAlpha = (self.TrackedAlpha-((self.HoldTime-1)/GetFramerate()))
+					self:SetAlpha(self.TrackedAlpha)
+				end
+			else
+				self:Hide()
+				ResetBarAttributes(self)
+			end
+		--else
+		--	self:Hide()
+		--	ResetBarAttributes(self)
+		--end
+	end
+end
+
 
 function Module:OnUpdate(elapsed)
-	if self.ForceMoverEnabled then return end
+	if self.ForceMoverEnabled or self.ForceToggle then return end
 	
 	if E.IsRetail then
-		if self.IsCasting or self.IsChanneling then
-			local durationObject = self.Overlay:GetTimerDuration() -- can be nil
-
-			if durationObject then
-				self.Time:SetFormattedText('%.2f', durationObject:GetRemainingDuration() or 0)
-			else
-				-- Cast does not exist anymore. Reset attributes so we can run cast end
-				ResetBarAttributes(self)
-				self.Time:SetText("")
-			end
-		else
-			
-			--if not issecretvalue(self:GetAlpha()) and not issecretvalue(self:IsShown()) then
-				-- We're using a variable to track alpha now, since GetAlpha can return secret values
-				if self.TrackedAlpha > 0 then
-					self.HoldTime = (self.HoldTime or 0) + elapsed
-					if self.HoldTime > 1 then
-						-- Fade castbar over 1 second
-						self.TrackedAlpha = (self.TrackedAlpha-((self.HoldTime-1)/GetFramerate()))
-						self:SetAlpha(self.TrackedAlpha)
-					end
-				else
-					self:Hide()
-					ResetBarAttributes(self)
-				end
-			--else
-			--	self:Hide()
-			--	ResetBarAttributes(self)
-			--end
-		end
+		OnUpdate_Retail(self, elapsed)
 	else
 		if ( self.casting ) then
 			
