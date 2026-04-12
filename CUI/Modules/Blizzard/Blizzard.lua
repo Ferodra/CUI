@@ -31,6 +31,7 @@ Module.BlizzardFrames = {
 }
 Module.Unitframes = {
 	PlayerFrame,
+	PetFrame,
 	TargetFrame,
 	FocusFrame,
 	PartyFrame,
