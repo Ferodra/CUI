@@ -7,7 +7,27 @@ local ipairs		= ipairs
 
 
 local alerts = {"StoreMicroButtonAlert","EJMicroButtonAlert","LFDMicroButtonAlert","CollectionsMicroButtonAlert","TalentMicroButtonAlert"}
-local MicroButtons = {"CharacterMicroButton", "SpellbookMicroButton", "TalentMicroButton", "AchievementMicroButton", "QuestLogMicroButton", "GuildMicroButton", "LFDMicroButton", "CollectionsMicroButton", "EJMicroButton", "StoreMicroButton", "MainMenuMicroButton"}
+local MicroButtons = {
+	'CharacterMicroButton',
+	'SpellbookMicroButton',
+	'ProfessionMicroButton',
+	'TalentMicroButton',
+	'PlayerSpellsMicroButton',
+	'AchievementMicroButton',
+	'QuestLogMicroButton',
+	'GuildMicroButton',
+	'SocialsMicroButton',
+	'LFDMicroButton',
+	'LFGMicroButton',
+	'EJMicroButton',
+	'CollectionsMicroButton',
+	'MainMenuMicroButton',
+	'HelpMicroButton',
+	'StoreMicroButton',
+	'HousingMicroButton',
+	'WorldMapMicroButton',
+	'PVPMicroButton'
+}
 
 local function UpdateTooltipPosition(self)
 	GameTooltip:ClearAllPoints()
@@ -39,10 +59,10 @@ function AB:InitMicroMenu()
 	
 	local ButtonOffset = 25
 	local ButtonInvisibleOffset = 4
-	for _, v in pairs(_G.MICRO_BUTTONS) do
+	for _, v in pairs(MicroButtons) do
 		local Button = _G[v]
 		
-		if Button:IsVisible() then
+		if Button and Button:IsVisible() then
 			--Button:ClearAllPoints()
 			Button:SetParent(_G.MicroMenu)
 			Button:SetPoint("TOPLEFT", _G.MicroMenu, "TOPLEFT", (ButtonOffset * index) - ButtonInvisibleOffset, 0)
@@ -87,6 +107,8 @@ function AB:InitMicroMenu()
 end
 
 function AB:UpdateMicroMenu()
+	if not self.MicroMenu then return end
+	
 	local db = CO.db.profile.actionbar["micromenu"]
 	
 	if db.enable ~= true then self.MicroMenu:Hide(); self.MicroMenu.ForceMoverEnabled = false; return end

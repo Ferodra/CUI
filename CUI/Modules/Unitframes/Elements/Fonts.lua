@@ -125,6 +125,8 @@ function Module:RefreshFontTags_All(DBPath)
 end
 
 function Module:RefreshFontTags(Unitframe)
+    if not Unitframe.Fonts then return end
+    
     for k, font in pairs(Unitframe.Fonts.Frames) do
         -- "Format" property is automatically updated via AutoFont
         if font.Format then

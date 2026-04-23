@@ -42,6 +42,10 @@ local function UpdateFont(Object, Config, Path)
 	if not Config.enable then
 		if not Exclusions.enable then
 			Object:Hide() end
+
+			if Object.PostToggle then
+				Object:PostToggle(false)
+			end
 		else
 		
 		-- Font Shadow
@@ -113,6 +117,10 @@ local function UpdateFont(Object, Config, Path)
 			end
 
 			Object:Show()
+
+			if Object.PostToggle then
+				Object:PostToggle(true)
+			end
 		end
 	
 	--if #Exclusions > 0 then

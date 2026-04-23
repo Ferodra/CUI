@@ -462,6 +462,7 @@ function Module:SetupCooldown(Slot)
 	Slot.Cooldown:Show()
 
 	Slot.Cooldown.Time = Slot.Cooldown:GetRegions()
+	Slot.Cooldown.Time.Owner = Slot.Cooldown
 end
 
 function Module:Cooldown_Set(start, duration)
@@ -605,6 +606,10 @@ end
 			self:UpdateCenterPositioning(Holder)
 		end
 	end
+
+	local function PostToggle_Time(self, state)
+		self.Owner:SetHideCountdownNumbers(not state)
+	end
 	
 	local FontPath_Base = "db.profile.unitframe.units.%s.%s.%s"
 	local function GetFontPath(Holder, ConfigKey, Type)
@@ -623,6 +628,9 @@ end
 			
 			Slot:SetAlpha(Holder.SlotAlpha or 1)
 			Slot:EnableMouse(not Holder.ClickThrough)
+
+			-- Allows us to automagically hide/show the countdown numbers based on whether or not the font should be shown
+			Slot.Cooldown.Time.PostToggle = PostToggle_Time
 			
 			E:RegisterAutoFont(Slot.Cooldown.Time, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'time'))
 			E:RegisterAutoFont(Slot.Count, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'count'))
