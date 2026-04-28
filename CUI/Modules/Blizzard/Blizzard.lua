@@ -455,7 +455,13 @@ function Module:InitTrackerAutoHide()
 
 	AutoHider = CreateFrame('Frame', "CUI_TrackerAutoHideFrame", E.Parent, 'SecureHandlerStateTemplate')
 	AutoHider:SetParent(E:GetMover(ObjectiveTrackerFrame))
-	_G.ObjectiveTrackerFrame:SetParent(AutoHider)
+	--_G.ObjectiveTrackerFrame:SetParent(AutoHider)
+	AutoHider:SetScript('OnShow', function(self)
+		tracker:Show()
+	end)
+	AutoHider:SetScript('OnHide', function(self)
+		tracker:Hide()
+	end)
 	
 	self:UpdateTrackerAutoHide()
 end
@@ -636,7 +642,7 @@ function Module:Init()
 	self:RegisterBlizzAddonMovers()
 	self:AddGameMenuButtons()
 	self:HandleMilitaryTimeState()
-	--self:InitTrackerAutoHide()
+	self:InitTrackerAutoHide()
 	
 	
 	-- Widget type table
