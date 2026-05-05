@@ -30,6 +30,7 @@ local GetPlayerAuraBySpellID 		= C_UnitAuras.GetPlayerAuraBySpellID
 local BarBaseName 			= "CUI_%sCastbar"
 local IconSize 				= 23
 local CASTING_BAR_HOLD_TIME = 0.75
+local InterruptStr = "%s [%s]"
 
 Module.IncludeUnits = {'player', 'target', 'targettarget', 'focus', 'focustarget', 'party', 'pet', 'boss', 'arena', 'maintank'}
 
@@ -874,16 +875,12 @@ local function Bar_OnEvent_Legacy(self, event, ...)
 	end
 end
 
-local InterruptStr = "%s [%s]"
+local BarEvent = E.IsRetail and Bar_OnEvent_Retail or Bar_OnEvent_Legacy
 local function Bar_OnEvent(self, event, ...)
-	if (not self.Owner:IsVisible() and event ~= "ForceUpdate") or (not self.enable) then return end
+	if (not self.Owner:IsVisible() and event ~= "ForceUpdate") then return end
 	-- Probably the most efficient way we can do this
 	
-	if E.IsRetail then
-		Bar_OnEvent_Retail(self, event, ...)
-	else
-		Bar_OnEvent_Legacy(self, event, ...)
-	end
+	BarEvent(self, event, ...)
 end
 
 local function Bar_ForceUpdate(self)
@@ -1203,4 +1200,3 @@ function Module:Create(F)
 end
 
 UF:RegisterModule('Castbar', Module)
---UF.Modules["Castbar"] = Module
