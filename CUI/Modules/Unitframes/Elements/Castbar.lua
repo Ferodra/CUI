@@ -613,7 +613,7 @@ end
 
 -- Called whenever a cast turns interruptible/non-interruptible
 local function CastInterruptible(self, event, unit)
-	print("CastInterruptible", event, unit)
+	--print("CastInterruptible", event, unit)
 	CastStart(self, event, unit)
 
 	self.Interruptible = event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE'

@@ -9,6 +9,7 @@ local floor				= math.floor
 local ceil				= math.ceil
 local format			= string.format
 local lower				= string.lower
+local sort				= table.sort
 local tinsert			= table.insert
 local pairs				= pairs
 local type				= type
@@ -21,18 +22,21 @@ local UnitCanAttack						= UnitCanAttack
 local GetAuraDuration 					= C_UnitAuras.GetAuraDuration
 local GetAuraApplicationDisplayCount 	= C_UnitAuras.GetAuraApplicationDisplayCount
 local GetAuraDispelTypeColor			= C_UnitAuras.GetAuraDispelTypeColor
+local GetAuraDataByAuraInstanceID		= C_UnitAuras.GetAuraDataByAuraInstanceID
 ----------------------------------------------
 
 local MouseOverUpdater = CreateFrame("Frame", "CUI_UnitAurasMouseoverUpdater")
+local AuraCache = {['Buffs'] = {}, ['Debuffs'] = {}}
+local AuraCacheHandler = CreateFrame('Frame')
 local Module = {}
 Module.Frames = {}
-
-Module.Auras = {}
 Module.Holders = {}
 
 Module.AURA_SIZE 			= 32 -- X and Y size
 Module.HOLDER_TYPES			= {"Buffs", "Debuffs"}
 Module.AURA_TYPES 			= {"HELPFUL", "HARMFUL"}
+
+local buffFilter, debuffFilter = 'HELPFUL', 'HARMFUL'
 
 local Masque = E.Libs.Masque
 local MasqueGroup_Buffs = Masque and Masque:Group("CUI", format("%s %s", L["unit"], L["Buffs"]))
@@ -40,22 +44,233 @@ local MasqueGroup_Debuffs = Masque and Masque:Group("CUI", format("%s %s", L["un
 
 local ForceUpdateInfo = {['isFullUpdate'] = true}
 
---[[---------------------------------------------
 
-	Aura Table:
-		Module.Auras
-			-> [Unit]
-				-> [AuraClass](HELPFUL or HARMFUL)
-					-> [AuraIndex]
-						-> [1] = AuraName
-						-> [2] = AuraTexture
-						-> [3] = AuraCount
-						-> [4] = AuraDType
-						-> [5] = AuraDuration
-						-> [6] = AuraExpirationTime
-				-> AuraUnitFaction = HELPFUL or HARMFUL, based on faction towards player
+----------------------------------
+-- AURA CHACHING BEGIN
+----------------------------------
 
-------------------------------------------------]]
+local DebuffFilter = {
+	['limited'] = 'HARMFUL|PLAYER',
+	['all'] = 'HARMFUL'
+}
+
+local function SortAuras(a, b)
+	if(a.isPlayerAura ~= b.isPlayerAura) then
+		return a.isPlayerAura
+	end
+
+	return a.auraInstanceID < b.auraInstanceID
+end
+
+
+local function AuraCache_OnEvent(self, event, unit, info)
+	local Cache, CacheType, BuffsChanged, DebuffsChanged
+
+    if info.isFullUpdate then
+		
+        local Data, Type
+		local CurrentAuraIndex = 1
+
+		-- Write buffs and debuffs separately, because GetAuraDataByIndex NEEDS a filter. It will only return buffs otherwise
+
+		-- Buffs
+		if self.Buffs.Enabled then
+			wipe(self.Buffs.AuraCache)
+
+			while true do
+				--if CurrentAuraIndex > self.Buffs.Num_Auras then break end
+
+				Data = GetAuraDataByIndex(self.Owner.unit, CurrentAuraIndex, "HELPFUL")
+
+				if (not (Data and Data.name)) then break end
+				self.Buffs.AuraCache[Data.auraInstanceID] = Module:ProcessAuraData(self, Data)
+
+				CurrentAuraIndex = CurrentAuraIndex + 1
+			end
+
+			CurrentAuraIndex = 1
+
+			BuffsChanged = true
+		end
+
+		-- Debuffs
+		if self.Debuffs.Enabled then
+			wipe(self.Debuffs.AuraCache)
+
+			while true do
+				--if CurrentAuraIndex > self.Debuffs.Num_Auras then break end
+
+				Data = GetAuraDataByIndex(self.Owner.unit, CurrentAuraIndex, DebuffFilter[self.isHostileUnit and 'limited' or 'all'])
+
+				if (not (Data and Data.name)) then break end
+				self.Debuffs.AuraCache[Data.auraInstanceID] = Module:ProcessAuraData(self, Data)
+
+				CurrentAuraIndex = CurrentAuraIndex + 1
+			end
+
+			DebuffsChanged = true
+		end
+		
+	end
+	if info.addedAuras then
+		for _, Data in pairs(info.addedAuras) do
+			if not Data.isHarmful then
+				if self.Buffs.Enabled then
+					self.Buffs.AuraCache[Data.auraInstanceID] = Module:ProcessAuraData(self, Data)
+					
+					if self.Buffs.AuraCache[Data.auraInstanceID] then
+						BuffsChanged = true
+					end
+				end
+			else
+				if self.Debuffs.Enabled then
+					self.Debuffs.AuraCache[Data.auraInstanceID] = Module:ProcessAuraData(self, Data)
+
+					if self.Debuffs.AuraCache[Data.auraInstanceID] then
+						DebuffsChanged = true
+					end
+				end
+			end
+        end
+	end
+	if info.updatedAuraInstanceIDs then
+		local Data
+		for _, auraInstanceID in pairs(info.updatedAuraInstanceIDs) do
+			Data = Module:GetAuraData(unit, auraInstanceID)
+
+			if self.Buffs.AuraCache[auraInstanceID] then
+				self.Buffs.AuraCache[auraInstanceID] = Data
+
+				BuffsChanged = true
+			elseif self.Debuffs.AuraCache[auraInstanceID] then
+				self.Debuffs.AuraCache[auraInstanceID] = Data
+
+				DebuffsChanged = true
+			end
+        end
+	end
+	if info.removedAuraInstanceIDs then
+		for _, auraInstanceID in pairs(info.removedAuraInstanceIDs) do
+			if self.Buffs.AuraCache[auraInstanceID] then
+				self.Buffs.AuraCache[auraInstanceID] = nil
+
+				BuffsChanged = true
+			elseif self.Debuffs.AuraCache[auraInstanceID] then
+				self.Debuffs.AuraCache[auraInstanceID] = nil
+
+				DebuffsChanged = true
+			end
+        end
+	end
+
+	Module:ApplyAuras(self, BuffsChanged, DebuffsChanged)
+end
+
+function Module:ApplyAuras(Frame, BuffsChanged, DebuffsChanged)
+	if BuffsChanged then
+		self:RebuildSortedAuras(Frame.Buffs)
+
+		for index, slot in pairs(Frame.Buffs.AuraSlot) do
+			slot.IsActive = false
+		end
+
+		local Slot, Index = nil, 1
+		for auraInstanceID, AuraData in ipairs(Frame.Buffs.SortedAuras) do
+			Slot = self:GetNextAvailableSlot(Frame.Buffs)
+			self:ApplyAuraDataToSlot(Slot, AuraData)
+
+			Index = Index + 1
+		end
+
+		for i=Index, #Frame.Buffs.AuraSlot do
+			Frame.Buffs.AuraSlot[i]:Hide()
+		end
+
+		self:UpdateHolderSize(Frame.Buffs, true)
+	end
+	if DebuffsChanged then
+		self:RebuildSortedAuras(Frame.Debuffs)
+
+		for index, slot in ipairs(Frame.Debuffs.AuraSlot) do
+			slot.IsActive = false
+		end
+
+		local Slot, Index = nil, 1
+		for auraInstanceID, AuraData in ipairs(Frame.Debuffs.SortedAuras) do
+			Slot = self:GetNextAvailableSlot(Frame.Debuffs)
+			self:ApplyAuraDataToSlot(Slot, AuraData)
+
+			Index = Index + 1
+		end
+
+		for i=Index, #Frame.Debuffs.AuraSlot do
+			Frame.Debuffs.AuraSlot[i]:Hide()
+		end
+
+		self:UpdateHolderSize(Frame.Debuffs, true)
+	end
+end
+
+function Module:ProcessAuraData(Frame, Data)
+    Data.type = Data.isHarmful and "HARMFUL" or "HELPFUL"
+
+	-- Filter out non-player debuffs on hostiles
+	if Frame.isHostileUnit and Data.isHarmful then
+		if not Data.isFromPlayerOrPlayerPet then
+			return nil
+		end
+	end
+	
+    return Data
+end
+
+function Module:RebuildSortedAuras(Holder)
+	wipe(Holder.SortedAuras)
+
+	for auraInstanceID in next, Holder.AuraCache do
+		tinsert(Holder.SortedAuras, Holder.AuraCache[auraInstanceID])
+	end
+
+	sort(Holder.SortedAuras, SortAuras)
+end
+
+function Module:GetAuraData(unit, auraInstanceID)
+    return GetAuraDataByAuraInstanceID(unit, auraInstanceID)
+end
+
+function Module:SetupAuraCaching(Frame)
+    Frame.Auras:RegisterUnitEvent('UNIT_AURA', Frame.unit)
+    Frame.Auras:SetScript('OnEvent', AuraCache_OnEvent)
+end
+
+function Module:GetNextAvailableSlot(Holder)
+	local AvailableSlot = false
+	local NumActive = 0
+	-- Check if any existing slot isn't in use currently
+	for i=1, #Holder.AuraSlot do
+		--print(i, Holder.AuraSlot[i].IsActive)
+		if not Holder.AuraSlot[i].IsActive then
+			AvailableSlot = Holder.AuraSlot[i]
+			break
+		else
+			NumActive = i
+		end
+	end
+
+	-- If we're at display limit, return invalid index
+	if NumActive >= Holder.Num_Auras then return false end
+
+	-- Create a new slot if we didn't find an unused one
+	if not AvailableSlot then
+		Holder.AuraSlot[#Holder.AuraSlot + 1] = self:CreateSlot(Holder, #Holder.AuraSlot + 1)
+	end
+	
+	return AvailableSlot or Holder.AuraSlot[#Holder.AuraSlot]
+end
+
+----------------------------------
+-- AURA CHACHING END
+----------------------------------
 
 function Module:ToggleTestMode(state)
 	
@@ -79,7 +294,7 @@ function Module:ToggleTestMode(state)
 					
 					Slot = Holder.AuraSlot[i]
 					
-					self:PopulateSlot(Holder, i, 1, AuraType, AuraType, 136081, 2, "none", GetTime() + 7200, 7200, true, true, nil, nil)
+					self:PopulateSlot(Holder, i, 1, AuraType, AuraType, 136081, "none", GetTime() + 7200, 7200, true, true, nil, nil)
 					
 					Holder.ActiveSlots = i
 				end
@@ -102,7 +317,7 @@ function Module:ToggleTestMode(state)
 	end
 end
 
-local function SortAuras(a,b)
+local function SortByPriority(a,b)
 	if a and b then
 		if a:IsShown() and b:IsShown() then
 			if a.Priority > b.Priority then
@@ -162,42 +377,12 @@ function Module:CreateIcon(Slot, Type)
 	--E:SkinButtonIcon(Slot.Tex, {0.3, 0.3, 0.8, 1})
 	
 	self:SetupInteraction(Slot)
-	self:SetupCooldown(Slot)
-	
-	--Slot.Cooldown.Time = CreateFrame("Frame", nil, Slot.Cooldown)
-	--Slot.Cooldown.Time:Hide()
-	--Slot.Cooldown.Time:SetAllPoints()
-	--Slot.Cooldown.Time:SetScript("OnUpdate", self.Cooldown_OnUpdate)
-	--Slot.Cooldown.Time.Text = self:InitFont(Slot, Slot.Cooldown.Time, "Time")
-
-	
-	
-	--hooksecurefunc(Slot.Cooldown, "SetCooldown", Module.Cooldown_Set)
-	
+	self:SetupCooldown(Slot)	
 		Slot.FontOverlay = CreateFrame("Frame", nil, Slot)
 		Slot.FontOverlay:SetAllPoints(true)
 	Slot.Count = self:InitFont(Slot, Slot.FontOverlay, "Count")
 	
 	if not CO.db.char.unitframe.unitBuffs.useMasque and not CO.db.char.unitframe.unitDebuffs.useMasque then return end
-	
-	local ButtonData = {
-		FloatingBG = nil,
-		Icon = Slot.Tex,
-		Cooldown = Slot.Cooldown,
-		Flash = nil,
-		Pushed = nil,
-		Normal = nil,
-		Disabled = nil,
-		Checked = nil,
-		Border = nil,
-		AutoCastable = nil,
-		Highlight = Slot.Highlight,
-		HotKey = nil,
-		Count = false,
-		Name = nil,
-		Duration = false,
-		AutoCast = nil,
-	}
 	
 	local Target
 	if Type == "Buffs" and CO.db.char.unitframe.unitBuffs.useMasque then
@@ -206,6 +391,25 @@ function Module:CreateIcon(Slot, Type)
 		Target = MasqueGroup_Debuffs
 	end
 	if Target then
+        local ButtonData = {
+            FloatingBG = nil,
+            Icon = Slot.Tex,
+            Cooldown = Slot.Cooldown,
+            Flash = nil,
+            Pushed = nil,
+            Normal = nil,
+            Disabled = nil,
+            Checked = nil,
+            Border = nil,
+            AutoCastable = nil,
+            Highlight = Slot.Highlight,
+            HotKey = nil,
+            Count = false,
+            Name = nil,
+            Duration = false,
+            AutoCast = nil
+        }
+
 		Target:AddButton(Slot, ButtonData)
 		-- Don't ReSkin here, as it will: Impact performance, due to rapid creation of buttons and cause flickering, since the whole group is being iterated
 		--Target:ReSkin()
@@ -227,7 +431,7 @@ end
 	local function BuildTooltip(self)
 		if not Module.TestMode then
 			GameTooltip:SetOwner(self)
-			GameTooltip:SetUnitAuraByAuraInstanceID(self:GetParent().Owner.unit, self.AuraInstanceID)
+			GameTooltip:SetUnitAuraByAuraInstanceID(self.Owner.Owner.unit, self.AuraInstanceID)
 		end
 	end
 	
@@ -321,7 +525,7 @@ local function ConfigLoader(UnitOrFrame, Frame, RefreshUnitOnly)
 				
 				Type = Holder.Type
 				HolderConfig = Config[lower(Type)]
-				OtherHolder = Frame[(Type == "Buffs") and "Debuffs" or "Buffs"]
+				OtherHolder = Frame.Auras[(Type == "Buffs") and "Debuffs" or "Buffs"]
 				
 				Holder.OtherHolder 		= OtherHolder
 				Holder.Enabled 			= HolderConfig.enable
@@ -346,7 +550,7 @@ local function ConfigLoader(UnitOrFrame, Frame, RefreshUnitOnly)
 		
 		for k, Holder in pairs(Frame.AuraHolders) do
 			Type = Holder.Type
-			OtherHolder = Frame[(Type == "Buffs") and "Debuffs" or "Buffs"]
+			OtherHolder = Frame.Auras[(Type == "Buffs") and "Debuffs" or "Buffs"]
 			OtherHolderConfig = Config[lower((Type == "Buffs") and "Debuffs" or "Buffs")]
 			
 			if not RefreshUnitOnly then
@@ -365,7 +569,7 @@ local function ConfigLoader(UnitOrFrame, Frame, RefreshUnitOnly)
 					E:print("There is an issue with the " .. Frame.ConfigKey .. " " .. Type .. ", because they are attached to " .. Holder.AttachTo .. ", creating a loop!")
 				end
 				
-				if Holder.Enabled then		
+				if Holder.Enabled then
 					for k, Slot in pairs(Holder.AuraSlot) do
 						Slot:SetSize(Holder.SlotSize, Holder.SlotSize)
 						Slot:EnableMouse(not Holder.ClickThrough)
@@ -388,17 +592,10 @@ local function ConfigLoader(UnitOrFrame, Frame, RefreshUnitOnly)
 						Slot:Hide() -- To hide not required slots. Will be shown on next update
 						Slot.IsActive = false
 					end
+
+					wipe(Holder.AuraCache)
 					Module:DisableHolder(Holder)
 				end
-			end
-			
-			Frame.AuraEventHandler:UnregisterAllEvents()
-			
-			if Holder.Enabled or OtherHolder.Enabled then
-				Frame.AuraEventHandler:RegisterUnitEvent("UNIT_AURA", Frame.unit)
-				Frame.AuraEventHandler:SetScript("OnEvent", Module.Auras_OnEvent)
-			else
-				Frame.AuraEventHandler:SetScript("OnEvent", nil)
 			end
 			
 			if RefreshUnitOnly then return end
@@ -409,7 +606,9 @@ local function ConfigLoader(UnitOrFrame, Frame, RefreshUnitOnly)
 		
 		if not Module.TestMode then
 			-- Force Update
-			Module:UpdateIcons(Frame, ForceUpdateInfo)
+			--Module:UpdateIcons(Frame, ForceUpdateInfo)
+			Module:SetupAuraCaching(Frame)
+			Frame.Auras:ForceUpdate()
 		else
 			--Module:ToggleTestMode(true)
 		end
@@ -419,7 +618,8 @@ end
 
 local function UpdateUnit(self)
 	--local Unit = self.Frame.unit
-	ConfigLoader(self.Frame, nil, true)
+	--ConfigLoader(self.Frame, nil, true)
+	ConfigLoader(self.Frame)
 end
 
 function Module:DisableHolder(Holder)
@@ -457,58 +657,17 @@ end
 ----------------------------------
 -- COOLDOWN TIMER
 ----------------------------------
-function Module:SetupCooldown(Slot)
-	Slot.Cooldown = CreateFrame("Cooldown", nil, Slot, "CooldownFrameTemplate")
-	Slot.Cooldown:SetHideCountdownNumbers(false)
-	Slot.Cooldown:SetParent(Slot)
-	Slot.Cooldown:SetAllPoints(Slot)
-	Slot.Cooldown:SetReverse(true)
-	Slot.Cooldown:Show()
+	function Module:SetupCooldown(Slot)
+		Slot.Cooldown = CreateFrame("Cooldown", nil, Slot, "CooldownFrameTemplate")
+		Slot.Cooldown:SetHideCountdownNumbers(false)
+		Slot.Cooldown:SetParent(Slot)
+		Slot.Cooldown:SetAllPoints(Slot)
+		Slot.Cooldown:SetReverse(true)
+		Slot.Cooldown:Show()
 
-	Slot.Cooldown.Time = Slot.Cooldown:GetRegions()
-	Slot.Cooldown.Time.Owner = Slot.Cooldown
-end
-
-function Module:Cooldown_Set(start, duration)
-	if (duration > 1.5) then
-		local timer = self.Time
-		timer.start = start
-		timer.duration = duration
-		timer.enabled = true
-		timer.nextUpdate = 0
-
-		timer:Show()
-	elseif self.timer then
-		self.timer:Hide()
-		self.timer.enabled = false
+		Slot.Cooldown.Time = Slot.Cooldown:GetRegions()
+		Slot.Cooldown.Time.Owner = Slot.Cooldown
 	end
-end
-
-function Module:Cooldown_OnUpdate(elapsed)
-	if self.nextUpdate > 0 then
-		self.nextUpdate = self.nextUpdate - elapsed
-		return
-	end
-	
-	if not self.enabled then return end
-
-	self.remaining = self.duration - (GetTime() - self.start)
-	
-	if self.remaining > 0.05 then
-		if self.remaining > 0 and self.remaining < 15 then
-			self.Text:SetText(E:FormatTime(self.remaining, 1))
-			self.nextUpdate = 0
-		elseif self.remaining > 15 then
-			self.Text:SetText(E:FormatTime(self.remaining, 0))
-			self.nextUpdate = 0.5
-		else
-			self.Text:SetText("")
-		end
-	else
-		self:Hide()
-		self.enabled = false
-	end
-end
 ----------------------------------
 -- COOLDOWN TIMER END
 ----------------------------------
@@ -548,22 +707,23 @@ end
 		return Slot[Font]
 	end
 	
-	local RepositioningSlot
 	function Module:RepositionSlot(Holder, Index)
-		RepositioningSlot = Holder.AuraSlot[Index]
-		if not RepositioningSlot.IsActive then return end
+		local RepositioningSlot = Holder.AuraSlot[Index]
+		--if not RepositioningSlot.IsActive then return end
 		
 		if Holder.HasCenterPositioning then return end
+
+        local PrefixX, PrefixY, OffsetX, OffsetY
 			
 		if Holder.Position:find("RIGHT") then
-			RepositioningSlot.MathPrefix_X = -1
+			PrefixX = -1
 		else
-			RepositioningSlot.MathPrefix_X = 1
+			PrefixX = 1
 		end
 		if Holder.Position:find("BOTTOM") then
-			RepositioningSlot.MathPrefix_Y = -1
+			PrefixY = -1
 		else
-			RepositioningSlot.MathPrefix_Y = 1
+			PrefixY = 1
 		end
 		
 		-- Prevent random flashing
@@ -577,18 +737,18 @@ end
 		end
 		
 		-- We have to use the previous column and row values to make it work properly
-		RepositioningSlot.XOffset = ((Holder.SlotSize * Holder.CurrentColumn) + (Holder.GapX * Holder.CurrentColumn)) * RepositioningSlot.MathPrefix_X
-		RepositioningSlot.YOffset = ((Holder.SlotSize * Holder.CurrentRow) + (Holder.GapY * Holder.CurrentRow)) * RepositioningSlot.MathPrefix_Y
+		OffsetX = ((Holder.SlotSize * Holder.CurrentColumn) + (Holder.GapX * Holder.CurrentColumn)) * PrefixX
+		OffsetY = ((Holder.SlotSize * Holder.CurrentRow) + (Holder.GapY * Holder.CurrentRow)) * PrefixY
 		
 		-- If the current button should be in next row
-		if Holder.RepositionedSlotNum % Holder.NumPerRow == 0 then
+		if Index % Holder.NumPerRow == 0 then
 			Holder.CurrentRow = Holder.CurrentRow + 1
 			Holder.CurrentColumn = 0
 		else
 			Holder.CurrentColumn = Holder.CurrentColumn + 1
 		end
 		
-		E:MoveFrame(RepositioningSlot, RepositioningSlot.XOffset, RepositioningSlot.YOffset)
+		E:MoveFrame(RepositioningSlot, OffsetX, OffsetY)
 
 		Holder.RepositionedSlotNum = Holder.RepositionedSlotNum + 1
 	end
@@ -625,12 +785,13 @@ end
 	end
 
 	-- We use this method to create slots on the fly while updating auras
-	function Module:CreateSlot(Holder, Index, ConfigKey)
+	function Module:CreateSlot(Holder, Index)
 		local Slot = Holder.AuraSlot[Index]
 
 		if not Slot then
 			
-			Slot = CreateFrame("Button", format("CUI_AuraIcon%s", Index), Holder)
+			Slot = CreateFrame("Button", format("CUI_%sAuraIcon%s", Holder.Owner.unit, Index), Holder)
+			
 			Slot.Owner = Holder
 			Slot:SetSize(Holder.SlotSize, Holder.SlotSize)
 			self:CreateIcon(Slot, Holder.Type)
@@ -641,15 +802,16 @@ end
 			-- Allows us to automagically hide/show the countdown numbers based on whether or not the font should be shown
 			Slot.Cooldown.Time.PostToggle = PostToggle_Time
 			
-			E:RegisterAutoFont(Slot.Cooldown.Time, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'time'))
-			E:RegisterAutoFont(Slot.Count, GetFontPath(Holder, ConfigKey or Holder.Owner.ConfigKey, 'count'))
+			E:RegisterAutoFont(Slot.Cooldown.Time, GetFontPath(Holder, Holder.ConfigKey, 'time'))
+			E:RegisterAutoFont(Slot.Count, GetFontPath(Holder, Holder.ConfigKey, 'count'))
 			
-			--Holder.CurrentColumn = 0
-			--Holder.CurrentRow = 0
-			--Holder.RepositionedSlotNum = 1
+			Holder.CurrentColumn = 0
+			Holder.CurrentRow = 0
+			Holder.RepositionedSlotNum = 1
 			Holder.AuraSlot[Index] = Slot
 
-			--self:RepositionSlot(Holder, Index)
+			-- Reposition all
+			Module:UpdateSlotPositions(Holder)
 		end
 		
 		return Slot
@@ -658,17 +820,12 @@ end
 	function Module:ClearSlot(Slot)
 		if not Slot then return end
 
-		--print("Removing", Slot.AuraInstanceID)
-
-		Slot.Owner.AuraInstanceIDMap[Slot.AuraInstanceID] = nil
 		Slot.IsActive = false
-
 		Slot:Hide()
 	end
 	
-	function Module:PopulateSlot(Slot, AuraType, AuraUnitFaction, Texture, Count, DType, ExpirationTime, UnitCaster, Duration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID, AuraInstanceID)
+	function Module:PopulateSlot(Slot, AuraType, AuraUnitFaction, Texture, DType, ExpirationTime, UnitCaster, Duration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID, AuraInstanceID)
 		local Unit = Slot.Owner.Owner.unit
-		Slot.Owner.AuraInstanceIDMap[AuraInstanceID] = Slot
 
 		Slot.IsActive = true
 		
@@ -684,25 +841,15 @@ end
 			Slot.Priority = 1
 		end
 		
-		Slot.DisplayCount = GetAuraApplicationDisplayCount(Unit, AuraInstanceID, 2, 99)
-		
 		Slot.Count:Show()
-		Slot.Count:SetText(Slot.DisplayCount)
-		-- if Count > 1 then
-			-- Slot.Count:SetText(Count)
-			-- Slot.Count:Show()
-		-- else
-			-- Slot.Count:Hide()
-		-- end
+		Slot.Count:SetText(GetAuraApplicationDisplayCount(Unit, AuraInstanceID, 2, 99))
 		
 		Slot.Tex:SetTexture(Texture)
 
 		local Duration = GetAuraDuration(Unit, AuraInstanceID)
 		if Duration then
-			--self.RunOnUpdate = true
 			Slot.Cooldown:SetCooldownFromDurationObject(Duration, true)
 		else			
-			--self.RunOnUpdate = false
 			Slot.Cooldown:Clear()
 		end
 
@@ -759,11 +906,6 @@ end
 		tinsert(self.Holders[Unit], Holder)
 	end
 
-	function Module:SetFrameEvent(Frame)
-		Frame.AuraEventHandler = CreateFrame('Frame')
-		Frame.AuraEventHandler.Owner = Frame
-	end
-
 	function Module:CreateHolder(Frame, Type)
 		local Holder = Frame[Type]
 
@@ -771,60 +913,44 @@ end
 			-- Profile unit holds the unit + index for raid40. Name is required, so the user can attach stuff to this holder
 			Holder = CreateFrame("Frame", format("%s%sHolder", Frame.ConfigKey, Type), Frame.Overlay)
 			Holder:SetFrameStrata("MEDIUM")
+			Holder:SetSize(1, 1)
 			Holder.Owner = Frame
-			Holder.unit = Frame.unit
 			Holder.ConfigKey = Frame.ConfigKey
 			Holder.Type = Type
 			Holder.AuraType = (Type == "Debuffs") and E.STR.HARMFUL or E.STR.HELPFUL
 			Holder.ActiveSlots = 0
+			Holder.AuraCache = {}
 			Holder.AuraSlot = {}
-			Holder.AuraInstanceIDMap = {}
+			Holder.SortedAuras = {}
 			
 			if not Frame.AuraHolders then Frame.AuraHolders = {} end
 			tinsert(Frame.AuraHolders, Holder)
 
-			Frame[Type] = Holder
+			Frame.Auras[Type] = Holder
 		end
 	end
 	
 	function Module:BuildAuras(Frame)
-		if not Frame.Buffs then
+		if not Frame.Auras.Buffs then
 			for _, Type in pairs(Module.HOLDER_TYPES) do
 				Module:CreateHolder(Frame, Type)
 			end
-			self:SetFrameEvent(Frame)
 			
 			self:RegisterHolder(Frame, Frame.unit)
 			self:LoadConfig(Frame) -- Initial update
 		end
 	end
 
+
 ----------------------------------
 -- HOLDER END
 ----------------------------------
 
+
 function Module:IsUnitFromType(Unit, Compare)
 	if not Compare then return false end
-	local Concat
-	
-	-- if UF.ToCreate[Unit] then
-		-- for i = 1, UF.ToCreate[Unit] do
-			-- Concat = Compare .. i
-			-- if Concat == Unit then
-				-- return true
-			-- end
-		-- end
-	-- end
 	
 	return Compare:find(Unit)
-	
-	--return UnitIsUnit(Unit, Compare)
-end
-
-function Module:Auras_OnEvent(event, unit, info)
-	--if not UnitExists(self.Owner.unit) or (event == 'UNIT_AURA' and not UnitIsUnit(self.Owner.unit, unit)) then return end
-	
-	Module:UpdateIcons(self.Owner, info)
 end
 
 function Module:ShouldShowAura(Holder, Type, AuraUnitFaction, AuraName, AuraDuration, SpellID, AuraCaster, IsBossDebuff, IsCastByPlayer)
@@ -858,202 +984,24 @@ function Module:ShouldShowAura(Holder, Type, AuraUnitFaction, AuraName, AuraDura
 end
 
 function Module:RunFullUpdate(Holder)
-	if Holder.Enabled then
-		local Type, AuraUnitFaction = Holder.Type, Holder.Owner.AuraUnitFaction
-
-		local FrameIndex, CurrentAuraIndex = 1, 1
-		local AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, SpellID, IsBossDebuff, IsCastByPlayer
-		local Data
-		
-		-- Iterate until we reach the last auraID of the unit
-		-- We do not stop after N auras, as there could be auras that are whitelisted by the user and would risk losing them
-		while true do
-			--AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, _, _, SpellID, _, IsBossDebuff, IsCastByPlayer = UnpackAuraData(GetAuraDataByIndex(Holder.Owner.unit, CurrentAuraIndex, Type))
-			
-			Data = GetAuraDataByIndex(Holder.Owner.unit, CurrentAuraIndex, Holder.AuraType)
-			
-			--self.AuraName, self.AuraTexture, self.AuraCount, self.AuraDType, self.AuraDuration, self.AuraExpirationTime, self.AuraSpellID = 
-			--local Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.sourceUnit, Data.isStealable, Data.nameplateShowPersonal, Data.spellId, Data.canApplyAura, Data.isBossAura, Data.isFromPlayerOrPlayerPet, Data.nameplateShowAll, Data.timeMod
-			
-			if Data then
-				AuraName, AuraTexture, AuraCount, AuraDType, AuraDuration, AuraExpirationTime, AuraCaster, SpellID, IsBossDebuff, IsCastByPlayer = Data.name, Data.icon, Data.applications, Data.dispelName, Data.duration, Data.expirationTime, Data.sourceUnit, Data.spellId, Data.isBossAura, Data.isFromPlayerOrPlayerPet
-				
-				if AuraName and FrameIndex <= Holder.Num_Auras then
-					
-					--if self:ShouldShowAura(Holder, Type, AuraUnitFaction, AuraName, AuraDuration, SpellID, AuraCaster, IsBossDebuff, IsCastByPlayer) then
-					if true then
-						Holder.AuraSlot[FrameIndex] = (Holder.AuraSlot[FrameIndex] or self:CreateSlot(Holder, FrameIndex))
-						
-						--self:PopulateSlot(Holder.AuraSlot[FrameIndex], Type, AuraUnitFaction, AuraTexture, AuraCount, AuraDType, AuraExpirationTime, AuraCaster, AuraDuration, IsBossDebuff, IsCastByPlayer, AuraName, SpellID, Data.auraInstanceID)
-
-						self:ApplyAuraDataToSlot(Holder.AuraSlot[FrameIndex], Data)
-						--print("Populate")
-						
-						FrameIndex = FrameIndex + 1
-					end
-					
-					CurrentAuraIndex = CurrentAuraIndex + 1
-				else
-					break
-				end
-			
-			else
-				break
-			end
-		end
-		
-		Holder.ActiveSlots = FrameIndex - 1
-		self:UpdateHolderSize(Holder)
-	else
-		Holder.ActiveSlots = 0
-	end
-		
-	for i = (Holder.ActiveSlots + 1), (Holder.Num_Auras or 0) do
-		if Holder.AuraSlot[i] then
-			Holder.AuraSlot[i].IsActive = false
-			Holder.AuraSlot[i]:Hide()
-		end
-	end
 	
-	self:UpdateSlotPositions(Holder)
-end
-
-function Module:GetNextAvailableIconIndex(Holder)
-	local AvailableSlot = false
-	local NumActive = 0
-	-- Check if any existing slot isn't in use currently
-	for i=1, #Holder.AuraSlot do
-		if not Holder.AuraSlot[i].IsActive then
-			AvailableSlot = i
-		else
-			NumActive = i
-		end
-	end
-
-	-- If we're at display limit, return invalid index
-	if NumActive >= Holder.Num_Auras then return false end
-
-	-- Create a new slot if we didn't find an unused one
-	if not AvailableSlot then
-		Holder.AuraSlot[#Holder.AuraSlot + 1] = self:CreateSlot(Holder, #Holder.AuraSlot + 1)
-	end
-	
-	return AvailableSlot or #Holder.AuraSlot
 end
 
 function Module:ApplyAuraDataToSlot(Slot, AuraData)
 	if not Slot or not AuraData then return false end
-
-	--print("Applied:", AuraData.name, AuraData.auraInstanceID)
-	-- 
+	
 	--if (AuraData.isHarmful and true and UnitCanAttack(Slot.Owner.unit, "player")) or (AuraData.isHarmful and not UnitCanAttack(Slot.Owner.unit, "player")) or AuraData.isHelpful then
-		self:PopulateSlot(Slot, Slot.Owner.Type, Slot.Owner.Owner.AuraUnitFaction, AuraData.icon, AuraData.applications, AuraData.dispelName, AuraData.expirationTime, AuraData.sourceUnit, AuraData.duration, AuraData.isBossAura, AuraData.isFromPlayerOrPlayerPet, AuraData.name, AuraData.spellId, AuraData.auraInstanceID)
+		self:PopulateSlot(Slot, Slot.Owner.Type, Slot.Owner.Owner.AuraUnitFaction, AuraData.icon, AuraData.dispelName, AuraData.expirationTime, AuraData.sourceUnit, AuraData.duration, AuraData.isBossAura, AuraData.isFromPlayerOrPlayerPet, AuraData.name, AuraData.spellId, AuraData.auraInstanceID)
 	--end
+
+	self:UpdateHolderSize(Slot.Owner, true)
 
 	return true
 end
 
-function Module:AddAuras(Frame, addedAuras)
-	local UpdatedDebuffs, UpdatedBuffs = false, false
-
-	for index, AuraData in pairs(addedAuras) do
-		if AuraData.isHarmful then
-			if Frame.Debuffs.Enabled then
-				if self:ApplyAuraDataToSlot(Frame.Debuffs.AuraSlot[self:GetNextAvailableIconIndex(Frame.Debuffs)], AuraData) then
-					UpdatedDebuffs = true
-				end
-			end
-		else
-			if Frame.Buffs.Enabled then
-				if self:ApplyAuraDataToSlot(Frame.Buffs.AuraSlot[self:GetNextAvailableIconIndex(Frame.Buffs)], AuraData) then
-					UpdatedBuffs = true
-				end
-			end
-		end
-	end
-
-	-- Update positions
-	if UpdatedDebuffs then
-		self:UpdateHolderSize(Frame.Debuffs, true)
-		self:UpdateSlotPositions(Frame.Debuffs)
-	end
-	if UpdatedBuffs then
-		self:UpdateHolderSize(Frame.Buffs, true)
-		self:UpdateSlotPositions(Frame.Buffs)
-	end
-end
-
-function Module:UpdateAuraInstances(Frame, updatedAuraInstanceIDs)
-	for index, AuraInstanceID in pairs(updatedAuraInstanceIDs) do
-		if Frame.Debuffs.AuraInstanceIDMap[AuraInstanceID] then
-			if Frame.Debuffs.Enabled then
-				self:ApplyAuraDataToSlot(Frame.Debuffs.AuraInstanceIDMap[AuraInstanceID], C_UnitAuras.GetAuraDataByAuraInstanceID(Frame.unit, AuraInstanceID))
-			end
-		elseif Frame.Buffs.AuraInstanceIDMap[AuraInstanceID] then
-			if Frame.Buffs.Enabled then
-				self:ApplyAuraDataToSlot(Frame.Buffs.AuraInstanceIDMap[AuraInstanceID], C_UnitAuras.GetAuraDataByAuraInstanceID(Frame.unit, AuraInstanceID))
-			end
-		end
-	end
-end
-
-function Module:RemoveAuraInstances(Frame, removedAuraInstanceIDs)
-	local UpdatedDebuffs, UpdatedBuffs = false, false
-
-	for index, AuraInstanceID in pairs(removedAuraInstanceIDs) do
-		if Frame.Debuffs.AuraInstanceIDMap[AuraInstanceID] then
-			if Frame.Debuffs.Enabled then
-				self:ClearSlot(Frame.Debuffs.AuraInstanceIDMap[AuraInstanceID])
-
-				UpdatedDebuffs = true
-			end
-		elseif Frame.Buffs.AuraInstanceIDMap[AuraInstanceID] then
-			if Frame.Buffs.Enabled then
-				self:ClearSlot(Frame.Buffs.AuraInstanceIDMap[AuraInstanceID])
-				
-				UpdatedBuffs = true
-			end
-		end
-	end
-
-	-- Update positions
-	if UpdatedDebuffs then
-		self:UpdateHolderSize(Frame.Debuffs, true)
-		self:UpdateSlotPositions(Frame.Debuffs)
-	end
-	if UpdatedBuffs then
-		self:UpdateHolderSize(Frame.Buffs, true)
-		self:UpdateSlotPositions(Frame.Buffs)
-	end
-end
-
-function Module:UpdateIcons(Frame, info)
-	if not Frame.Auras then return end
-	
-	Frame.AuraUnitFaction = UnitCanAttack(Frame.unit, E.STR.player) and E.STR.HARMFUL or E.STR.HELPFUL
-	
-	--if info.isFullUpdate then
-		--print("Full Update")
-		Module:RunFullUpdate(Frame.Buffs)
-		Module:RunFullUpdate(Frame.Debuffs)
-	--end
-	if true then return end
-	if info.removedAuraInstanceIDs then
-		--print("removedAuraInstanceIDs")
-		Module:RemoveAuraInstances(Frame, info.removedAuraInstanceIDs)
-	end
-	if info.addedAuras then
-		--print("addedAuras")
-		Module:AddAuras(Frame, info.addedAuras)
-	end
-	if info.updatedAuraInstanceIDs then
-		--print("updatedAuraInstanceIDs")
-		Module:UpdateAuraInstances(Frame, info.updatedAuraInstanceIDs)
-	end
-end
-
 function Module:ForceUpdate()
-	Module:UpdateIcons(self.Frame, ForceUpdateInfo)
+	self.isHostileUnit = UnitCanAttack("player", self.Owner.unit)
+	AuraCache_OnEvent(self, nil, nil, ForceUpdateInfo)
 end
 
 function Module:UpdateAll()
@@ -1071,14 +1019,16 @@ function Module:Disable()
 end
 
 function Module:Create(F)
-	self:BuildAuras(F)
-	F.Auras = {}
+	F.Auras = CreateFrame('Frame')
 	F.Auras.Frame = F
 	F.Auras.unit = F.unit
+	F.Auras.Owner = F
 	F.Auras.Enable = self.Enable
 	F.Auras.Disable = self.Disable
 	F.Auras.ForceUpdate = self.ForceUpdate
 	F.Auras.UpdateUnit = UpdateUnit
+
+	self:BuildAuras(F)
 	
 	tinsert(Module.Frames, F)
 end

@@ -306,7 +306,8 @@
         "GetCurrentMapDungeonLevel",
         "GetCurrentMapZone",
         "GetCurrentMapContinent",
-        "GAME_LOCALE"
+        "GAME_LOCALE",
+        "SetUnitAuraByAuraInstanceID"
     ],
     "Lua.diagnostics.disable": [
         "assign-type-mismatch",

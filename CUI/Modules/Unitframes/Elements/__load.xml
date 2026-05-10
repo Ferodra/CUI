@@ -3,7 +3,7 @@
 	
 	<Script File="AlternatePower.lua"/>
 	<Script File="Auras.lua"/>
-	<Script File="UnitAuras.lua"/>
+	<Script File="UnitAuras_New.lua"/>
 	<Script File="Absorb.lua"/>
 	<Script File="Classpower.lua"/>
 	<Script File="CombatIndicator.lua"/>
